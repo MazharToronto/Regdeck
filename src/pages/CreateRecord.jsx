@@ -8,6 +8,7 @@ const FALLBACK_REGIONS = ['Central', 'Eastern', 'Rexdale', 'Western'];
 const FALLBACK_DIVISIONS = ['ID', 'RPD', 'RAD', 'IAD'];
 const FALLBACK_REQUEST_TYPES = ['Full', 'Bench'];
 const FALLBACK_TAT_VALUES = [10, 5, 4, 3, 2, 1];
+const FALLBACK_STATUSES = ['Pending', 'In progress', 'Done'];
 
 export default function CreateRecord({ user }) {
   const navigate = useNavigate();
@@ -22,6 +23,7 @@ export default function CreateRecord({ user }) {
   const [divisions, setDivisions] = useState(FALLBACK_DIVISIONS);
   const [requestTypes, setRequestTypes] = useState(FALLBACK_REQUEST_TYPES);
   const [tatValues, setTatValues] = useState(FALLBACK_TAT_VALUES);
+  const [statuses, setStatuses] = useState(FALLBACK_STATUSES);
 
   const [formData, setFormData] = useState({
     language: 'EN',
@@ -39,7 +41,7 @@ export default function CreateRecord({ user }) {
     word_count: '',
     character_wz_space: '',
     line_count: '',
-    status: '',
+    status: 'Pending',
     delivery_date: '',
     transcriptionist_comments: '',
     regdeck_admin_comments: '',
@@ -56,7 +58,7 @@ export default function CreateRecord({ user }) {
       formData.due_date !== '' ||
       formData.audio_length !== '' ||
       formData.word_count !== '' ||
-      formData.status !== '' ||
+      formData.status !== 'Pending' ||
       formData.transcriptionist_comments !== '' ||
       formData.regdeck_admin_comments !== '';
 
@@ -90,6 +92,10 @@ export default function CreateRecord({ user }) {
       // TAT Scores
       const { data: tatData } = await supabase.from('ref_tat_scores').select('value').order('value', { ascending: false });
       if (tatData?.length) setTatValues(tatData.map(t => t.value));
+
+      // Work Order Statuses
+      const { data: statusData } = await supabase.from('ref_work_order_statuses').select('name').order('name');
+      if (statusData?.length) setStatuses(statusData.map(s => s.name));
 
       // Users (from user_profiles view, fallback to current user)
       const { data: userData, error: userError } = await supabase.from('user_profiles').select('id, full_name, email');
@@ -165,7 +171,7 @@ export default function CreateRecord({ user }) {
         word_count: formData.word_count ? parseInt(formData.word_count, 10) : 0,
         character_wz_space: formData.character_wz_space ? parseInt(formData.character_wz_space, 10) : 0,
         line_count: formData.line_count ? parseInt(formData.line_count, 10) : 0,
-        status: formData.status || null,
+        status: formData.status,
         delivery_date: formData.delivery_date || null,
         transcriptionist_comments: formData.transcriptionist_comments || null,
         regdeck_admin_comments: formData.regdeck_admin_comments || null,
@@ -192,7 +198,7 @@ export default function CreateRecord({ user }) {
           word_count: '',
           character_wz_space: '',
           line_count: '',
-          status: '',
+          status: 'Pending',
           delivery_date: '',
           transcriptionist_comments: '',
           regdeck_admin_comments: '',
@@ -320,7 +326,9 @@ export default function CreateRecord({ user }) {
           <div className="form-row">
             <div className="form-group">
               <label className="form-label">Status</label>
-              <input type="text" name="status" className="form-input" placeholder="Optional" value={formData.status} onChange={handleChange} />
+              <select name="status" className="form-select" value={formData.status} onChange={handleChange}>
+                {statuses.map(s => <option key={s} value={s}>{s}</option>)}
+              </select>
             </div>
             <div className="form-group">
               <label className="form-label">Delivery Status</label>

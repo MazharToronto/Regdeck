@@ -1,8 +1,8 @@
 import { NavLink, useNavigate } from 'react-router-dom';
-import { Home, FileText, PlusCircle, LogOut, User } from 'lucide-react';
+import { Home, FileText, PlusCircle, LogOut, Shield, Users, UserPlus } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 
-export default function Sidebar() {
+export default function Sidebar({ isAdmin }) {
   const navigate = useNavigate();
 
   const handleLogout = async () => {
@@ -39,6 +39,21 @@ export default function Sidebar() {
           <PlusCircle size={18} />
           <span>Create work order</span>
         </NavLink>
+
+        {isAdmin && (
+          <>
+            <div className="sidebar-divider" />
+            <div className="sidebar-section-title">Admin</div>
+            <NavLink to="/admin/users" className={({isActive}) => `sidebar-link ${isActive ? 'active' : ''}`}>
+              <Users size={18} />
+              <span>Manage Users</span>
+            </NavLink>
+            <NavLink to="/admin/create" className={({isActive}) => `sidebar-link ${isActive ? 'active' : ''}`}>
+              <UserPlus size={18} />
+              <span>Add User</span>
+            </NavLink>
+          </>
+        )}
       </div>
 
       <div className="sidebar-footer">

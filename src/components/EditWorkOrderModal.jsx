@@ -9,6 +9,7 @@ const FB_REGIONS = ['Central', 'Eastern', 'Rexdale', 'Western'];
 const FB_DIVISIONS = ['ID', 'RPD', 'RAD', 'IAD'];
 const FB_REQUEST_TYPES = ['Full', 'Bench'];
 const FB_TAT = [10, 5, 4, 3, 2, 1];
+const FB_STATUSES = ['Pending', 'In progress', 'Done'];
 
 export default function EditWorkOrderModal({ record, onClose, onSaved }) {
   const [loading, setLoading] = useState(false);
@@ -21,6 +22,7 @@ export default function EditWorkOrderModal({ record, onClose, onSaved }) {
   const [divisions, setDivisions] = useState(FB_DIVISIONS);
   const [requestTypes, setRequestTypes] = useState(FB_REQUEST_TYPES);
   const [tatValues, setTatValues] = useState(FB_TAT);
+  const [statuses, setStatuses] = useState(FB_STATUSES);
   const [users, setUsers] = useState([]);
 
   const [formData, setFormData] = useState({
@@ -39,7 +41,7 @@ export default function EditWorkOrderModal({ record, onClose, onSaved }) {
     word_count: record.word_count || '',
     character_wz_space: record.character_wz_space || '',
     line_count: record.line_count || '',
-    status: record.status || '',
+    status: record.status || 'Pending',
     delivery_date: record.delivery_date || '',
     transcriptionist_comments: record.transcriptionist_comments || '',
     regdeck_admin_comments: record.regdeck_admin_comments || '',
@@ -63,6 +65,9 @@ export default function EditWorkOrderModal({ record, onClose, onSaved }) {
 
       const { data: tatData } = await supabase.from('ref_tat_scores').select('value').order('value', { ascending: false });
       if (tatData?.length) setTatValues(tatData.map(t => t.value));
+
+      const { data: statusData } = await supabase.from('ref_work_order_statuses').select('name').order('name');
+      if (statusData?.length) setStatuses(statusData.map(s => s.name));
 
       const { data: userData } = await supabase.from('user_profiles').select('id, full_name, email');
       if (userData?.length) {
@@ -100,7 +105,7 @@ export default function EditWorkOrderModal({ record, onClose, onSaved }) {
       word_count: formData.word_count ? parseInt(formData.word_count, 10) : 0,
       character_wz_space: formData.character_wz_space ? parseInt(formData.character_wz_space, 10) : 0,
       line_count: formData.line_count ? parseInt(formData.line_count, 10) : 0,
-      status: formData.status || null,
+      status: formData.status,
       delivery_date: formData.delivery_date || null,
       transcriptionist_comments: formData.transcriptionist_comments || null,
       regdeck_admin_comments: formData.regdeck_admin_comments || null,
@@ -248,7 +253,9 @@ export default function EditWorkOrderModal({ record, onClose, onSaved }) {
             <div className="form-row">
               <div className="form-group">
                 <label className="form-label">Status</label>
-                <input type="text" name="status" className="form-input" value={formData.status} onChange={handleChange} />
+                <select name="status" className="form-select" value={formData.status} onChange={handleChange}>
+                  {statuses.map(s => <option key={s} value={s}>{s}</option>)}
+                </select>
               </div>
               <div className="form-group">
                 <label className="form-label">Delivery Status</label>

@@ -1,26 +1,20 @@
 import { useState } from 'react';
-import { useNavigate, Link, useLocation } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 import { Mail, Lock } from 'lucide-react';
 
 export default function Login() {
   const navigate = useNavigate();
-  const location = useLocation();
-
-  const signupEmail = location.state?.signupEmail || '';
-  const signupSuccess = location.state?.signupSuccess || false;
 
   const [loading, setLoading] = useState(false);
-  const [email, setEmail] = useState(signupEmail);
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState(null);
-  const [showSuccess, setShowSuccess] = useState(signupSuccess);
 
   const handleLogin = async (e) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
-    setShowSuccess(false);
 
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) {
@@ -46,12 +40,6 @@ export default function Login() {
 
         <h1 className="auth-title">Welcome Back</h1>
         <p className="auth-subtitle">Sign in to your InvoiceGen account.</p>
-
-        {showSuccess && (
-          <div className="auth-success">
-            Your account has been created. Please check your email and verify your address before logging in.
-          </div>
-        )}
 
         {error && <div className="auth-error">{error}</div>}
 
@@ -84,10 +72,6 @@ export default function Login() {
             {loading ? 'Signing In...' : 'Sign In'}
           </button>
         </form>
-
-        <p className="auth-footer">
-          Don't have an account? <Link to="/signup" className="auth-link">Sign up</Link>
-        </p>
       </div>
     </div>
   );
