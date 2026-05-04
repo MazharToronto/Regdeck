@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { User } from 'lucide-react';
 
-export default function ProfileDropdown({ user }) {
+export default function ProfileDropdown({ user, userRoles = [] }) {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
 
@@ -46,6 +46,10 @@ export default function ProfileDropdown({ user }) {
             <div className="profile-meta-row">
               <span className="profile-meta-label">Provider</span>
               <span className="profile-meta-value">{user?.app_metadata?.provider || 'email'}</span>
+            </div>
+            <div className="profile-meta-row">
+              <span className="profile-meta-label">Role</span>
+              <span className="profile-meta-value" style={{textTransform: 'capitalize'}}>{userRoles.length > 0 ? userRoles.join(', ') : 'User'}</span>
             </div>
           </div>
         </div>

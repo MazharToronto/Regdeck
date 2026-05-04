@@ -1,15 +1,18 @@
 import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../supabaseClient';
 import EditWorkOrderModal from '../components/EditWorkOrderModal';
-import { Filter, RotateCcw } from 'lucide-react';
+import { Filter, RotateCcw, Search } from 'lucide-react';
 
-export default function Reports() {
+export default function Reports({ userRoles = [], user }) {
+  const isEmployee = !userRoles.includes('admin') && !userRoles.includes('manager');
+  const userName = user?.user_metadata?.full_name || '';
   const [records, setRecords] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [editingRecord, setEditingRecord] = useState(null);
   const [noResults, setNoResults] = useState(false);
   const [sortConfig, setSortConfig] = useState({ key: 'created_at', direction: 'desc' });
+  const [searchTerm, setSearchTerm] = useState('');
 
   // Filter options (populated from DB)
   const [languageOptions, setLanguageOptions] = useState([]);
@@ -27,7 +30,11 @@ export default function Reports() {
     division: '',
     request_type: '',
     due_date: '',
-    delivery_status: ''
+    work_order_number: '',
+    file_number: '',
+    hearing_date: '',
+    delivery_date: '',
+    status: ''
   });
 
   // Load filter options from reference tables + distinct values
@@ -45,14 +52,17 @@ export default function Reports() {
       const { data: rtData } = await supabase.from('ref_request_types').select('name');
       if (rtData?.length) setRequestTypeOptions(rtData.map(rt => rt.name));
 
-      // Users from user_profiles view
-      const { data: userData } = await supabase.from('user_profiles').select('full_name, email');
+      // Users from ref_users table
+      const { data: userData } = await supabase.from('ref_users').select('name').order('name');
       if (userData?.length) {
-        setUserOptions(userData.map(u => u.full_name || u.email));
+        setUserOptions(userData.map(u => u.name));
       }
 
-      // Delivery status: static since we know them
-      setStatusOptions(['On Time', 'Late']);
+      // Statuses from ref_work_order_statuses table
+      const { data: statusData } = await supabase.from('ref_work_order_statuses').select('name').order('name');
+      if (statusData?.length) {
+        setStatusOptions(statusData.map(s => s.name));
+      }
     };
     loadFilterOptions();
     fetchRecords();
@@ -76,7 +86,16 @@ export default function Reports() {
     if (f.division) query = query.eq('division', f.division);
     if (f.request_type) query = query.eq('request_type', f.request_type);
     if (f.due_date) query = query.eq('due_date', f.due_date);
-    if (f.delivery_status) query = query.eq('delivery_status', f.delivery_status);
+    if (f.hearing_date) query = query.eq('hearing_date', f.hearing_date);
+    if (f.delivery_date) query = query.eq('delivery_date', f.delivery_date);
+    if (f.status) query = query.eq('status', f.status);
+    if (f.work_order_number) query = query.ilike('work_order_number', `%${f.work_order_number}%`);
+    if (f.file_number) query = query.ilike('file_number', `%${f.file_number}%`);
+
+    // Employee role: only show records assigned to them
+    if (isEmployee && userName) {
+      query = query.eq('assigned_to', userName);
+    }
 
     const { data, error } = await query;
 
@@ -107,9 +126,14 @@ export default function Reports() {
       division: '',
       request_type: '',
       due_date: '',
-      delivery_status: ''
+      work_order_number: '',
+      file_number: '',
+      hearing_date: '',
+      delivery_date: '',
+      status: ''
     };
     setFilters(cleared);
+    setSearchTerm('');
     fetchRecords(cleared);
   };
 
@@ -121,9 +145,59 @@ export default function Reports() {
     setSortConfig({ key, direction });
   };
 
-  const sortedRecords = useMemo(() => {
-    let sortableItems = [...records];
-    sortableItems.sort((a, b) => {
+  // Helper to format MMDD
+  const formatMmDd = (dateStr) => {
+    if (!dateStr) return '—';
+    const d = new Date(dateStr);
+    if (isNaN(d)) return '—';
+    return String(d.getMonth() + 1).padStart(2, '0') + String(d.getDate()).padStart(2, '0');
+  };
+
+  // Helper to format dates
+  const formatDate = (dateStr) => {
+    if (!dateStr) return '—';
+    const d = new Date(dateStr);
+    if (isNaN(d)) return '—';
+    return d.toLocaleDateString();
+  };
+
+  // Sort + search filtering
+  const filteredAndSorted = useMemo(() => {
+    let items = [...records];
+
+    // Global search across all visible fields
+    if (searchTerm.trim()) {
+      const term = searchTerm.toLowerCase().trim();
+      items = items.filter(r => {
+        const searchableValues = [
+          r.language,
+          r.wo_date ? formatMmDd(r.wo_date) : '',
+          r.work_order_number,
+          r.file_number,
+          r.region,
+          r.assigned_to,
+          r.division,
+          r.request_type,
+          r.tat != null ? String(r.tat) : '',
+          r.hearing_date ? formatDate(r.hearing_date) : '',
+          r.due_date ? formatDate(r.due_date) : '',
+          r.delivery_date ? formatDate(r.delivery_date) : '',
+          r.audio_length,
+          r.word_count != null ? String(r.word_count) : '',
+          r.character_wz_space != null ? String(r.character_wz_space) : '',
+          r.line_count != null ? String(r.line_count) : '',
+          r.status,
+          r.days_late != null ? String(r.days_late) : '',
+          r.employee_comments,
+          r.regdeck_admin_comments,
+          r.additional_comments
+        ];
+        return searchableValues.some(v => v && v.toLowerCase().includes(term));
+      });
+    }
+
+    // Sort
+    items.sort((a, b) => {
       let valA = a[sortConfig.key];
       let valB = b[sortConfig.key];
       
@@ -134,8 +208,9 @@ export default function Reports() {
       if (valA > valB) return sortConfig.direction === 'asc' ? 1 : -1;
       return 0;
     });
-    return sortableItems;
-  }, [records, sortConfig]);
+
+    return items;
+  }, [records, sortConfig, searchTerm]);
 
   const renderSortIcon = (columnName) => {
     if (sortConfig.key !== columnName) {
@@ -195,11 +270,27 @@ export default function Reports() {
             <input type="date" name="due_date" className="filter-select" value={filters.due_date} onChange={handleFilterChange} />
           </div>
           <div className="filter-group">
+            <label className="filter-label">Hearing Date</label>
+            <input type="date" name="hearing_date" className="filter-select" value={filters.hearing_date} onChange={handleFilterChange} />
+          </div>
+          <div className="filter-group">
+            <label className="filter-label">Delivery Date</label>
+            <input type="date" name="delivery_date" className="filter-select" value={filters.delivery_date} onChange={handleFilterChange} />
+          </div>
+          <div className="filter-group">
             <label className="filter-label">Status</label>
-            <select name="delivery_status" className="filter-select" value={filters.delivery_status} onChange={handleFilterChange}>
+            <select name="status" className="filter-select" value={filters.status} onChange={handleFilterChange}>
               <option value="">All</option>
               {statusOptions.map(s => <option key={s} value={s}>{s}</option>)}
             </select>
+          </div>
+          <div className="filter-group">
+            <label className="filter-label">Work Order #</label>
+            <input type="text" name="work_order_number" className="filter-select" placeholder="Search WO#" value={filters.work_order_number} onChange={handleFilterChange} />
+          </div>
+          <div className="filter-group">
+            <label className="filter-label">File #</label>
+            <input type="text" name="file_number" className="filter-select" placeholder="Search File#" value={filters.file_number} onChange={handleFilterChange} />
           </div>
         </div>
         <div className="filter-actions">
@@ -208,6 +299,21 @@ export default function Reports() {
             <RotateCcw size={14} />
             Reset
           </button>
+        </div>
+      </div>
+
+      {/* ===== Global Search ===== */}
+      <div className="search-bar" style={{ marginBottom: '1rem' }}>
+        <div style={{ position: 'relative', maxWidth: '400px' }}>
+          <Search size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', pointerEvents: 'none' }} />
+          <input
+            type="text"
+            placeholder="Search across all fields..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="form-input"
+            style={{ paddingLeft: '38px', width: '100%' }}
+          />
         </div>
       </div>
 
@@ -231,25 +337,33 @@ export default function Reports() {
               <thead>
                 <tr>
                   <th onClick={() => handleSort('language')} className="sortable-header">Language {renderSortIcon('language')}</th>
-                  <th onClick={() => handleSort('wo_id')} className="sortable-header">WO ID {renderSortIcon('wo_id')}</th>
+                  <th onClick={() => handleSort('wo_date')} className="sortable-header">WO Date {renderSortIcon('wo_date')}</th>
                   <th onClick={() => handleSort('work_order_number')} className="sortable-header">Work Order # {renderSortIcon('work_order_number')}</th>
+                  <th onClick={() => handleSort('file_number')} className="sortable-header">File # {renderSortIcon('file_number')}</th>
                   <th onClick={() => handleSort('region')} className="sortable-header">Region {renderSortIcon('region')}</th>
                   <th onClick={() => handleSort('assigned_to')} className="sortable-header">Assigned To {renderSortIcon('assigned_to')}</th>
                   <th onClick={() => handleSort('division')} className="sortable-header">Division {renderSortIcon('division')}</th>
-                  <th onClick={() => handleSort('request_type')} className="sortable-header">Request Type {renderSortIcon('request_type')}</th>
+                  <th onClick={() => handleSort('request_type')} className="sortable-header">Type {renderSortIcon('request_type')}</th>
                   <th onClick={() => handleSort('tat')} className="sortable-header">TAT {renderSortIcon('tat')}</th>
                   <th onClick={() => handleSort('hearing_date')} className="sortable-header">Hearing Date {renderSortIcon('hearing_date')}</th>
                   <th onClick={() => handleSort('due_date')} className="sortable-header">Due Date {renderSortIcon('due_date')}</th>
-                  <th onClick={() => handleSort('audio_length')} className="sortable-header">Audio Length {renderSortIcon('audio_length')}</th>
-                  <th onClick={() => handleSort('delivery_status')} className="sortable-header">Delivery Status {renderSortIcon('delivery_status')}</th>
+                  <th onClick={() => handleSort('delivery_date')} className="sortable-header">Delivery Date {renderSortIcon('delivery_date')}</th>
+                  <th onClick={() => handleSort('audio_length')} className="sortable-header">Audio Len {renderSortIcon('audio_length')}</th>
+                  <th onClick={() => handleSort('word_count')} className="sortable-header">Words {renderSortIcon('word_count')}</th>
+                  <th onClick={() => handleSort('character_wz_space')} className="sortable-header">Chars {renderSortIcon('character_wz_space')}</th>
+                  <th onClick={() => handleSort('line_count')} className="sortable-header">Lines {renderSortIcon('line_count')}</th>
+                  <th onClick={() => handleSort('status')} className="sortable-header">Status {renderSortIcon('status')}</th>
                   <th onClick={() => handleSort('days_late')} className="sortable-header">Days Late {renderSortIcon('days_late')}</th>
+                  <th onClick={() => handleSort('employee_comments')} className="sortable-header">Employee Comments {renderSortIcon('employee_comments')}</th>
+                  <th onClick={() => handleSort('regdeck_admin_comments')} className="sortable-header">Admin Comments {renderSortIcon('regdeck_admin_comments')}</th>
+                  <th onClick={() => handleSort('additional_comments')} className="sortable-header">Additional Comments {renderSortIcon('additional_comments')}</th>
                 </tr>
               </thead>
               <tbody>
-                {sortedRecords.map(record => (
+                {filteredAndSorted.map(record => (
                   <tr key={record.id}>
                     <td>{record.language || '—'}</td>
-                    <td>{record.wo_id || '—'}</td>
+                    <td>{formatMmDd(record.wo_date)}</td>
                     <td>
                       <button
                         className="link-btn"
@@ -259,20 +373,28 @@ export default function Reports() {
                         {record.work_order_number}
                       </button>
                     </td>
+                    <td>{record.file_number || '—'}</td>
                     <td>{record.region}</td>
                     <td>{record.assigned_to}</td>
                     <td>{record.division}</td>
                     <td>{record.request_type}</td>
                     <td>{record.tat}</td>
-                    <td>{record.hearing_date ? new Date(record.hearing_date).toLocaleDateString() : '—'}</td>
-                    <td>{record.due_date || '—'}</td>
+                    <td>{formatDate(record.hearing_date)}</td>
+                    <td>{formatDate(record.due_date)}</td>
+                    <td>{formatDate(record.delivery_date)}</td>
                     <td>{record.audio_length || '—'}</td>
+                    <td>{record.word_count || 0}</td>
+                    <td>{record.character_wz_space || 0}</td>
+                    <td>{record.line_count || 0}</td>
                     <td>
-                      <span className={`status-badge ${record.delivery_status === 'On Time' ? 'paid' : record.delivery_status === 'Late' ? 'overdue' : ''}`}>
-                        {record.delivery_status || '—'}
+                      <span className={`status-badge ${record.status === 'Done' ? 'paid' : record.status === 'In progress' ? 'pending' : ''}`}>
+                        {record.status || '—'}
                       </span>
                     </td>
                     <td>{record.days_late || 0}</td>
+                    <td style={{ maxWidth: '150px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={record.employee_comments || ''}>{record.employee_comments || '—'}</td>
+                    <td style={{ maxWidth: '150px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={record.regdeck_admin_comments || ''}>{record.regdeck_admin_comments || '—'}</td>
+                    <td style={{ maxWidth: '150px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={record.additional_comments || ''}>{record.additional_comments || '—'}</td>
                   </tr>
                 ))}
               </tbody>
@@ -287,6 +409,7 @@ export default function Reports() {
           record={editingRecord}
           onClose={() => setEditingRecord(null)}
           onSaved={() => fetchRecords(filters)}
+          userRoles={userRoles}
         />
       )}
     </div>

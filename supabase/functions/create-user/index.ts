@@ -141,9 +141,12 @@ Deno.serve(async (req: Request) => {
 
       const updatePayload: any = {
         email: email?.trim() || undefined,
-        phone: phone?.trim() || undefined,
         user_metadata: { full_name: full_name?.trim() || undefined },
       };
+      
+      if (phone !== undefined) {
+        updatePayload.phone = phone === null || phone.trim() === '' ? '' : phone.trim();
+      }
       
       if (password && password.length >= 6) {
         updatePayload.password = password;

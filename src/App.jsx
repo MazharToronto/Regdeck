@@ -9,6 +9,7 @@ import Reports from './pages/Reports';
 import Home from './pages/Home';
 import AdminScreen from './pages/AdminScreen';
 import AllUsersScreen from './pages/AllUsersScreen';
+import AudioLengthCalculator from './pages/AudioLengthCalculator';
 
 function parseJwt(token) {
   try {
@@ -52,18 +53,23 @@ function App() {
   const decodedToken = parseJwt(session.access_token);
   const userRoles = decodedToken?.user_roles || [];
   const isAdmin = userRoles.includes('admin');
+  const isManager = userRoles.includes('manager');
+  const canCreate = isAdmin || isManager;
 
   return (
     <div className="app-shell">
-      <Sidebar isAdmin={isAdmin} />
+      <Sidebar isAdmin={isAdmin} canCreate={canCreate} />
       <div className="app-main">
-        <TopBar user={session?.user} />
+        <TopBar user={session?.user} userRoles={userRoles} />
         <main className="main-content">
           <Routes>
             <Route path="/" element={<Navigate to="/home" />} />
-            <Route path="/home" element={<Home />} />
-            <Route path="/create" element={<CreateRecord user={session?.user} />} />
-            <Route path="/records" element={<Reports />} />
+            <Route path="/home" element={<Home canCreate={canCreate} />} />
+            {canCreate && (
+              <Route path="/create" element={<CreateRecord user={session?.user} />} />
+            )}
+            <Route path="/records" element={<Reports userRoles={userRoles} user={session?.user} />} />
+            <Route path="/audio-calculator" element={<AudioLengthCalculator />} />
             {isAdmin && (
               <>
                 <Route path="/admin/users" element={<AllUsersScreen />} />

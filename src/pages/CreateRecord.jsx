@@ -1,130 +1,135 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { supabase } from '../supabaseClient';
 import { useNavigate } from 'react-router-dom';
-
-// Fallback values (used while reference tables load)
-const FALLBACK_LANGUAGES = [{ value: 'EN', label: 'EN (English)' }, { value: 'FR', label: 'FR (French)' }];
-const FALLBACK_REGIONS = ['Central', 'Eastern', 'Rexdale', 'Western'];
-const FALLBACK_DIVISIONS = ['ID', 'RPD', 'RAD', 'IAD'];
-const FALLBACK_REQUEST_TYPES = ['Full', 'Bench'];
-const FALLBACK_TAT_VALUES = [10, 5, 4, 3, 2, 1];
-const FALLBACK_STATUSES = ['Pending', 'In progress', 'Done'];
+import * as XLSX from 'xlsx';
+import { UploadCloud, File, AlertCircle, CheckCircle } from 'lucide-react';
 
 export default function CreateRecord({ user }) {
-  const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [success, setSuccess] = useState(false);
-  const [users, setUsers] = useState([]);
+  const [successCount, setSuccessCount] = useState(0);
+  const [file, setFile] = useState(null);
+  const [language, setLanguage] = useState('EN');
 
-  // Reference data from Supabase
-  const [languages, setLanguages] = useState(FALLBACK_LANGUAGES);
-  const [regions, setRegions] = useState(FALLBACK_REGIONS);
-  const [divisions, setDivisions] = useState(FALLBACK_DIVISIONS);
-  const [requestTypes, setRequestTypes] = useState(FALLBACK_REQUEST_TYPES);
-  const [tatValues, setTatValues] = useState(FALLBACK_TAT_VALUES);
-  const [statuses, setStatuses] = useState(FALLBACK_STATUSES);
-
-  const [formData, setFormData] = useState({
-    language: 'EN',
-    wo_id: '',
-    work_order_number: '',
-    region: 'Central',
-    assigned_to: '',
-    file_number: '',
-    hearing_date: '',
-    division: 'RPD',
-    request_type: 'Bench',
-    tat: 5,
-    due_date: '',
-    audio_length: '',
-    word_count: '',
-    character_wz_space: '',
-    line_count: '',
-    status: 'Pending',
-    delivery_date: '',
-    transcriptionist_comments: '',
-    regdeck_admin_comments: '',
-    delivery_status: '',
-    days_late: ''
-  });
-
-  const handleCancel = () => {
-    const isDirty = 
-      formData.wo_id !== '' ||
-      formData.work_order_number !== '' ||
-      formData.file_number !== '' ||
-      formData.hearing_date !== '' ||
-      formData.due_date !== '' ||
-      formData.audio_length !== '' ||
-      formData.word_count !== '' ||
-      formData.status !== 'Pending' ||
-      formData.transcriptionist_comments !== '' ||
-      formData.regdeck_admin_comments !== '';
-
-    if (isDirty) {
-      if (!window.confirm("Unsaved data will be lost. Are you sure you want to cancel?")) {
-        return;
-      }
+  const handleFileChange = (e) => {
+    const selected = e.target.files[0];
+    if (selected && (selected.name.endsWith('.xlsx') || selected.name.endsWith('.csv'))) {
+      setFile(selected);
+      setError(null);
+      setSuccessCount(0);
+    } else {
+      setFile(null);
+      setError('Please select a valid .xlsx or .csv file');
     }
-    navigate('/home');
   };
 
-  // Fetch all reference data + users on mount
-  useEffect(() => {
-    const fetchRefData = async () => {
-      // Languages
-      const { data: langData } = await supabase.from('ref_languages').select('code, label');
-      if (langData?.length) setLanguages(langData.map(l => ({ value: l.code, label: `${l.code} (${l.label})` })));
-
-      // Regions
-      const { data: regData } = await supabase.from('ref_regions').select('name');
-      if (regData?.length) setRegions(regData.map(r => r.name));
-
-      // Divisions
-      const { data: divData } = await supabase.from('ref_divisions').select('name');
-      if (divData?.length) setDivisions(divData.map(d => d.name));
-
-      // Request Types
-      const { data: rtData } = await supabase.from('ref_request_types').select('name');
-      if (rtData?.length) setRequestTypes(rtData.map(rt => rt.name));
-
-      // TAT Scores
-      const { data: tatData } = await supabase.from('ref_tat_scores').select('value').order('value', { ascending: false });
-      if (tatData?.length) setTatValues(tatData.map(t => t.value));
-
-      // Work Order Statuses
-      const { data: statusData } = await supabase.from('ref_work_order_statuses').select('name').order('name');
-      if (statusData?.length) setStatuses(statusData.map(s => s.name));
-
-      // Users (from user_profiles view, fallback to current user)
-      const { data: userData, error: userError } = await supabase.from('user_profiles').select('id, full_name, email');
-      if (!userError && userData?.length) {
-        setUsers(userData.map(u => ({ value: u.full_name || u.email, label: u.full_name || u.email })));
-      } else {
-        const name = user?.user_metadata?.full_name || user?.email || 'User';
-        setUsers([{ value: name, label: name }]);
-      }
-    };
-    fetchRefData();
-  }, [user]);
-
-  // Set default assigned_to when users are loaded
-  useEffect(() => {
-    if (users.length > 0 && !formData.assigned_to) {
-      setFormData(prev => ({ ...prev, assigned_to: users[0].value }));
-    }
-  }, [users]);
-
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+  const parseMmDdToDate = (mmddStr) => {
+    if (!mmddStr) return null;
+    const str = String(mmddStr).padStart(4, '0');
+    if (str.length !== 4) return null;
+    const month = str.substring(0, 2);
+    const day = str.substring(2, 4);
+    const year = new Date().getFullYear(); // Using current year as requested by open questions defaulting
+    return `${year}-${month}-${day}`;
   };
 
-  // Generate the composite ID: WorkOrder_Assignee_SeqNum
-  const generateId = async (workOrder, assignee) => {
-    // Get the current max sequence number for this work order + assignee combo
-    const prefix = `${workOrder}_${assignee}_`;
+  // Timezone-safe date parser: handles Date objects, DD-Mon-YY, DD-Mon-YYYY, DD-MM-YYYY, and fallback
+  const parseSafeDate = (dateVal) => {
+    if (!dateVal) return null;
+
+    // Handle Date objects (from XLSX cellDates: true)
+    if (dateVal instanceof Date) {
+      if (isNaN(dateVal.getTime())) return null;
+      const y = dateVal.getFullYear();
+      const m = String(dateVal.getMonth() + 1).padStart(2, '0');
+      const d = String(dateVal.getDate()).padStart(2, '0');
+      return `${y}-${m}-${d}`;
+    }
+
+    const str = String(dateVal).trim();
+    const months = { jan: '01', feb: '02', mar: '03', apr: '04', may: '05', jun: '06', jul: '07', aug: '08', sep: '09', oct: '10', nov: '11', dec: '12' };
+
+    // DD-Mon-YY (e.g., "03-Feb-26")
+    let match = str.match(/^(\d{1,2})-(\w{3})-(\d{2})$/i);
+    if (match) {
+      const day = String(match[1]).padStart(2, '0');
+      const mon = months[match[2].toLowerCase()];
+      const year = '20' + match[3];
+      if (mon) return `${year}-${mon}-${day}`;
+    }
+
+    // DD-Mon-YYYY (e.g., "03-Feb-2026")
+    match = str.match(/^(\d{1,2})-(\w{3})-(\d{4})$/i);
+    if (match) {
+      const day = String(match[1]).padStart(2, '0');
+      const mon = months[match[2].toLowerCase()];
+      if (mon) return `${match[3]}-${mon}-${day}`;
+    }
+
+    // DD-MM-YYYY or DD/MM/YYYY
+    match = str.match(/^(\d{1,2})[\-\/](\d{1,2})[\-\/](\d{4})$/);
+    if (match) {
+      const day = String(match[1]).padStart(2, '0');
+      const month = String(match[2]).padStart(2, '0');
+      return `${match[3]}-${month}-${day}`;
+    }
+
+    // M/D/YY or M/D/YYYY (XLSX default US format output)
+    match = str.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/);
+    if (match) {
+      const month = String(match[1]).padStart(2, '0');
+      const day = String(match[2]).padStart(2, '0');
+      let year = match[3];
+      if (year.length === 2) year = '20' + year;
+      return `${year}-${month}-${day}`;
+    }
+
+    // YYYY-MM-DD (already db format)
+    match = str.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+    if (match) return str;
+
+    // Fallback: parse but avoid timezone shift
+    const d = new Date(dateVal + 'T00:00:00');
+    if (isNaN(d.getTime())) return null;
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${dd}`;
+  };
+
+  // Parse "dd-MON" format (e.g., "02-Mar") → YYYY-MM-DD using current year
+  const parseDdMon = (dateStr) => {
+    if (!dateStr) return null;
+    const str = String(dateStr).trim();
+    const months = { jan: '01', feb: '02', mar: '03', apr: '04', may: '05', jun: '06', jul: '07', aug: '08', sep: '09', oct: '10', nov: '11', dec: '12' };
+    // Try dd-MON format
+    const match = str.match(/^(\d{1,2})-(\w{3})$/i);
+    if (match) {
+      const day = String(match[1]).padStart(2, '0');
+      const mon = months[match[2].toLowerCase()];
+      if (mon) {
+        const year = new Date().getFullYear();
+        return `${year}-${mon}-${day}`;
+      }
+    }
+    // Fallback to safe date parsing
+    return parseSafeDate(dateStr);
+  };
+
+  // Helper to normalize keys (handles newlines and extra spaces from Excel headers)
+  const cleanKeys = (row) => {
+    const cleaned = {};
+    for (let key in row) {
+      const cleanKey = key.replace(/\n/g, ' ').replace(/\s+/g, ' ').trim();
+      cleaned[cleanKey] = row[key];
+    }
+    return cleaned;
+  };
+
+
+
+  // Function to fetch the next sequence number for a given wo+assignee combination
+  const getNextSequence = async (prefix) => {
     const { data } = await supabase
       .from('work_orders')
       .select('id')
@@ -132,237 +137,195 @@ export default function CreateRecord({ user }) {
       .order('id', { ascending: false })
       .limit(1);
 
-    let seq = 1;
     if (data && data.length > 0) {
       const lastId = data[0].id;
       const lastSeq = parseInt(lastId.split('_').pop(), 10);
-      if (!isNaN(lastSeq)) seq = lastSeq + 1;
+      if (!isNaN(lastSeq)) return lastSeq + 1;
     }
-
-    return `${prefix}${String(seq).padStart(4, '0')}`;
+    return 1;
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const handleUpload = async () => {
+    if (!file) return;
     setLoading(true);
     setError(null);
-    setSuccess(false);
+    setSuccessCount(0);
 
     try {
-      const compositeId = await generateId(
-        formData.work_order_number.replace(/\s+/g, ' ').trim(),
-        formData.assigned_to
-      );
+      const reader = new FileReader();
+      reader.onload = async (e) => {
+        try {
+          const data = new Uint8Array(e.target.result);
+          const workbook = XLSX.read(data, { type: 'array' });
+          const firstSheetName = workbook.SheetNames[0];
+          const worksheet = workbook.Sheets[firstSheetName];
+          const jsonData = XLSX.utils.sheet_to_json(worksheet, { raw: false, cellDates: true }); 
 
-      const record = {
-        id: compositeId,
-        language: formData.language,
-        wo_id: formData.wo_id || null,
-        work_order_number: formData.work_order_number,
-        region: formData.region,
-        assigned_to: formData.assigned_to,
-        file_number: formData.file_number || null,
-        hearing_date: formData.hearing_date || null,
-        division: formData.division,
-        request_type: formData.request_type,
-        tat: parseInt(formData.tat, 10),
-        due_date: formData.due_date || null,
-        audio_length: formData.audio_length || null,
-        word_count: formData.word_count ? parseInt(formData.word_count, 10) : 0,
-        character_wz_space: formData.character_wz_space ? parseInt(formData.character_wz_space, 10) : 0,
-        line_count: formData.line_count ? parseInt(formData.line_count, 10) : 0,
-        status: formData.status,
-        delivery_date: formData.delivery_date || null,
-        transcriptionist_comments: formData.transcriptionist_comments || null,
-        regdeck_admin_comments: formData.regdeck_admin_comments || null,
-        delivery_status: formData.delivery_status || null,
-        days_late: formData.days_late ? parseInt(formData.days_late, 10) : 0,
-        created_by: user?.id
+          if (!jsonData || jsonData.length === 0) {
+            throw new Error("The selected file is empty or invalid.");
+          }
+
+          const recordsToInsert = [];
+          const sequenceCache = {}; // Track sequences in memory to handle duplicates within the same file safely
+
+          for (const rawRow of jsonData) {
+            const row = cleanKeys(rawRow);
+            
+            const workOrderDateStr = row["Work Order Date"];
+            const workOrderNum = row["WorkOrder #"];
+            const assignedTo = row["Assigned to"];
+
+            if (!workOrderDateStr || !workOrderNum) {
+              // Skip invalid rows missing primary identification
+              continue;
+            }
+
+            const prefix = `${workOrderNum.replace(/\s+/g, ' ').trim()}_${assignedTo || 'Unassigned'}_`;
+            
+            let currentSeq;
+            if (sequenceCache[prefix]) {
+              currentSeq = sequenceCache[prefix];
+            } else {
+              currentSeq = await getNextSequence(prefix);
+            }
+            
+            sequenceCache[prefix] = currentSeq + 1;
+            const compositeId = `${prefix}${String(currentSeq).padStart(4, '0')}`;
+
+            recordsToInsert.push({
+              id: compositeId,
+              language: language,
+              wo_date: parseMmDdToDate(workOrderDateStr),
+              work_order_number: workOrderNum,
+              region: row["Region"],
+              assigned_to: assignedTo,
+              file_number: row["File Number"],
+              hearing_date: parseSafeDate(row["Hearing Date"]),
+              division: row["Division"],
+              request_type: row["Request Type"],
+              tat: parseInt(row["TAT"], 10) || null,
+              due_date: parseDdMon(row["Due Date"]),
+              audio_length: row["Audio Length"],
+              created_by: user?.id
+            });
+          }
+
+          if (recordsToInsert.length === 0) {
+            throw new Error("No valid records found to insert. Ensure headers match exactly (e.g., 'Work Order Date', 'WorkOrder #').");
+          }
+
+          const { error: insertError } = await supabase.from('work_orders').insert(recordsToInsert);
+
+          if (insertError) throw insertError;
+
+          setSuccessCount(recordsToInsert.length);
+          setFile(null); // Reset input after success
+        } catch (err) {
+          setError(err.message);
+        } finally {
+          setLoading(false);
+        }
       };
 
-      const { error } = await supabase.from('work_orders').insert([record]);
+      reader.onerror = () => {
+        setError("Failed to read the file.");
+        setLoading(false);
+      };
 
-      if (error) {
-        setError(error.message);
-      } else {
-        setSuccess(true);
-        // Reset form but keep dropdowns
-        setFormData(prev => ({
-          ...prev,
-          wo_id: '',
-          work_order_number: '',
-          file_number: '',
-          hearing_date: '',
-          due_date: '',
-          audio_length: '',
-          word_count: '',
-          character_wz_space: '',
-          line_count: '',
-          status: 'Pending',
-          delivery_date: '',
-          transcriptionist_comments: '',
-          regdeck_admin_comments: '',
-          delivery_status: '',
-          days_late: ''
-        }));
-        setTimeout(() => navigate('/reports'), 2000);
-      }
+      reader.readAsArrayBuffer(file);
     } catch (err) {
       setError(err.message);
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   return (
     <div className="page-container">
-      <h1 className="page-title">Create work order</h1>
+      <h1 className="page-title">Bulk Upload Work Orders</h1>
 
-      <div className="content-card">
-        {error && <div className="alert alert-error">{error}</div>}
-        {success && <div className="alert alert-success">Record created successfully! Redirecting...</div>}
+      <div className="content-card" style={{ maxWidth: '600px', margin: '0 auto', textAlign: 'center', padding: '3rem' }}>
+        
+        {error && (
+          <div className="alert alert-error" style={{ marginBottom: '2rem', textAlign: 'left', display: 'flex', alignItems: 'center' }}>
+            <AlertCircle size={20} style={{ marginRight: '8px', flexShrink: 0 }} />
+            <span>{error}</span>
+          </div>
+        )}
+        
+        {successCount > 0 && (
+          <div className="alert alert-success" style={{ marginBottom: '2rem', textAlign: 'left', display: 'flex', alignItems: 'center' }}>
+            <CheckCircle size={20} style={{ marginRight: '8px', flexShrink: 0 }} />
+            <span>Successfully inserted {successCount} work order record(s).</span>
+          </div>
+        )}
 
-        <form onSubmit={handleSubmit}>
-          {/* Language selector */}
-          <div className="form-row">
-            <div className="form-group">
-              <label className="form-label">Language *</label>
-              <select name="language" className="form-select" value={formData.language} onChange={handleChange}>
-                {languages.map(l => <option key={l.value} value={l.value}>{l.label}</option>)}
-              </select>
-            </div>
+        {/* Language Radio Buttons */}
+        <div style={{ marginBottom: '1.5rem', textAlign: 'left' }}>
+          <label className="form-label" style={{ marginBottom: '8px', display: 'block', fontWeight: '600', color: '#334155' }}>Language</label>
+          <div style={{ display: 'flex', gap: '24px' }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', color: '#475569', fontWeight: '500' }}>
+              <input
+                type="radio"
+                name="language"
+                value="EN"
+                checked={language === 'EN'}
+                onChange={(e) => setLanguage(e.target.value)}
+                style={{ accentColor: '#6366f1', width: '18px', height: '18px' }}
+              />
+              English (EN)
+            </label>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', color: '#475569', fontWeight: '500' }}>
+              <input
+                type="radio"
+                name="language"
+                value="FR"
+                checked={language === 'FR'}
+                onChange={(e) => setLanguage(e.target.value)}
+                style={{ accentColor: '#6366f1', width: '18px', height: '18px' }}
+              />
+              French (FR)
+            </label>
           </div>
+        </div>
 
-          {/* Row 1: Core fields */}
-          <div className="form-row">
-            <div className="form-group">
-              <label className="form-label">WO ID *</label>
-              <input type="text" name="wo_id" className="form-input" placeholder="e.g., 0401" value={formData.wo_id} onChange={handleChange} required />
-            </div>
-            <div className="form-group">
-              <label className="form-label">Work Order # *</label>
-              <input type="text" name="work_order_number" className="form-input" placeholder="e.g., RCE-8034-BB" value={formData.work_order_number} onChange={handleChange} required />
-            </div>
-            <div className="form-group">
-              <label className="form-label">File Number</label>
-              <input type="text" name="file_number" className="form-input" placeholder="Optional" value={formData.file_number} onChange={handleChange} />
-            </div>
-          </div>
+        <div className="upload-zone" style={{ border: '2px dashed #cbd5e1', borderRadius: '12px', padding: '40px', backgroundColor: '#f8fafc', transition: 'all 0.2s' }}>
+          <UploadCloud size={48} color="#94a3b8" style={{ marginBottom: '16px' }} />
+          <h3 style={{ fontSize: '1.2rem', marginBottom: '8px', color: '#334155' }}>Upload Excel File</h3>
+          <p style={{ color: '#64748b', fontSize: '0.9rem', marginBottom: '20px' }}>
+            Drag and drop your .xlsx or .csv file here, or click to browse.
+          </p>
+          
+          <input 
+            type="file" 
+            accept=".xlsx, .csv" 
+            onChange={handleFileChange} 
+            style={{ display: 'none' }} 
+            id="file-upload" 
+          />
+          
+          <label htmlFor="file-upload" className="btn-primary" style={{ display: 'inline-block', cursor: 'pointer', margin: '0' }}>
+            Browse Files
+          </label>
+        </div>
 
-          {/* Row 2: Dropdowns */}
-          <div className="form-row">
-            <div className="form-group">
-              <label className="form-label">Region *</label>
-              <select name="region" className="form-select" value={formData.region} onChange={handleChange}>
-                {regions.map(r => <option key={r} value={r}>{r}</option>)}
-              </select>
-            </div>
-            <div className="form-group">
-              <label className="form-label">Assigned To *</label>
-              <select name="assigned_to" className="form-select" value={formData.assigned_to} onChange={handleChange}>
-                {users.map(u => <option key={u.value} value={u.value}>{u.label}</option>)}
-              </select>
-            </div>
-            <div className="form-group">
-              <label className="form-label">Division *</label>
-              <select name="division" className="form-select" value={formData.division} onChange={handleChange}>
-                {divisions.map(d => <option key={d} value={d}>{d}</option>)}
-              </select>
-            </div>
+        {file && (
+          <div style={{ marginTop: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '12px', backgroundColor: '#f1f5f9', border: '1px solid #e2e8f0', borderRadius: '8px' }}>
+            <File size={20} color="#475569" />
+            <span style={{ color: '#334155', fontWeight: '500' }}>{file.name}</span>
           </div>
+        )}
 
-          {/* Row 3: Request details */}
-          <div className="form-row">
-            <div className="form-group">
-              <label className="form-label">Request Type *</label>
-              <select name="request_type" className="form-select" value={formData.request_type} onChange={handleChange}>
-                {requestTypes.map(rt => <option key={rt} value={rt}>{rt}</option>)}
-              </select>
-            </div>
-            <div className="form-group">
-              <label className="form-label">TAT (Days) *</label>
-              <select name="tat" className="form-select" value={formData.tat} onChange={handleChange}>
-                {tatValues.map(t => <option key={t} value={t}>{t}</option>)}
-              </select>
-            </div>
-            <div className="form-group">
-              <label className="form-label">Hearing Date</label>
-              <input type="date" name="hearing_date" className="form-input" value={formData.hearing_date} onChange={handleChange} />
-            </div>
-          </div>
+        <div style={{ marginTop: '30px' }}>
+          <button 
+            className="btn-primary" 
+            onClick={handleUpload} 
+            disabled={!file || loading}
+            style={{ width: '100%', padding: '14px', fontSize: '1.05rem', opacity: (!file || loading) ? 0.6 : 1 }}
+          >
+            {loading ? 'Processing...' : 'Upload and Process'}
+          </button>
+        </div>
 
-          {/* Row 4: Dates */}
-          <div className="form-row">
-            <div className="form-group">
-              <label className="form-label">Due Date</label>
-              <input type="date" name="due_date" className="form-input" value={formData.due_date} onChange={handleChange} />
-            </div>
-            <div className="form-group">
-              <label className="form-label">Delivery Date</label>
-              <input type="date" name="delivery_date" className="form-input" value={formData.delivery_date} onChange={handleChange} />
-            </div>
-            <div className="form-group">
-              <label className="form-label">Audio Length</label>
-              <input type="text" name="audio_length" className="form-input" placeholder="e.g., 0:15" value={formData.audio_length} onChange={handleChange} />
-            </div>
-          </div>
-
-          {/* Row 5: Counts */}
-          <div className="form-row">
-            <div className="form-group">
-              <label className="form-label">Word Count</label>
-              <input type="number" name="word_count" className="form-input" placeholder="0" value={formData.word_count} onChange={handleChange} />
-            </div>
-            <div className="form-group">
-              <label className="form-label">Characters w/ Space</label>
-              <input type="number" name="character_wz_space" className="form-input" placeholder="0" value={formData.character_wz_space} onChange={handleChange} />
-            </div>
-            <div className="form-group">
-              <label className="form-label">Line Count</label>
-              <input type="number" name="line_count" className="form-input" placeholder="0" value={formData.line_count} onChange={handleChange} />
-            </div>
-          </div>
-
-          {/* Row 6: Status */}
-          <div className="form-row">
-            <div className="form-group">
-              <label className="form-label">Status</label>
-              <select name="status" className="form-select" value={formData.status} onChange={handleChange}>
-                {statuses.map(s => <option key={s} value={s}>{s}</option>)}
-              </select>
-            </div>
-            <div className="form-group">
-              <label className="form-label">Delivery Status</label>
-              <select name="delivery_status" className="form-select" value={formData.delivery_status} onChange={handleChange}>
-                <option value="">-- Select --</option>
-                <option value="On Time">On Time</option>
-                <option value="Late">Late</option>
-              </select>
-            </div>
-            <div className="form-group">
-              <label className="form-label">Days Late</label>
-              <input type="number" name="days_late" className="form-input" placeholder="0" value={formData.days_late} onChange={handleChange} />
-            </div>
-          </div>
-
-          {/* Row 7: Comments */}
-          <div className="form-group">
-            <label className="form-label">Transcriptionist Comments</label>
-            <textarea name="transcriptionist_comments" className="form-input" rows="2" placeholder="Optional" value={formData.transcriptionist_comments} onChange={handleChange}></textarea>
-          </div>
-          <div className="form-group">
-            <label className="form-label">RegDeck Admin Comments</label>
-            <textarea name="regdeck_admin_comments" className="form-input" rows="2" placeholder="Optional" value={formData.regdeck_admin_comments} onChange={handleChange}></textarea>
-          </div>
-
-          <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
-            <button type="button" className="btn-secondary" onClick={handleCancel} disabled={loading}>
-              Cancel
-            </button>
-            <button type="submit" className="btn-primary" disabled={loading} style={{ width: 'auto' }}>
-              {loading ? 'Saving...' : 'Save Work Order'}
-            </button>
-          </div>
-        </form>
       </div>
     </div>
   );

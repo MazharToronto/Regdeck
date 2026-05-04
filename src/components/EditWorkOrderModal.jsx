@@ -11,7 +11,7 @@ const FB_REQUEST_TYPES = ['Full', 'Bench'];
 const FB_TAT = [10, 5, 4, 3, 2, 1];
 const FB_STATUSES = ['Pending', 'In progress', 'Done'];
 
-export default function EditWorkOrderModal({ record, onClose, onSaved }) {
+export default function EditWorkOrderModal({ record, onClose, onSaved, userRoles = [] }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(false);
@@ -24,10 +24,11 @@ export default function EditWorkOrderModal({ record, onClose, onSaved }) {
   const [tatValues, setTatValues] = useState(FB_TAT);
   const [statuses, setStatuses] = useState(FB_STATUSES);
   const [users, setUsers] = useState([]);
+  const [holidays, setHolidays] = useState([]);
 
   const [formData, setFormData] = useState({
     language: record.language || 'EN',
-    wo_id: record.wo_id || '',
+    wo_date: record.wo_date || '',
     work_order_number: record.work_order_number || '',
     region: record.region || 'Central',
     assigned_to: record.assigned_to || '',
@@ -42,10 +43,10 @@ export default function EditWorkOrderModal({ record, onClose, onSaved }) {
     character_wz_space: record.character_wz_space || '',
     line_count: record.line_count || '',
     status: record.status || 'Pending',
-    delivery_date: record.delivery_date || '',
-    transcriptionist_comments: record.transcriptionist_comments || '',
+    delivery_date: record.delivery_date || record.del_date || '',
+    employee_comments: record.employee_comments || '',
     regdeck_admin_comments: record.regdeck_admin_comments || '',
-    delivery_status: record.delivery_status || '',
+    additional_comments: record.additional_comments || '',
     days_late: record.days_late || ''
   });
 
@@ -69,18 +70,75 @@ export default function EditWorkOrderModal({ record, onClose, onSaved }) {
       const { data: statusData } = await supabase.from('ref_work_order_statuses').select('name').order('name');
       if (statusData?.length) setStatuses(statusData.map(s => s.name));
 
-      const { data: userData } = await supabase.from('user_profiles').select('id, full_name, email');
+      const { data: userData } = await supabase.from('ref_users').select('name').order('name');
       if (userData?.length) {
-        setUsers(userData.map(u => ({ value: u.full_name || u.email, label: u.full_name || u.email })));
+        setUsers(userData.map(u => ({ value: u.name, label: u.name })));
       } else {
         setUsers([{ value: record.assigned_to, label: record.assigned_to }]);
       }
+
+      const { data: holidayData } = await supabase.from('holidays').select('holiday_date');
+      if (holidayData?.length) setHolidays(holidayData.map(h => h.holiday_date));
     };
     fetchRefData();
   }, []);
 
+  const canEditAll = userRoles.includes('admin') || userRoles.includes('manager');
+
+  const calculateBusinessDays = (startStr, endStr) => {
+    if (!startStr || !endStr) return '';
+    const start = new Date(startStr);
+    const end = new Date(endStr);
+    if (isNaN(start) || isNaN(end)) return '';
+    
+    if (end <= start) return 0;
+    
+    let count = 0;
+    let cur = new Date(start);
+    cur.setDate(cur.getDate() + 1);
+    
+    while (cur <= end) {
+      const day = cur.getDay();
+      const isWeekend = day === 0 || day === 6;
+
+      // Extract YYYY-MM-DD from current date safely (avoid timezone UTC shift)
+      const y = cur.getFullYear();
+      const m = String(cur.getMonth() + 1).padStart(2, '0');
+      const d = String(cur.getDate()).padStart(2, '0');
+      const curDateStr = `${y}-${m}-${d}`;
+      
+      const isHoliday = holidays.includes(curDateStr);
+
+      if (!isWeekend && !isHoliday) {
+        count++;
+      }
+      cur.setDate(cur.getDate() + 1);
+    }
+    return count;
+  };
+
   const handleChange = (e) => {
-    setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
+    const { name, value } = e.target;
+    setFormData(prev => {
+      const updated = { ...prev, [name]: value };
+      
+      // Auto-calculate line count when character w/ space changes
+      if (name === 'character_wz_space') {
+        const chars = parseInt(value, 10);
+        if (!isNaN(chars)) {
+          updated.line_count = Math.floor(chars / 65);
+        } else {
+          updated.line_count = '';
+        }
+      }
+
+      // Auto-calculate days late
+      if (name === 'delivery_date' || name === 'due_date') {
+        updated.days_late = calculateBusinessDays(updated.due_date, updated.delivery_date);
+      }
+      
+      return updated;
+    });
   };
 
   const handleSubmit = async (e) => {
@@ -91,7 +149,6 @@ export default function EditWorkOrderModal({ record, onClose, onSaved }) {
 
     const updatePayload = {
       language: formData.language,
-      wo_id: formData.wo_id || null,
       work_order_number: formData.work_order_number,
       region: formData.region,
       assigned_to: formData.assigned_to,
@@ -107,9 +164,9 @@ export default function EditWorkOrderModal({ record, onClose, onSaved }) {
       line_count: formData.line_count ? parseInt(formData.line_count, 10) : 0,
       status: formData.status,
       delivery_date: formData.delivery_date || null,
-      transcriptionist_comments: formData.transcriptionist_comments || null,
+      employee_comments: formData.employee_comments || null,
       regdeck_admin_comments: formData.regdeck_admin_comments || null,
-      delivery_status: formData.delivery_status || null,
+      additional_comments: formData.additional_comments || null,
       days_late: formData.days_late ? parseInt(formData.days_late, 10) : 0
     };
 
@@ -153,7 +210,7 @@ export default function EditWorkOrderModal({ record, onClose, onSaved }) {
             <div className="form-row">
               <div className="form-group">
                 <label className="form-label">Language</label>
-                <select name="language" className="form-select" value={formData.language} onChange={handleChange}>
+                <select name="language" className="form-select" value={formData.language} onChange={handleChange} disabled={!canEditAll}>
                   {languages.map(l => <option key={l.value} value={l.value}>{l.label}</option>)}
                 </select>
               </div>
@@ -162,16 +219,16 @@ export default function EditWorkOrderModal({ record, onClose, onSaved }) {
             {/* Row 1 */}
             <div className="form-row">
               <div className="form-group">
-                <label className="form-label">WO ID</label>
-                <input type="text" name="wo_id" className="form-input" placeholder="e.g., 0401" value={formData.wo_id} onChange={handleChange} />
+                <label className="form-label">Work Order Date</label>
+                <input type="text" className="form-input" value={formData.wo_date ? (() => { const d = new Date(formData.wo_date); const mm = String(d.getMonth() + 1).padStart(2, '0'); const dd = String(d.getDate()).padStart(2, '0'); return `${mm}${dd}`; })() : '—'} readOnly disabled />
               </div>
               <div className="form-group">
                 <label className="form-label">Work Order #</label>
-                <input type="text" name="work_order_number" className="form-input" value={formData.work_order_number} onChange={handleChange} required />
+                <input type="text" name="work_order_number" className="form-input" value={formData.work_order_number} onChange={handleChange} required disabled={!canEditAll} />
               </div>
               <div className="form-group">
                 <label className="form-label">File Number</label>
-                <input type="text" name="file_number" className="form-input" value={formData.file_number} onChange={handleChange} />
+                <input type="text" name="file_number" className="form-input" value={formData.file_number} onChange={handleChange} disabled={!canEditAll} />
               </div>
             </div>
 
@@ -179,19 +236,19 @@ export default function EditWorkOrderModal({ record, onClose, onSaved }) {
             <div className="form-row">
               <div className="form-group">
                 <label className="form-label">Region</label>
-                <select name="region" className="form-select" value={formData.region} onChange={handleChange}>
+                <select name="region" className="form-select" value={formData.region} onChange={handleChange} disabled={!canEditAll}>
                   {regions.map(r => <option key={r} value={r}>{r}</option>)}
                 </select>
               </div>
               <div className="form-group">
                 <label className="form-label">Assigned To</label>
-                <select name="assigned_to" className="form-select" value={formData.assigned_to} onChange={handleChange}>
+                <select name="assigned_to" className="form-select" value={formData.assigned_to} onChange={handleChange} disabled={!canEditAll}>
                   {users.map(u => <option key={u.value} value={u.value}>{u.label}</option>)}
                 </select>
               </div>
               <div className="form-group">
                 <label className="form-label">Division</label>
-                <select name="division" className="form-select" value={formData.division} onChange={handleChange}>
+                <select name="division" className="form-select" value={formData.division} onChange={handleChange} disabled={!canEditAll}>
                   {divisions.map(d => <option key={d} value={d}>{d}</option>)}
                 </select>
               </div>
@@ -201,19 +258,19 @@ export default function EditWorkOrderModal({ record, onClose, onSaved }) {
             <div className="form-row">
               <div className="form-group">
                 <label className="form-label">Request Type</label>
-                <select name="request_type" className="form-select" value={formData.request_type} onChange={handleChange}>
+                <select name="request_type" className="form-select" value={formData.request_type} onChange={handleChange} disabled={!canEditAll}>
                   {requestTypes.map(rt => <option key={rt} value={rt}>{rt}</option>)}
                 </select>
               </div>
               <div className="form-group">
                 <label className="form-label">TAT (Days)</label>
-                <select name="tat" className="form-select" value={formData.tat} onChange={handleChange}>
+                <select name="tat" className="form-select" value={formData.tat} onChange={handleChange} disabled={!canEditAll}>
                   {tatValues.map(t => <option key={t} value={t}>{t}</option>)}
                 </select>
               </div>
               <div className="form-group">
                 <label className="form-label">Hearing Date</label>
-                <input type="date" name="hearing_date" className="form-input" value={formData.hearing_date} onChange={handleChange} />
+                <input type="date" name="hearing_date" className="form-input" value={formData.hearing_date} onChange={handleChange} disabled={!canEditAll} />
               </div>
             </div>
 
@@ -221,15 +278,15 @@ export default function EditWorkOrderModal({ record, onClose, onSaved }) {
             <div className="form-row">
               <div className="form-group">
                 <label className="form-label">Due Date</label>
-                <input type="date" name="due_date" className="form-input" value={formData.due_date} onChange={handleChange} />
+                <input type="date" name="due_date" className="form-input" value={formData.due_date} onChange={handleChange} disabled={!canEditAll} />
               </div>
               <div className="form-group">
                 <label className="form-label">Delivery Date</label>
-                <input type="date" name="delivery_date" className="form-input" value={formData.delivery_date} onChange={handleChange} />
+                <input type="date" name="delivery_date" className="form-input" value={formData.delivery_date} onChange={handleChange} disabled={!canEditAll} />
               </div>
               <div className="form-group">
                 <label className="form-label">Audio Length</label>
-                <input type="text" name="audio_length" className="form-input" placeholder="e.g., 0:15" value={formData.audio_length} onChange={handleChange} />
+                <input type="text" name="audio_length" className="form-input" placeholder="e.g., 0:15" value={formData.audio_length} onChange={handleChange} disabled={!canEditAll} />
               </div>
             </div>
 
@@ -245,7 +302,7 @@ export default function EditWorkOrderModal({ record, onClose, onSaved }) {
               </div>
               <div className="form-group">
                 <label className="form-label">Line Count</label>
-                <input type="number" name="line_count" className="form-input" value={formData.line_count} onChange={handleChange} />
+                <input type="number" name="line_count" className="form-input" value={formData.line_count} readOnly disabled />
               </div>
             </div>
 
@@ -258,27 +315,23 @@ export default function EditWorkOrderModal({ record, onClose, onSaved }) {
                 </select>
               </div>
               <div className="form-group">
-                <label className="form-label">Delivery Status</label>
-                <select name="delivery_status" className="form-select" value={formData.delivery_status} onChange={handleChange}>
-                  <option value="">-- Select --</option>
-                  <option value="On Time">On Time</option>
-                  <option value="Late">Late</option>
-                </select>
-              </div>
-              <div className="form-group">
                 <label className="form-label">Days Late</label>
-                <input type="number" name="days_late" className="form-input" value={formData.days_late} onChange={handleChange} />
+                <input type="number" name="days_late" className="form-input" value={formData.days_late} readOnly disabled />
               </div>
             </div>
 
             {/* Comments */}
             <div className="form-group">
-              <label className="form-label">Transcriptionist Comments</label>
-              <textarea name="transcriptionist_comments" className="form-input" rows="2" value={formData.transcriptionist_comments} onChange={handleChange}></textarea>
+              <label className="form-label">Employee Comments</label>
+              <textarea name="employee_comments" className="form-input" rows="2" value={formData.employee_comments} onChange={handleChange}></textarea>
             </div>
             <div className="form-group">
               <label className="form-label">RegDeck Admin Comments</label>
-              <textarea name="regdeck_admin_comments" className="form-input" rows="2" value={formData.regdeck_admin_comments} onChange={handleChange}></textarea>
+              <textarea name="regdeck_admin_comments" className="form-input" rows="2" value={formData.regdeck_admin_comments} onChange={handleChange} disabled={!canEditAll}></textarea>
+            </div>
+            <div className="form-group">
+              <label className="form-label">Additional Comments</label>
+              <textarea name="additional_comments" className="form-input" rows="2" value={formData.additional_comments} onChange={handleChange}></textarea>
             </div>
 
             <div className="modal-actions">

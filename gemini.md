@@ -10,7 +10,7 @@
 **Input Shape (Form Submission):**
 ```json
 {
-  "wo_id": "string",
+  "work_order_date": "date",
   "work_order_number": "string",
   "region": "string (enum: Central, Eastern, Rexdale, Western)",
   "assigned_to": "string (from Supabase auth users)",
@@ -25,8 +25,8 @@
   "character_wz_space": "integer (nullable)",
   "line_count": "integer (nullable)",
   "status": "string (nullable)",
-  "delivery_date": "date (nullable)",
-  "transcriptionist_comments": "text (nullable)",
+  "del_date": "date (nullable)",
+  "employee_comments": "text (nullable)",
   "regdeck_admin_comments": "text (nullable)",
   "delivery_status": "string (nullable)",
   "days_late": "integer (nullable)"
@@ -39,7 +39,7 @@
   "id": "string (composite PK)",
   "created_at": "timestamp",
   "language": "string",
-  "wo_id": "string",
+  "work_order_date": "date",
   "work_order_number": "string",
   "region": "string",
   "assigned_to": "string",
@@ -54,8 +54,8 @@
   "character_wz_space": "integer",
   "line_count": "integer",
   "status": "string",
-  "delivery_date": "date",
-  "transcriptionist_comments": "text",
+  "del_date": "date",
+  "employee_comments": "text",
   "regdeck_admin_comments": "text",
   "delivery_status": "string",
   "days_late": "integer",

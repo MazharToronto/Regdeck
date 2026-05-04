@@ -1,8 +1,8 @@
 import { NavLink, useNavigate } from 'react-router-dom';
-import { Home, FileText, PlusCircle, LogOut, Shield, Users, UserPlus } from 'lucide-react';
+import { Home, FileText, PlusCircle, LogOut, Shield, Users, UserPlus, Headphones } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 
-export default function Sidebar({ isAdmin }) {
+export default function Sidebar({ isAdmin, canCreate }) {
   const navigate = useNavigate();
 
   const handleLogout = async () => {
@@ -35,10 +35,17 @@ export default function Sidebar({ isAdmin }) {
           <span>My Requests</span>
         </NavLink>
 
-        <NavLink to="/create" className={({isActive}) => `sidebar-link ${isActive ? 'active' : ''}`}>
-          <PlusCircle size={18} />
-          <span>Create work order</span>
+        <NavLink to="/audio-calculator" className={({isActive}) => `sidebar-link ${isActive ? 'active' : ''}`}>
+          <Headphones size={18} />
+          <span>Audio Length Calc</span>
         </NavLink>
+
+        {canCreate && (
+          <NavLink to="/create" className={({isActive}) => `sidebar-link ${isActive ? 'active' : ''}`}>
+            <PlusCircle size={18} />
+            <span>Create work order</span>
+          </NavLink>
+        )}
 
         {isAdmin && (
           <>
