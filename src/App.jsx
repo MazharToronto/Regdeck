@@ -10,6 +10,7 @@ import Home from './pages/Home';
 import AdminScreen from './pages/AdminScreen';
 import AllUsersScreen from './pages/AllUsersScreen';
 import AudioLengthCalculator from './pages/AudioLengthCalculator';
+import ProfileSettings from './pages/ProfileSettings';
 
 function parseJwt(token) {
   try {
@@ -22,6 +23,7 @@ function parseJwt(token) {
 function App() {
   const [session, setSession] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -55,29 +57,38 @@ function App() {
   const isAdmin = userRoles.includes('admin');
   const isManager = userRoles.includes('manager');
   const canCreate = isAdmin || isManager;
+  const canManageUsers = isAdmin || isManager;
+  const isEmployee = !isAdmin && !isManager;
+  const defaultRoute = isEmployee ? '/records' : '/home';
 
   return (
-    <div className="app-shell">
-      <Sidebar isAdmin={isAdmin} canCreate={canCreate} />
+    <div className={`app-shell ${!isSidebarOpen ? 'sidebar-collapsed' : ''}`}>
+      <Sidebar 
+        canManageUsers={canManageUsers} 
+        canCreate={canCreate} 
+        isOpen={isSidebarOpen}
+        onToggle={() => setIsSidebarOpen(!isSidebarOpen)}
+      />
       <div className="app-main">
         <TopBar user={session?.user} userRoles={userRoles} />
         <main className="main-content">
           <Routes>
-            <Route path="/" element={<Navigate to="/home" />} />
+            <Route path="/" element={<Navigate to={defaultRoute} />} />
             <Route path="/home" element={<Home canCreate={canCreate} />} />
             {canCreate && (
               <Route path="/create" element={<CreateRecord user={session?.user} />} />
             )}
             <Route path="/records" element={<Reports userRoles={userRoles} user={session?.user} />} />
             <Route path="/audio-calculator" element={<AudioLengthCalculator />} />
-            {isAdmin && (
+            <Route path="/profile" element={<ProfileSettings user={session?.user} />} />
+            {canManageUsers && (
               <>
                 <Route path="/admin/users" element={<AllUsersScreen />} />
                 <Route path="/admin/create" element={<AdminScreen />} />
                 <Route path="/admin" element={<Navigate to="/admin/users" />} />
               </>
             )}
-            <Route path="*" element={<Navigate to="/home" />} />
+            <Route path="*" element={<Navigate to={defaultRoute} />} />
           </Routes>
         </main>
       </div>

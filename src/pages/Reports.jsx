@@ -1,7 +1,33 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { supabase } from '../supabaseClient';
 import EditWorkOrderModal from '../components/EditWorkOrderModal';
-import { Filter, RotateCcw, Search } from 'lucide-react';
+import { Filter, RotateCcw, Search, Columns, CheckSquare, Square, Save, X } from 'lucide-react';
+
+const FB_TAT = [10, 5, 4, 3, 2, 1];
+
+const COLUMN_CONFIG = [
+  { key: 'language', label: 'Language', defaultVisible: false },
+  { key: 'wo_date', label: 'WO Date', defaultVisible: true },
+  { key: 'work_order_number', label: 'Work Order #', defaultVisible: true },
+  { key: 'region', label: 'Region', defaultVisible: true },
+  { key: 'assigned_to', label: 'Assigned to', defaultVisible: true },
+  { key: 'file_number', label: 'File Number', defaultVisible: true },
+  { key: 'hearing_date', label: 'Hearing Date', defaultVisible: true },
+  { key: 'division', label: 'Division', defaultVisible: true },
+  { key: 'request_type', label: 'Request Type', defaultVisible: true },
+  { key: 'tat', label: 'TAT', defaultVisible: true },
+  { key: 'due_date', label: 'Due Date', defaultVisible: true },
+  { key: 'audio_length', label: 'Audio Length', defaultVisible: true },
+  { key: 'word_count', label: 'Word Count', defaultVisible: true },
+  { key: 'character_wz_space', label: 'Character wz Space', defaultVisible: true },
+  { key: 'line_count', label: 'Line Count', defaultVisible: true },
+  { key: 'status', label: 'Status', defaultVisible: true },
+  { key: 'delivery_date', label: 'Del Date', defaultVisible: false },
+  { key: 'days_late', label: 'Days Late', defaultVisible: false },
+  { key: 'employee_comments', label: 'Employee Comments', defaultVisible: false },
+  { key: 'regdeck_admin_comments', label: 'RegDeck Admin Comments', defaultVisible: false },
+  { key: 'additional_comments', label: 'Additional Comments', defaultVisible: false }
+];
 
 export default function Reports({ userRoles = [], user }) {
   const isEmployee = !userRoles.includes('admin') && !userRoles.includes('manager');
@@ -13,6 +39,42 @@ export default function Reports({ userRoles = [], user }) {
   const [noResults, setNoResults] = useState(false);
   const [sortConfig, setSortConfig] = useState({ key: 'created_at', direction: 'desc' });
   const [searchTerm, setSearchTerm] = useState('');
+  
+  // Inline Editing State
+  const [inlineEdits, setInlineEdits] = useState({});
+  const [holidays, setHolidays] = useState([]);
+  const [tatValues, setTatValues] = useState(FB_TAT);
+
+  // Column Visibility State
+  const [showColumnMenu, setShowColumnMenu] = useState(false);
+  const columnMenuRef = useRef(null);
+  const [visibleColumns, setVisibleColumns] = useState(() => {
+    const saved = localStorage.getItem('invoicegen_visible_columns');
+    if (saved) {
+      try { return JSON.parse(saved); } catch (e) { /* ignore */ }
+    }
+    return COLUMN_CONFIG.filter(col => col.defaultVisible).map(col => col.key);
+  });
+
+  useEffect(() => {
+    localStorage.setItem('invoicegen_visible_columns', JSON.stringify(visibleColumns));
+  }, [visibleColumns]);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (columnMenuRef.current && !columnMenuRef.current.contains(event.target)) {
+        setShowColumnMenu(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const toggleColumn = (colKey) => {
+    setVisibleColumns(prev => 
+      prev.includes(colKey) ? prev.filter(k => k !== colKey) : [...prev, colKey]
+    );
+  };
 
   // Filter options (populated from DB)
   const [languageOptions, setLanguageOptions] = useState([]);
@@ -63,6 +125,14 @@ export default function Reports({ userRoles = [], user }) {
       if (statusData?.length) {
         setStatusOptions(statusData.map(s => s.name));
       }
+
+      // TAT scores
+      const { data: tatData } = await supabase.from('ref_tat_scores').select('value').order('value', { ascending: false });
+      if (tatData?.length) setTatValues(tatData.map(t => t.value));
+
+      // Holidays for days_late calculation
+      const { data: holidayData } = await supabase.from('holidays').select('holiday_date');
+      if (holidayData?.length) setHolidays(holidayData.map(h => h.holiday_date));
     };
     loadFilterOptions();
     fetchRecords();
@@ -145,20 +215,139 @@ export default function Reports({ userRoles = [], user }) {
     setSortConfig({ key, direction });
   };
 
-  // Helper to format MMDD
-  const formatMmDd = (dateStr) => {
-    if (!dateStr) return '—';
-    const d = new Date(dateStr);
-    if (isNaN(d)) return '—';
-    return String(d.getMonth() + 1).padStart(2, '0') + String(d.getDate()).padStart(2, '0');
+  // ----- INLINE EDIT LOGIC -----
+  const calculateBusinessDays = (startStr, endStr) => {
+    if (!startStr || !endStr) return '';
+    const start = new Date(startStr);
+    const end = new Date(endStr);
+    if (isNaN(start) || isNaN(end)) return '';
+    if (end <= start) return 0;
+    
+    let count = 0;
+    let cur = new Date(start);
+    cur.setDate(cur.getDate() + 1);
+    
+    while (cur <= end) {
+      const day = cur.getDay();
+      const isWeekend = day === 0 || day === 6;
+      const y = cur.getFullYear();
+      const m = String(cur.getMonth() + 1).padStart(2, '0');
+      const d = String(cur.getDate()).padStart(2, '0');
+      const curDateStr = `${y}-${m}-${d}`;
+      const isHoliday = holidays.includes(curDateStr);
+
+      if (!isWeekend && !isHoliday) count++;
+      cur.setDate(cur.getDate() + 1);
+    }
+    return count;
   };
 
-  // Helper to format dates
-  const formatDate = (dateStr) => {
+  const toggleInlineEdit = (record) => {
+    if (inlineEdits[record.id]) {
+      // Discard draft
+      const newEdits = { ...inlineEdits };
+      delete newEdits[record.id];
+      setInlineEdits(newEdits);
+    } else {
+      // Start editing
+      setInlineEdits(prev => ({
+        ...prev,
+        [record.id]: {
+          ...record,
+          tat: record.tat || 5, // fallback
+          status: record.status || 'Pending'
+        }
+      }));
+    }
+  };
+
+  const handleInlineChange = (recordId, field, value) => {
+    setInlineEdits(prev => {
+      const draft = { ...prev[recordId], [field]: value };
+
+      if (field === 'character_wz_space') {
+        const chars = parseInt(value, 10);
+        draft.line_count = !isNaN(chars) ? Math.floor(chars / 65) : '';
+      }
+
+      if (field === 'due_date' || field === 'delivery_date') {
+        draft.days_late = calculateBusinessDays(draft.due_date, draft.delivery_date);
+      }
+
+      return { ...prev, [recordId]: draft };
+    });
+  };
+
+  const handleBulkSave = async () => {
+    setLoading(true);
+    const updatePromises = Object.keys(inlineEdits).map(async (recordId) => {
+      const draft = inlineEdits[recordId];
+      const updatePayload = {
+        language: draft.language,
+        work_order_number: draft.work_order_number,
+        region: draft.region,
+        assigned_to: draft.assigned_to,
+        file_number: draft.file_number || null,
+        hearing_date: draft.hearing_date || null,
+        division: draft.division,
+        request_type: draft.request_type,
+        tat: parseInt(draft.tat, 10),
+        due_date: draft.due_date || null,
+        audio_length: draft.audio_length || null,
+        word_count: draft.word_count ? parseInt(draft.word_count, 10) : 0,
+        character_wz_space: draft.character_wz_space ? parseInt(draft.character_wz_space, 10) : 0,
+        line_count: draft.line_count ? parseInt(draft.line_count, 10) : 0,
+        status: draft.status,
+        delivery_date: draft.delivery_date || null,
+        employee_comments: draft.employee_comments || null,
+        regdeck_admin_comments: draft.regdeck_admin_comments || null,
+        additional_comments: draft.additional_comments || null,
+        days_late: draft.days_late ? parseInt(draft.days_late, 10) : 0
+      };
+
+      return supabase.from('work_orders').update(updatePayload).eq('id', recordId);
+    });
+
+    try {
+      const results = await Promise.all(updatePromises);
+      const errors = results.filter(r => r.error);
+      if (errors.length > 0) {
+        setError(`Failed to update ${errors.length} record(s). Check console for details.`);
+        console.error('Bulk save errors:', errors);
+      } else {
+        setInlineEdits({});
+        fetchRecords(filters);
+      }
+    } catch (err) {
+      setError('An unexpected error occurred during bulk save.');
+    }
+    setLoading(false);
+  };
+  // ----- END INLINE EDIT LOGIC -----
+
+  // Helper to format DD-MMM
+  const formatDdMmm = (dateStr) => {
     if (!dateStr) return '—';
     const d = new Date(dateStr);
     if (isNaN(d)) return '—';
-    return d.toLocaleDateString();
+    const isISODate = typeof dateStr === 'string' && dateStr.length === 10 && dateStr.includes('-');
+    const day = isISODate ? d.getUTCDate() : d.getDate();
+    const monthIndex = isISODate ? d.getUTCMonth() : d.getMonth();
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    return `${day}-${months[monthIndex]}`;
+  };
+
+  // Helper to format DD-MMM-YYYY
+  const formatDdMmmYyyy = (dateStr) => {
+    if (!dateStr) return '—';
+    const d = new Date(dateStr);
+    if (isNaN(d)) return '—';
+    const isISODate = typeof dateStr === 'string' && dateStr.length === 10 && dateStr.includes('-');
+    const day = isISODate ? d.getUTCDate() : d.getDate();
+    const monthIndex = isISODate ? d.getUTCMonth() : d.getMonth();
+    const year = isISODate ? d.getUTCFullYear() : d.getFullYear();
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    return `${day}-${months[monthIndex]}-${year}`;
   };
 
   // Sort + search filtering
@@ -171,7 +360,7 @@ export default function Reports({ userRoles = [], user }) {
       items = items.filter(r => {
         const searchableValues = [
           r.language,
-          r.wo_date ? formatMmDd(r.wo_date) : '',
+          r.wo_date ? formatDdMmm(r.wo_date) : '',
           r.work_order_number,
           r.file_number,
           r.region,
@@ -179,9 +368,9 @@ export default function Reports({ userRoles = [], user }) {
           r.division,
           r.request_type,
           r.tat != null ? String(r.tat) : '',
-          r.hearing_date ? formatDate(r.hearing_date) : '',
-          r.due_date ? formatDate(r.due_date) : '',
-          r.delivery_date ? formatDate(r.delivery_date) : '',
+          r.hearing_date ? formatDdMmmYyyy(r.hearing_date) : '',
+          r.due_date ? formatDdMmm(r.due_date) : '',
+          r.delivery_date ? formatDdMmm(r.delivery_date) : '',
           r.audio_length,
           r.word_count != null ? String(r.word_count) : '',
           r.character_wz_space != null ? String(r.character_wz_space) : '',
@@ -274,7 +463,7 @@ export default function Reports({ userRoles = [], user }) {
             <input type="date" name="hearing_date" className="filter-select" value={filters.hearing_date} onChange={handleFilterChange} />
           </div>
           <div className="filter-group">
-            <label className="filter-label">Delivery Date</label>
+            <label className="filter-label">Del Date</label>
             <input type="date" name="delivery_date" className="filter-select" value={filters.delivery_date} onChange={handleFilterChange} />
           </div>
           <div className="filter-group">
@@ -302,18 +491,69 @@ export default function Reports({ userRoles = [], user }) {
         </div>
       </div>
 
-      {/* ===== Global Search ===== */}
-      <div className="search-bar" style={{ marginBottom: '1rem' }}>
-        <div style={{ position: 'relative', maxWidth: '400px' }}>
-          <Search size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', pointerEvents: 'none' }} />
-          <input
-            type="text"
-            placeholder="Search across all fields..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="form-input"
-            style={{ paddingLeft: '38px', width: '100%' }}
-          />
+      {/* ===== Global Search & Columns ===== */}
+      <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap' }}>
+        <div className="search-bar" style={{ flex: 1, minWidth: '250px' }}>
+          <div style={{ position: 'relative', maxWidth: '400px' }}>
+            <Search size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', pointerEvents: 'none' }} />
+            <input
+              type="text"
+              placeholder="Search across all fields..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="form-input"
+              style={{ paddingLeft: '38px', width: '100%' }}
+            />
+          </div>
+        </div>
+
+        {/* Bulk Action Buttons */}
+        {Object.keys(inlineEdits).length > 0 && (
+          <div style={{ display: 'flex', gap: '0.5rem', marginRight: '1rem' }}>
+            <button className="btn-secondary" onClick={() => setInlineEdits({})} style={{ background: '#fef2f2', color: '#ef4444', borderColor: '#fecaca', display: 'flex', alignItems: 'center', padding: '0.6rem 1rem' }}>
+              Cancel All
+            </button>
+            <button className="btn-primary" onClick={handleBulkSave} style={{ marginTop: 0, width: 'auto', display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.6rem 1rem' }}>
+              <Save size={16} /> Save {Object.keys(inlineEdits).length} Changes
+            </button>
+          </div>
+        )}
+
+        {/* Column Toggle Dropdown */}
+        <div className="column-toggle-container" ref={columnMenuRef} style={{ position: 'relative' }}>
+          <button 
+            className="btn-secondary" 
+            onClick={() => setShowColumnMenu(!showColumnMenu)}
+            style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.6rem 1rem' }}
+          >
+            <Columns size={16} />
+            Columns
+          </button>
+          
+          {showColumnMenu && (
+            <div className="column-dropdown-menu" style={{ 
+              position: 'absolute', top: '100%', right: 0, marginTop: '0.5rem', 
+              background: '#fff', border: '1px solid #e0e0ea', borderRadius: '10px', 
+              boxShadow: '0 4px 20px rgba(0,0,0,0.08)', zIndex: 100, minWidth: '220px',
+              padding: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.5rem',
+              maxHeight: '400px', overflowY: 'auto'
+            }}>
+              <div style={{ fontSize: '0.85rem', fontWeight: 600, color: '#5a5a72', marginBottom: '0.25rem', paddingBottom: '0.5rem', borderBottom: '1px solid #f0f0f5' }}>
+                Toggle Columns
+              </div>
+              {COLUMN_CONFIG.map(col => (
+                <label key={col.key} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9rem', cursor: 'pointer' }}>
+                  <input 
+                    type="checkbox" 
+                    checked={visibleColumns.includes(col.key)} 
+                    onChange={() => toggleColumn(col.key)} 
+                    style={{ accentColor: '#6366f1', cursor: 'pointer', width: '16px', height: '16px' }}
+                  />
+                  {col.label}
+                </label>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
@@ -336,67 +576,201 @@ export default function Reports({ userRoles = [], user }) {
             <table className="data-grid">
               <thead>
                 <tr>
-                  <th onClick={() => handleSort('language')} className="sortable-header">Language {renderSortIcon('language')}</th>
-                  <th onClick={() => handleSort('wo_date')} className="sortable-header">WO Date {renderSortIcon('wo_date')}</th>
-                  <th onClick={() => handleSort('work_order_number')} className="sortable-header">Work Order # {renderSortIcon('work_order_number')}</th>
-                  <th onClick={() => handleSort('file_number')} className="sortable-header">File # {renderSortIcon('file_number')}</th>
-                  <th onClick={() => handleSort('region')} className="sortable-header">Region {renderSortIcon('region')}</th>
-                  <th onClick={() => handleSort('assigned_to')} className="sortable-header">Assigned To {renderSortIcon('assigned_to')}</th>
-                  <th onClick={() => handleSort('division')} className="sortable-header">Division {renderSortIcon('division')}</th>
-                  <th onClick={() => handleSort('request_type')} className="sortable-header">Type {renderSortIcon('request_type')}</th>
-                  <th onClick={() => handleSort('tat')} className="sortable-header">TAT {renderSortIcon('tat')}</th>
-                  <th onClick={() => handleSort('hearing_date')} className="sortable-header">Hearing Date {renderSortIcon('hearing_date')}</th>
-                  <th onClick={() => handleSort('due_date')} className="sortable-header">Due Date {renderSortIcon('due_date')}</th>
-                  <th onClick={() => handleSort('delivery_date')} className="sortable-header">Delivery Date {renderSortIcon('delivery_date')}</th>
-                  <th onClick={() => handleSort('audio_length')} className="sortable-header">Audio Len {renderSortIcon('audio_length')}</th>
-                  <th onClick={() => handleSort('word_count')} className="sortable-header">Words {renderSortIcon('word_count')}</th>
-                  <th onClick={() => handleSort('character_wz_space')} className="sortable-header">Chars {renderSortIcon('character_wz_space')}</th>
-                  <th onClick={() => handleSort('line_count')} className="sortable-header">Lines {renderSortIcon('line_count')}</th>
-                  <th onClick={() => handleSort('status')} className="sortable-header">Status {renderSortIcon('status')}</th>
-                  <th onClick={() => handleSort('days_late')} className="sortable-header">Days Late {renderSortIcon('days_late')}</th>
-                  <th onClick={() => handleSort('employee_comments')} className="sortable-header">Employee Comments {renderSortIcon('employee_comments')}</th>
-                  <th onClick={() => handleSort('regdeck_admin_comments')} className="sortable-header">Admin Comments {renderSortIcon('regdeck_admin_comments')}</th>
-                  <th onClick={() => handleSort('additional_comments')} className="sortable-header">Additional Comments {renderSortIcon('additional_comments')}</th>
+                  <th style={{ width: '50px', padding: '0.75rem' }}></th>
+                  {visibleColumns.includes('language') && <th onClick={() => handleSort('language')} className="sortable-header">Language {renderSortIcon('language')}</th>}
+                  {visibleColumns.includes('wo_date') && <th onClick={() => handleSort('wo_date')} className="sortable-header">WO Date {renderSortIcon('wo_date')}</th>}
+                  {visibleColumns.includes('work_order_number') && <th onClick={() => handleSort('work_order_number')} className="sortable-header">Work Order # {renderSortIcon('work_order_number')}</th>}
+                  {visibleColumns.includes('region') && <th onClick={() => handleSort('region')} className="sortable-header">Region {renderSortIcon('region')}</th>}
+                  {visibleColumns.includes('assigned_to') && <th onClick={() => handleSort('assigned_to')} className="sortable-header">Assigned to {renderSortIcon('assigned_to')}</th>}
+                  {visibleColumns.includes('file_number') && <th onClick={() => handleSort('file_number')} className="sortable-header">File Number {renderSortIcon('file_number')}</th>}
+                  {visibleColumns.includes('hearing_date') && <th onClick={() => handleSort('hearing_date')} className="sortable-header">Hearing Date {renderSortIcon('hearing_date')}</th>}
+                  {visibleColumns.includes('division') && <th onClick={() => handleSort('division')} className="sortable-header">Division {renderSortIcon('division')}</th>}
+                  {visibleColumns.includes('request_type') && <th onClick={() => handleSort('request_type')} className="sortable-header">Request Type {renderSortIcon('request_type')}</th>}
+                  {visibleColumns.includes('tat') && <th onClick={() => handleSort('tat')} className="sortable-header">TAT {renderSortIcon('tat')}</th>}
+                  {visibleColumns.includes('due_date') && <th onClick={() => handleSort('due_date')} className="sortable-header">Due Date {renderSortIcon('due_date')}</th>}
+                  {visibleColumns.includes('audio_length') && <th onClick={() => handleSort('audio_length')} className="sortable-header">Audio Length {renderSortIcon('audio_length')}</th>}
+                  {visibleColumns.includes('word_count') && <th onClick={() => handleSort('word_count')} className="sortable-header">Word Count {renderSortIcon('word_count')}</th>}
+                  {visibleColumns.includes('character_wz_space') && <th onClick={() => handleSort('character_wz_space')} className="sortable-header">Character wz Space {renderSortIcon('character_wz_space')}</th>}
+                  {visibleColumns.includes('line_count') && <th onClick={() => handleSort('line_count')} className="sortable-header">Line Count {renderSortIcon('line_count')}</th>}
+                  {visibleColumns.includes('status') && <th onClick={() => handleSort('status')} className="sortable-header">Status {renderSortIcon('status')}</th>}
+                  {visibleColumns.includes('delivery_date') && <th onClick={() => handleSort('delivery_date')} className="sortable-header">Del Date {renderSortIcon('delivery_date')}</th>}
+                  {visibleColumns.includes('days_late') && <th onClick={() => handleSort('days_late')} className="sortable-header">Days Late {renderSortIcon('days_late')}</th>}
+                  {visibleColumns.includes('employee_comments') && <th onClick={() => handleSort('employee_comments')} className="sortable-header">Employee Comments {renderSortIcon('employee_comments')}</th>}
+                  {visibleColumns.includes('regdeck_admin_comments') && <th onClick={() => handleSort('regdeck_admin_comments')} className="sortable-header">RegDeck Admin Comments {renderSortIcon('regdeck_admin_comments')}</th>}
+                  {visibleColumns.includes('additional_comments') && <th onClick={() => handleSort('additional_comments')} className="sortable-header">Additional Comments {renderSortIcon('additional_comments')}</th>}
                 </tr>
               </thead>
               <tbody>
-                {filteredAndSorted.map(record => (
-                  <tr key={record.id}>
-                    <td>{record.language || '—'}</td>
-                    <td>{formatMmDd(record.wo_date)}</td>
-                    <td>
-                      <button
-                        className="link-btn"
-                        onClick={() => setEditingRecord(record)}
-                        title="Click to edit"
-                      >
-                        {record.work_order_number}
-                      </button>
-                    </td>
-                    <td>{record.file_number || '—'}</td>
-                    <td>{record.region}</td>
-                    <td>{record.assigned_to}</td>
-                    <td>{record.division}</td>
-                    <td>{record.request_type}</td>
-                    <td>{record.tat}</td>
-                    <td>{formatDate(record.hearing_date)}</td>
-                    <td>{formatDate(record.due_date)}</td>
-                    <td>{formatDate(record.delivery_date)}</td>
-                    <td>{record.audio_length || '—'}</td>
-                    <td>{record.word_count || 0}</td>
-                    <td>{record.character_wz_space || 0}</td>
-                    <td>{record.line_count || 0}</td>
-                    <td>
-                      <span className={`status-badge ${record.status === 'Done' ? 'paid' : record.status === 'In progress' ? 'pending' : ''}`}>
-                        {record.status || '—'}
-                      </span>
-                    </td>
-                    <td>{record.days_late || 0}</td>
-                    <td style={{ maxWidth: '150px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={record.employee_comments || ''}>{record.employee_comments || '—'}</td>
-                    <td style={{ maxWidth: '150px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={record.regdeck_admin_comments || ''}>{record.regdeck_admin_comments || '—'}</td>
-                    <td style={{ maxWidth: '150px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={record.additional_comments || ''}>{record.additional_comments || '—'}</td>
-                  </tr>
-                ))}
+                {filteredAndSorted.map(record => {
+                  const isEditing = !!inlineEdits[record.id];
+                  const draft = inlineEdits[record.id] || record;
+                  const canEditAll = !isEmployee;
+
+                  return (
+                    <tr key={record.id} style={isEditing ? { backgroundColor: 'rgba(99, 102, 241, 0.04)' } : {}}>
+                      <td>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                          <button 
+                            onClick={() => toggleInlineEdit(record)}
+                            style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#6366f1', padding: 0, display: 'flex', alignItems: 'center' }}
+                            title={isEditing ? "Deselect row" : "Select row for editing"}
+                          >
+                            {isEditing ? <CheckSquare size={18} /> : <Square size={18} />}
+                          </button>
+                        </div>
+                      </td>
+                      {visibleColumns.includes('language') && <td>
+                        {isEditing && canEditAll ? (
+                          <select className="form-select" style={{ padding: '0.25rem', fontSize: '0.8rem', minWidth: '100px' }} value={draft.language} onChange={(e) => handleInlineChange(record.id, 'language', e.target.value)}>
+                            {languageOptions.map(l => <option key={l.value} value={l.value}>{l.label}</option>)}
+                          </select>
+                        ) : (
+                          record.language || '—'
+                        )}
+                      </td>}
+                      {visibleColumns.includes('wo_date') && <td>{formatDdMmm(record.wo_date)}</td>}
+                      {visibleColumns.includes('work_order_number') && <td>
+                        {isEditing && canEditAll ? (
+                          <input type="text" className="form-input" style={{ padding: '0.25rem', fontSize: '0.8rem', minWidth: '120px' }} value={draft.work_order_number} onChange={(e) => handleInlineChange(record.id, 'work_order_number', e.target.value)} />
+                        ) : (
+                          record.work_order_number
+                        )}
+                      </td>}
+                      {visibleColumns.includes('region') && <td>
+                        {isEditing && canEditAll ? (
+                          <select className="form-select" style={{ padding: '0.25rem', fontSize: '0.8rem', minWidth: '100px' }} value={draft.region} onChange={(e) => handleInlineChange(record.id, 'region', e.target.value)}>
+                            {regionOptions.map(r => <option key={r} value={r}>{r}</option>)}
+                          </select>
+                        ) : (
+                          record.region
+                        )}
+                      </td>}
+                      {visibleColumns.includes('assigned_to') && <td>
+                        {isEditing && canEditAll ? (
+                          <select className="form-select" style={{ padding: '0.25rem', fontSize: '0.8rem', minWidth: '110px' }} value={draft.assigned_to} onChange={(e) => handleInlineChange(record.id, 'assigned_to', e.target.value)}>
+                            {userOptions.map(u => <option key={u} value={u}>{u}</option>)}
+                          </select>
+                        ) : (
+                          record.assigned_to
+                        )}
+                      </td>}
+                      {visibleColumns.includes('file_number') && <td>
+                        {isEditing && canEditAll ? (
+                          <input type="text" className="form-input" style={{ padding: '0.25rem', fontSize: '0.8rem', minWidth: '100px' }} value={draft.file_number || ''} onChange={(e) => handleInlineChange(record.id, 'file_number', e.target.value)} />
+                        ) : (
+                          record.file_number ? (
+                            <button className="link-btn" onClick={() => setEditingRecord(record)} title="Open in Modal">{record.file_number}</button>
+                          ) : (
+                            <button className="link-btn" onClick={() => setEditingRecord(record)} title="Open in Modal">—</button>
+                          )
+                        )}
+                      </td>}
+                      {visibleColumns.includes('hearing_date') && <td>
+                        {isEditing && canEditAll ? (
+                          <input type="date" className="form-input" style={{ padding: '0.25rem', fontSize: '0.8rem', minWidth: '130px' }} value={draft.hearing_date || ''} onChange={(e) => handleInlineChange(record.id, 'hearing_date', e.target.value)} />
+                        ) : (
+                          formatDdMmmYyyy(record.hearing_date)
+                        )}
+                      </td>}
+                      {visibleColumns.includes('division') && <td>
+                        {isEditing && canEditAll ? (
+                          <select className="form-select" style={{ padding: '0.25rem', fontSize: '0.8rem', minWidth: '80px' }} value={draft.division} onChange={(e) => handleInlineChange(record.id, 'division', e.target.value)}>
+                            {divisionOptions.map(d => <option key={d} value={d}>{d}</option>)}
+                          </select>
+                        ) : (
+                          record.division
+                        )}
+                      </td>}
+                      {visibleColumns.includes('request_type') && <td>
+                        {isEditing && canEditAll ? (
+                          <select className="form-select" style={{ padding: '0.25rem', fontSize: '0.8rem', minWidth: '90px' }} value={draft.request_type} onChange={(e) => handleInlineChange(record.id, 'request_type', e.target.value)}>
+                            {requestTypeOptions.map(rt => <option key={rt} value={rt}>{rt}</option>)}
+                          </select>
+                        ) : (
+                          record.request_type
+                        )}
+                      </td>}
+                      {visibleColumns.includes('tat') && <td>
+                        {isEditing && canEditAll ? (
+                          <select className="form-select" style={{ padding: '0.25rem', fontSize: '0.8rem', minWidth: '60px' }} value={draft.tat} onChange={(e) => handleInlineChange(record.id, 'tat', e.target.value)}>
+                            {tatValues.map(t => <option key={t} value={t}>{t}</option>)}
+                          </select>
+                        ) : (
+                          record.tat
+                        )}
+                      </td>}
+                      {visibleColumns.includes('due_date') && <td>
+                        {isEditing && canEditAll ? (
+                          <input type="date" className="form-input" style={{ padding: '0.25rem', fontSize: '0.8rem', minWidth: '130px' }} value={draft.due_date || ''} onChange={(e) => handleInlineChange(record.id, 'due_date', e.target.value)} />
+                        ) : (
+                          formatDdMmm(record.due_date)
+                        )}
+                      </td>}
+                      {visibleColumns.includes('audio_length') && <td>
+                        {isEditing && canEditAll ? (
+                          <input type="text" className="form-input" style={{ padding: '0.25rem', fontSize: '0.8rem', minWidth: '80px' }} placeholder="0:15" value={draft.audio_length || ''} onChange={(e) => handleInlineChange(record.id, 'audio_length', e.target.value)} />
+                        ) : (
+                          record.audio_length || '—'
+                        )}
+                      </td>}
+                      {visibleColumns.includes('word_count') && <td>
+                        {isEditing ? (
+                          <input type="number" className="form-input" style={{ padding: '0.25rem', fontSize: '0.8rem', minWidth: '80px' }} value={draft.word_count || ''} onChange={(e) => handleInlineChange(record.id, 'word_count', e.target.value)} />
+                        ) : (
+                          record.word_count || 0
+                        )}
+                      </td>}
+                      {visibleColumns.includes('character_wz_space') && <td>
+                        {isEditing ? (
+                          <input type="number" className="form-input" style={{ padding: '0.25rem', fontSize: '0.8rem', minWidth: '100px' }} value={draft.character_wz_space || ''} onChange={(e) => handleInlineChange(record.id, 'character_wz_space', e.target.value)} />
+                        ) : (
+                          record.character_wz_space || 0
+                        )}
+                      </td>}
+                      {visibleColumns.includes('line_count') && <td>{draft.line_count != null ? draft.line_count : (record.line_count || 0)}</td>}
+                      {visibleColumns.includes('status') && <td>
+                        {isEditing ? (
+                          <select className="form-select" style={{ padding: '0.25rem', fontSize: '0.8rem', minWidth: '120px' }} value={draft.status} onChange={(e) => handleInlineChange(record.id, 'status', e.target.value)}>
+                            {statusOptions.map(s => <option key={s} value={s}>{s}</option>)}
+                          </select>
+                        ) : (
+                          <span className={`status-badge ${record.status === 'Done' ? 'paid' : record.status === 'In progress' ? 'pending' : ''}`}>
+                            {record.status || '—'}
+                          </span>
+                        )}
+                      </td>}
+                      {visibleColumns.includes('delivery_date') && <td>
+                        {isEditing && canEditAll ? (
+                          <input type="date" className="form-input" style={{ padding: '0.25rem', fontSize: '0.8rem', minWidth: '130px' }} value={draft.delivery_date || ''} onChange={(e) => handleInlineChange(record.id, 'delivery_date', e.target.value)} />
+                        ) : (
+                          formatDdMmm(record.delivery_date)
+                        )}
+                      </td>}
+                      {visibleColumns.includes('days_late') && <td>{draft.days_late != null ? draft.days_late : (record.days_late || 0)}</td>}
+                      {visibleColumns.includes('employee_comments') && <td>
+                        {isEditing ? (
+                          <input type="text" className="form-input" style={{ padding: '0.25rem', fontSize: '0.8rem', minWidth: '150px' }} value={draft.employee_comments || ''} onChange={(e) => handleInlineChange(record.id, 'employee_comments', e.target.value)} />
+                        ) : (
+                          <div style={{ maxWidth: '150px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={record.employee_comments || ''}>{record.employee_comments || '—'}</div>
+                        )}
+                      </td>}
+                      {visibleColumns.includes('regdeck_admin_comments') && <td>
+                        {isEditing && canEditAll ? (
+                          <input type="text" className="form-input" style={{ padding: '0.25rem', fontSize: '0.8rem', minWidth: '150px' }} value={draft.regdeck_admin_comments || ''} onChange={(e) => handleInlineChange(record.id, 'regdeck_admin_comments', e.target.value)} />
+                        ) : (
+                          <div style={{ maxWidth: '150px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={record.regdeck_admin_comments || ''}>{record.regdeck_admin_comments || '—'}</div>
+                        )}
+                      </td>}
+                      {visibleColumns.includes('additional_comments') && <td>
+                        {isEditing ? (
+                          <input type="text" className="form-input" style={{ padding: '0.25rem', fontSize: '0.8rem', minWidth: '150px' }} value={draft.additional_comments || ''} onChange={(e) => handleInlineChange(record.id, 'additional_comments', e.target.value)} />
+                        ) : (
+                          <div style={{ maxWidth: '150px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={record.additional_comments || ''}>{record.additional_comments || '—'}</div>
+                        )}
+                      </td>}
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

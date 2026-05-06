@@ -23,15 +23,7 @@ export default function CreateRecord({ user }) {
     }
   };
 
-  const parseMmDdToDate = (mmddStr) => {
-    if (!mmddStr) return null;
-    const str = String(mmddStr).padStart(4, '0');
-    if (str.length !== 4) return null;
-    const month = str.substring(0, 2);
-    const day = str.substring(2, 4);
-    const year = new Date().getFullYear(); // Using current year as requested by open questions defaulting
-    return `${year}-${month}-${day}`;
-  };
+
 
   // Timezone-safe date parser: handles Date objects, DD-Mon-YY, DD-Mon-YYYY, DD-MM-YYYY, and fallback
   const parseSafeDate = (dateVal) => {
@@ -116,6 +108,19 @@ export default function CreateRecord({ user }) {
     return parseSafeDate(dateStr);
   };
 
+  // Derive region from work order number prefix
+  const deriveRegion = (workOrderNum) => {
+    if (!workOrderNum) return null;
+    const prefix = String(workOrderNum).substring(0, 3).toUpperCase();
+    switch (prefix) {
+      case 'RCE': return 'Eastern';
+      case 'RCW': return 'Western';
+      case 'REX': return 'Rexdale';
+      case 'RCC': return 'Central';
+      default: return null;
+    }
+  };
+
   // Helper to normalize keys (handles newlines and extra spaces from Excel headers)
   const cleanKeys = (row) => {
     const cleaned = {};
@@ -195,9 +200,9 @@ export default function CreateRecord({ user }) {
             recordsToInsert.push({
               id: compositeId,
               language: language,
-              wo_date: parseMmDdToDate(workOrderDateStr),
+              wo_date: parseDdMon(workOrderDateStr),
               work_order_number: workOrderNum,
-              region: row["Region"],
+              region: deriveRegion(workOrderNum),
               assigned_to: assignedTo,
               file_number: row["File Number"],
               hearing_date: parseSafeDate(row["Hearing Date"]),

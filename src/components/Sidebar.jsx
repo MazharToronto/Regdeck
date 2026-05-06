@@ -1,8 +1,8 @@
 import { NavLink, useNavigate } from 'react-router-dom';
-import { Home, FileText, PlusCircle, LogOut, Shield, Users, UserPlus, Headphones } from 'lucide-react';
+import { Home, FileText, PlusCircle, LogOut, Shield, Users, UserPlus, Headphones, Settings, Menu, ChevronLeft } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 
-export default function Sidebar({ isAdmin, canCreate }) {
+export default function Sidebar({ canManageUsers, canCreate, isOpen, onToggle }) {
   const navigate = useNavigate();
 
   const handleLogout = async () => {
@@ -11,17 +11,27 @@ export default function Sidebar({ isAdmin, canCreate }) {
   };
 
   return (
-    <nav className="sidebar">
-      <div className="sidebar-brand">
-        <div className="sidebar-logo">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-            <polyline points="14 2 14 8 20 8"></polyline>
-            <line x1="16" y1="13" x2="8" y2="13"></line>
-            <line x1="16" y1="17" x2="8" y2="17"></line>
-          </svg>
+    <nav className={`sidebar ${!isOpen ? 'collapsed' : ''}`}>
+      <div className="sidebar-brand" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', marginBottom: '1.5rem', padding: '0 0.25rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', overflow: 'hidden' }}>
+          <div className="sidebar-logo" style={{ flexShrink: 0 }}>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+              <polyline points="14 2 14 8 20 8"></polyline>
+              <line x1="16" y1="13" x2="8" y2="13"></line>
+              <line x1="16" y1="17" x2="8" y2="17"></line>
+            </svg>
+          </div>
+          {isOpen && <span className="sidebar-brand-text">InvoiceGen</span>}
         </div>
-        <span className="sidebar-brand-text">InvoiceGen</span>
+        <button 
+          className="sidebar-toggle-btn" 
+          onClick={onToggle} 
+          style={{ background: 'rgba(99,102,241,0.1)', border: 'none', cursor: 'pointer', color: '#6366f1', borderRadius: '6px', padding: '0.25rem', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
+          title={isOpen ? "Collapse Sidebar" : "Expand Sidebar"}
+        >
+          {isOpen ? <ChevronLeft size={18} /> : <Menu size={18} />}
+        </button>
       </div>
 
       <div className="sidebar-nav">
@@ -47,7 +57,7 @@ export default function Sidebar({ isAdmin, canCreate }) {
           </NavLink>
         )}
 
-        {isAdmin && (
+        {canManageUsers && (
           <>
             <div className="sidebar-divider" />
             <div className="sidebar-section-title">Admin</div>
@@ -64,6 +74,10 @@ export default function Sidebar({ isAdmin, canCreate }) {
       </div>
 
       <div className="sidebar-footer">
+        <NavLink to="/profile" className={({isActive}) => `sidebar-link ${isActive ? 'active' : ''}`}>
+          <Settings size={18} />
+          <span>Profile Settings</span>
+        </NavLink>
         <button className="sidebar-link" onClick={handleLogout}>
           <LogOut size={18} />
           <span>Sign Out</span>

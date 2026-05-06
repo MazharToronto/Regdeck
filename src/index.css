@@ -55,7 +55,23 @@ body {
   border-right: 1px solid rgba(99, 102, 241, 0.08);
   padding: 1.5rem 0.75rem;
   z-index: 50;
-  transition: all 0.3s ease;
+  transition: width 0.3s ease, padding 0.3s ease;
+}
+
+.sidebar.collapsed {
+  width: 70px;
+  padding: 1.5rem 0.4rem;
+}
+
+.sidebar.collapsed .sidebar-brand-text,
+.sidebar.collapsed .sidebar-link span,
+.sidebar.collapsed .sidebar-section-title {
+  display: none;
+}
+
+.sidebar.collapsed .sidebar-link {
+  justify-content: center;
+  padding: 0.6rem;
 }
 
 .sidebar-brand {
@@ -475,6 +491,8 @@ body {
 }
 
 .form-input, .form-select {
+  width: 100%;
+  box-sizing: border-box;
   padding: 0.75rem 1rem;
   border: 1.5px solid #ececf1;
   border-radius: 10px;
@@ -559,18 +577,22 @@ textarea.form-input {
 }
 
 .data-grid th, .data-grid td {
-  padding: 0.85rem 1rem;
+  padding: 0.75rem 0.5rem; /* Reduced padding to fit more columns */
   text-align: left;
   border-bottom: 1px solid #f0f0f5;
+  white-space: normal; /* Allow text wrapping */
+  word-break: break-word; /* Ensure long words break instead of stretching table */
+  font-size: 0.85rem; /* Slightly smaller font to fit more content */
 }
 
 .data-grid th {
   color: #8a8a9a;
   font-weight: 500;
-  font-size: 0.8rem;
+  font-size: 0.75rem; /* Smaller header font */
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  white-space: nowrap;
+  white-space: normal; /* Override nowrap to allow wrapping */
+  vertical-align: bottom;
 }
 
 .sortable-header {
@@ -741,16 +763,19 @@ textarea.form-input {
 }
 
 .btn-secondary {
-  padding: 0.65rem 1.5rem;
+  padding: 0.75rem 2rem;
   border: 1.5px solid #e0e0ea;
   border-radius: 10px;
   background: #fff;
   color: #5a5a72;
-  font-size: 0.9rem;
-  font-weight: 500;
+  font-size: 0.95rem;
+  font-weight: 600;
   cursor: pointer;
   font-family: inherit;
   transition: background 0.15s ease, border-color 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .btn-secondary:hover {
@@ -1167,6 +1192,7 @@ textarea.form-input {
 /* Password Input Wrapper */
 .password-input-wrapper {
   position: relative;
+  width: 100%;
 }
 
 .password-input-wrapper .form-input {
@@ -1245,6 +1271,7 @@ textarea.form-input {
 /* Admin Form Actions */
 .admin-form-actions {
   display: flex;
+  align-items: center;
   gap: 0.75rem;
   margin-top: 1.5rem;
   padding-top: 1.25rem;
@@ -1258,6 +1285,7 @@ textarea.form-input {
   justify-content: center;
   gap: 0.5rem;
   padding: 0.75rem 2rem;
+  margin-top: 0;
 }
 
 /* Spinner */
@@ -1291,3 +1319,71 @@ textarea.form-input {
   }
 }
 
+/* ===== Profile Settings Page ===== */
+.profile-settings-banner {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem 1.25rem;
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.04), rgba(124, 58, 237, 0.04));
+  border: 1px solid rgba(99, 102, 241, 0.1);
+  border-radius: 14px;
+  margin-bottom: 1.5rem;
+}
+
+.profile-settings-avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #6366f1, #7c3aed);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2rem;
+  font-weight: 700;
+  flex-shrink: 0;
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+}
+
+.profile-settings-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.profile-settings-name {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #1e1e2f;
+}
+
+.profile-settings-email {
+  font-size: 0.85rem;
+  color: #8a8a9a;
+}
+
+.profile-section-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #6366f1;
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid rgba(99, 102, 241, 0.1);
+}
+
+/* Profile Settings form uses 2-column layout */
+.profile-settings-form .form-row {
+  grid-template-columns: repeat(2, 1fr);
+}
+
+@media (max-width: 768px) {
+  .profile-settings-form .form-row {
+    grid-template-columns: 1fr;
+  }
+}
