@@ -96,7 +96,7 @@ export default function GroupedWorkOrders() {
     });
   }, [records]);
 
-  // Group records by due date, and then combine identical work orders
+  // Group records by due date, then by work_order_number ONLY
   const groupedData = useMemo(() => {
     const filteredRecords = selectedDueDate ? records.filter(r => (r.due_date || 'Unassigned') === selectedDueDate) : records;
     const groups = {};
@@ -108,25 +108,19 @@ export default function GroupedWorkOrders() {
       }
       
       const wo = record.work_order_number || '—';
-      const st = record.status || '—';
-      const rt = record.request_type || '—';
-      const compositeKey = `${wo}|${st}|${rt}`;
-      const uniqueId = `${dateKey}|${compositeKey}`;
       
-      if (!groups[dateKey][compositeKey]) {
-        groups[dateKey][compositeKey] = {
-          id: uniqueId,
+      if (!groups[dateKey][wo]) {
+        groups[dateKey][wo] = {
+          id: `${dateKey}|${wo}`,
           work_order_number: record.work_order_number,
-          status: record.status,
-          request_type: record.request_type,
           audio_lengths: [],
           subRecords: [],
           count: 0
         };
       }
-      groups[dateKey][compositeKey].audio_lengths.push(record.audio_length);
-      groups[dateKey][compositeKey].subRecords.push(record);
-      groups[dateKey][compositeKey].count += 1;
+      groups[dateKey][wo].audio_lengths.push(record.audio_length);
+      groups[dateKey][wo].subRecords.push(record);
+      groups[dateKey][wo].count += 1;
     });
 
     const finalGroups = {};
@@ -203,7 +197,7 @@ export default function GroupedWorkOrders() {
 
                   return (
                     <React.Fragment key={dateKey}>
-                      {/* Parent Row */}
+                      {/* Parent Row - Due Date */}
                       <tr 
                         onClick={() => toggleExpand(dateKey)}
                         style={{ cursor: 'pointer', backgroundColor: isExpanded ? '#f8fafc' : '#ffffff', transition: 'background-color 0.2s', borderBottom: isExpanded ? 'none' : '1px solid #e2e8f0' }}
@@ -222,7 +216,7 @@ export default function GroupedWorkOrders() {
                         </td>
                       </tr>
 
-                      {/* Child Rows */}
+                      {/* Child Rows - Work Order # (grouped by WO# only) */}
                       {isExpanded && items.map((record, index) => {
                         const isLastItem = index === items.length - 1;
                         const isWoExpanded = !!expandedWorkOrders[record.id];
@@ -245,16 +239,12 @@ export default function GroupedWorkOrders() {
                                   <span>{record.work_order_number || '—'}</span>
                                 </div>
                               </td>
-                              <td style={{ padding: '0.75rem' }}>
-                                <span className={`status-badge ${record.status === 'Done' ? 'paid' : record.status === 'In progress' ? 'pending' : ''}`}>
-                                  {record.status || '—'}
-                                </span>
-                              </td>
-                              <td style={{ padding: '0.75rem', color: '#475569', fontSize: '0.9rem' }}>{record.request_type || '—'}</td>
+                              <td style={{ padding: '0.75rem' }}></td>
+                              <td style={{ padding: '0.75rem' }}></td>
                               <td style={{ padding: '0.75rem', color: '#475569', fontSize: '0.9rem', fontFamily: 'monospace' }}>{record.audio_length || '—'}</td>
                             </tr>
                             
-                            {/* Grandchild Rows (File Numbers) */}
+                            {/* Grandchild Rows - File Numbers with Status & Request Type */}
                             {isWoExpanded && hasSubRecords && record.subRecords.map((sub, subIdx) => {
                               const isLastSub = subIdx === record.subRecords.length - 1;
                               return (
@@ -268,8 +258,12 @@ export default function GroupedWorkOrders() {
                                       File #: {sub.file_number || '—'}
                                     </div>
                                   </td>
-                                  <td style={{ padding: '0.75rem' }}></td>
-                                  <td style={{ padding: '0.75rem' }}></td>
+                                  <td style={{ padding: '0.75rem' }}>
+                                    <span className={`status-badge ${sub.status === 'Done' ? 'paid' : sub.status === 'In progress' ? 'pending' : ''}`}>
+                                      {sub.status || '—'}
+                                    </span>
+                                  </td>
+                                  <td style={{ padding: '0.75rem', color: '#64748b', fontSize: '0.85rem' }}>{sub.request_type || '—'}</td>
                                   <td style={{ padding: '0.75rem', color: '#64748b', fontSize: '0.85rem', fontFamily: 'monospace' }}>{sub.audio_length || '—'}</td>
                                 </tr>
                               );

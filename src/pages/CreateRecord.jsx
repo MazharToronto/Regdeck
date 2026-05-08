@@ -2,7 +2,9 @@ import { useState } from 'react';
 import { supabase } from '../supabaseClient';
 import { useNavigate } from 'react-router-dom';
 import * as XLSX from 'xlsx';
-import { UploadCloud, File, AlertCircle, CheckCircle } from 'lucide-react';
+import * as ExcelJS from 'exceljs';
+import { saveAs } from 'file-saver';
+import { UploadCloud, File, AlertCircle, CheckCircle, Download } from 'lucide-react';
 
 export default function CreateRecord({ user }) {
   const [loading, setLoading] = useState(false);
@@ -150,6 +152,79 @@ export default function CreateRecord({ user }) {
     return 1;
   };
 
+  const handleDownloadTemplate = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      // 1. Fetch users from Supabase API (ref_users table)
+      const { data: users, error: userError } = await supabase
+        .from('ref_users')
+        .select('name')
+        .order('name', { ascending: true });
+
+      if (userError) throw userError;
+
+      const userNames = users && users.length > 0 
+        ? users.map(u => u.name).filter(Boolean) 
+        : ['No users found'];
+
+      // 2. Initialize ExcelJS workbook
+      const workbook = new ExcelJS.Workbook();
+      workbook.creator = 'InvoiceGen';
+      workbook.created = new Date();
+
+      // 3. Create the main Template sheet FIRST so it is the active tab
+      const templateSheet = workbook.addWorksheet('Template');
+      const headers = [
+        "Work Order Date", "WorkOrder #", "Assigned to", "File Number", 
+        "Hearing Date", "Division", "Request Type", "TAT", "Due Date", "Audio Length"
+      ];
+
+      templateSheet.addRow(headers);
+      templateSheet.getRow(1).font = { bold: true };
+      templateSheet.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE2EFDA' } };
+
+      templateSheet.columns.forEach((col, idx) => {
+        if (idx === 0) col.width = 18;
+        else if (idx === 1) col.width = 20;
+        else if (idx === 2) col.width = 25;
+        else col.width = 15;
+      });
+
+      // 4. Create a very-hidden Data sheet for the dropdown source
+      const dataSheet = workbook.addWorksheet('Data', { state: 'veryHidden' });
+      userNames.forEach((name, index) => {
+        dataSheet.getCell(`A${index + 1}`).value = name;
+      });
+
+      // 5. Build a quoted comma-separated list for data validation
+      const quotedList = '"' + userNames.join(',') + '"';
+
+      // 6. Apply Data Validation to "Assigned to" (Column C) for rows 2 to 1000
+      for (let i = 2; i <= 1000; i++) {
+        templateSheet.getCell(`C${i}`).dataValidation = {
+          type: 'list',
+          allowBlank: true,
+          formulae: [quotedList],
+          showErrorMessage: true,
+          errorTitle: 'Invalid Entry',
+          error: 'Please select a name from the dropdown list.'
+        };
+      }
+
+      // 6. Generate buffer and trigger download
+      const buffer = await workbook.xlsx.writeBuffer();
+      const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      saveAs(blob, 'WorkOrder_Upload_Template.xlsx');
+      
+    } catch (err) {
+      console.error(err);
+      setError("Failed to generate template: " + err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleUpload = async () => {
     if (!file) return;
     setLoading(true);
@@ -291,6 +366,24 @@ export default function CreateRecord({ user }) {
               French (FR)
             </label>
           </div>
+        </div>
+
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '20px' }}>
+          <button 
+            onClick={handleDownloadTemplate} 
+            disabled={loading}
+            style={{ 
+              display: 'flex', alignItems: 'center', gap: '8px',
+              padding: '10px 16px', fontSize: '0.9rem', backgroundColor: '#e2e8f0', 
+              color: '#334155', border: 'none', borderRadius: '8px', 
+              cursor: 'pointer', fontWeight: '600', transition: 'all 0.2s'
+            }}
+            onMouseOver={(e) => e.target.style.backgroundColor = '#cbd5e1'}
+            onMouseOut={(e) => e.target.style.backgroundColor = '#e2e8f0'}
+          >
+            <Download size={18} />
+            Download .xlsx Template
+          </button>
         </div>
 
         <div className="upload-zone" style={{ border: '2px dashed #cbd5e1', borderRadius: '12px', padding: '40px', backgroundColor: '#f8fafc', transition: 'all 0.2s' }}>
