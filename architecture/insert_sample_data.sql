@@ -38,15 +38,15 @@ BEGIN
         days_late, 
         created_by
     ) VALUES
-    ('RCE-10342-DD_Sylvia_0001', '216', 'RCE-10342-DD', 'Eastern', 'Sylvia', 'MC6-03824', NULL, 'RAD', 'Full', 10, '2026-03-02', '00:39', 0, '2026-03-04', 'Hearing date corrected', NULL, 'Late', 2, v_user_id),
-    ('RCE-10342-DD_Sylvia_0002', '216', 'RCE-10342-DD', 'Eastern', 'Sylvia', 'MC6-03720', NULL, 'RAD', 'Full', 10, '2026-03-02', '02:39', 0, '2026-03-02', NULL, NULL, 'On Time', 0, v_user_id),
-    ('RCE-10342-DD_Sylvia_0003', '216', 'RCE-10342-DD', 'Eastern', 'Sylvia', 'MC6-03682', NULL, 'RAD', 'Full', 10, '2026-03-02', '03:06', 0, '2026-03-02', NULL, NULL, 'On Time', 0, v_user_id),
-    ('RCE-10343-DD-SP_Laurel_0001', '216', 'RCE-10343-DD-SP', 'Eastern', 'Laurel', 'MC6-03775', NULL, 'RAD', 'Full', 10, '2026-03-02', '00:23', 0, '2026-03-02', NULL, NULL, 'On Time', 0, v_user_id),
-    ('RCE-10343-DD-SP_Laurel_0002', '216', 'RCE-10343-DD-SP', 'Eastern', 'Laurel', 'MC6-03775', NULL, 'RAD', 'Full', 10, '2026-03-02', '03:01', 0, '2026-03-02', NULL, NULL, 'On Time', 0, v_user_id),
-    ('RCE-10343-DD-SP_Eugene_0001', '216', 'RCE-10343-DD-SP', 'Eastern', 'Eugene', 'MC6-03689', NULL, 'RAD', 'Full', 10, '2026-03-02', '06:49', 0, '2026-03-02', NULL, NULL, 'On Time', 0, v_user_id),
-    ('RCE-10343-DD-SP_Laurel_0003', '216', 'RCE-10343-DD-SP', 'Eastern', 'Laurel', 'MC6-03681', NULL, 'RAD', 'Full', 10, '2026-03-02', '04:10', 0, '2026-03-02', NULL, NULL, 'On Time', 0, v_user_id),
-    ('RCE-10397-AA_Virginie_0001', '223', 'RCE-10397-AA', 'Eastern', 'Virginie', 'MC3-09519', NULL, 'RPD', 'Bench', 5, '2026-03-02', '00:06', 0, '2026-02-25', NULL, NULL, 'On Time', 0, v_user_id),
-    ('RCE-10397-AA_Virginie_0002', '223', 'RCE-10397-AA', 'Eastern', 'Virginie', 'MC3-33038', NULL, 'RPD', 'Bench', 5, '2026-03-02', '00:14', 0, '2026-02-25', NULL, 'WC - Corrected', 'On Time', 0, v_user_id)
+    ('RCE-10342-DD_Sylvia_0001', '216', 'RCE-10342-DD', 'Eastern', 'Nandha', 'MC6-03824', NULL, 'RAD', 'Full', 10, '2026-03-02', '00:39', 0, '2026-03-04', 'Hearing date corrected', NULL, 'Late', 2, v_user_id),
+    ('RCE-10342-DD_Sylvia_0002', '216', 'RCE-10342-DD', 'Eastern', 'Nandha', 'MC6-03720', NULL, 'RAD', 'Full', 10, '2026-03-02', '02:39', 0, '2026-03-02', NULL, NULL, 'On Time', 0, v_user_id),
+    ('RCE-10342-DD_Sylvia_0003', '216', 'RCE-10342-DD', 'Eastern', 'Nandha', 'MC6-03682', NULL, 'RAD', 'Full', 10, '2026-03-02', '03:06', 0, '2026-03-02', NULL, NULL, 'On Time', 0, v_user_id),
+    ('RCE-10343-DD-SP_Laurel_0001', '216', 'RCE-10343-DD-SP', 'Eastern', 'Nandha', 'MC6-03775', NULL, 'RAD', 'Full', 10, '2026-03-02', '00:23', 0, '2026-03-02', NULL, NULL, 'On Time', 0, v_user_id),
+    ('RCE-10343-DD-SP_Laurel_0002', '216', 'RCE-10343-DD-SP', 'Eastern', 'Nandha', 'MC6-03775', NULL, 'RAD', 'Full', 10, '2026-03-02', '03:01', 0, '2026-03-02', NULL, NULL, 'On Time', 0, v_user_id),
+    ('RCE-10343-DD-SP_Eugene_0001', '216', 'RCE-10343-DD-SP', 'Eastern', 'Nandha', 'MC6-03689', NULL, 'RAD', 'Full', 10, '2026-03-02', '06:49', 0, '2026-03-02', NULL, NULL, 'On Time', 0, v_user_id),
+    ('RCE-10343-DD-SP_Laurel_0003', '216', 'RCE-10343-DD-SP', 'Eastern', 'Nandha', 'MC6-03681', NULL, 'RAD', 'Full', 10, '2026-03-02', '04:10', 0, '2026-03-02', NULL, NULL, 'On Time', 0, v_user_id),
+    ('RCE-10397-AA_Virginie_0001', '223', 'RCE-10397-AA', 'Eastern', 'Nandha', 'MC3-09519', NULL, 'RPD', 'Bench', 5, '2026-03-02', '00:06', 0, '2026-02-25', NULL, NULL, 'On Time', 0, v_user_id),
+    ('RCE-10397-AA_Virginie_0002', '223', 'RCE-10397-AA', 'Eastern', 'Nandha', 'MC3-33038', NULL, 'RPD', 'Bench', 5, '2026-03-02', '00:14', 0, '2026-02-25', NULL, 'WC - Corrected', 'On Time', 0, v_user_id)
     ON CONFLICT (id) DO NOTHING;
     
 END $$;

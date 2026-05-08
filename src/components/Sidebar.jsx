@@ -1,5 +1,5 @@
 import { NavLink, useNavigate } from 'react-router-dom';
-import { Home, FileText, PlusCircle, LogOut, Shield, Users, UserPlus, Headphones, Settings, Menu, ChevronLeft, Layers, LayoutGrid } from 'lucide-react';
+import { Home, FileText, PlusCircle, LogOut, Shield, Users, UserPlus, Headphones, Settings, Menu, ChevronLeft, Layers, LayoutGrid, BarChart3 } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 
 export default function Sidebar({ canManageUsers, canCreate, isOpen, onToggle }) {
@@ -71,6 +71,10 @@ export default function Sidebar({ canManageUsers, canCreate, isOpen, onToggle })
           <>
             <div className="sidebar-divider" />
             <div className="sidebar-section-title">Admin</div>
+            <NavLink to="/dashboard" className={({isActive}) => `sidebar-link ${isActive ? 'active' : ''}`}>
+              <BarChart3 size={18} />
+              <span>Reports</span>
+            </NavLink>
             <NavLink to="/admin/users" className={({isActive}) => `sidebar-link ${isActive ? 'active' : ''}`}>
               <Users size={18} />
               <span>Manage Users</span>

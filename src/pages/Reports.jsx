@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { supabase } from '../supabaseClient';
 import EditWorkOrderModal from '../components/EditWorkOrderModal';
-import { Filter, RotateCcw, Search, Columns, CheckSquare, Square, Save, X } from 'lucide-react';
+import { Filter, RotateCcw, Search, Columns, Save, X } from 'lucide-react';
 
 const FB_TAT = [10, 5, 4, 3, 2, 1];
 
@@ -10,7 +10,7 @@ const COLUMN_CONFIG = [
   { key: 'wo_date', label: 'WO Date', defaultVisible: true },
   { key: 'work_order_number', label: 'Work Order #', defaultVisible: true },
   { key: 'region', label: 'Region', defaultVisible: true },
-  { key: 'assigned_to', label: 'Assigned to', defaultVisible: true },
+  { key: 'assigned_to', label: 'Assigned to', defaultVisible: false },
   { key: 'file_number', label: 'File Number', defaultVisible: true },
   { key: 'hearing_date', label: 'Hearing Date', defaultVisible: true },
   { key: 'division', label: 'Division', defaultVisible: true },
@@ -18,10 +18,10 @@ const COLUMN_CONFIG = [
   { key: 'tat', label: 'TAT', defaultVisible: true },
   { key: 'due_date', label: 'Due Date', defaultVisible: true },
   { key: 'audio_length', label: 'Audio Length', defaultVisible: true },
-  { key: 'word_count', label: 'Word Count', defaultVisible: true },
-  { key: 'character_wz_space', label: 'Character wz Space', defaultVisible: true },
-  { key: 'line_count', label: 'Line Count', defaultVisible: true },
-  { key: 'status', label: 'Status', defaultVisible: true },
+  { key: 'word_count', label: 'Word Count', defaultVisible: false },
+  { key: 'character_wz_space', label: 'Character wz Space', defaultVisible: false },
+  { key: 'line_count', label: 'Line Count', defaultVisible: false },
+  { key: 'status', label: 'Status', defaultVisible: false },
   { key: 'delivery_date', label: 'Del Date', defaultVisible: false },
   { key: 'days_late', label: 'Days Late', defaultVisible: false },
   { key: 'employee_comments', label: 'Employee Comments', defaultVisible: false },
@@ -49,7 +49,7 @@ export default function Reports({ userRoles = [], user }) {
   const [showColumnMenu, setShowColumnMenu] = useState(false);
   const columnMenuRef = useRef(null);
   const [visibleColumns, setVisibleColumns] = useState(() => {
-    const saved = localStorage.getItem('invoicegen_visible_columns');
+    const saved = localStorage.getItem('invoicegen_visible_columns_v3');
     if (saved) {
       try { return JSON.parse(saved); } catch (e) { /* ignore */ }
     }
@@ -57,7 +57,7 @@ export default function Reports({ userRoles = [], user }) {
   });
 
   useEffect(() => {
-    localStorage.setItem('invoicegen_visible_columns', JSON.stringify(visibleColumns));
+    localStorage.setItem('invoicegen_visible_columns_v2', JSON.stringify(visibleColumns));
   }, [visibleColumns]);
 
   useEffect(() => {
@@ -294,8 +294,8 @@ export default function Reports({ userRoles = [], user }) {
         tat: parseInt(draft.tat, 10),
         due_date: draft.due_date || null,
         audio_length: draft.audio_length || null,
-        word_count: draft.word_count ? parseInt(draft.word_count, 10) : 0,
-        character_wz_space: draft.character_wz_space ? parseInt(draft.character_wz_space, 10) : 0,
+        word_count: draft.word_count,
+        character_wz_space: draft.character_wz_space,
         line_count: draft.line_count ? parseInt(draft.line_count, 10) : 0,
         status: draft.status,
         delivery_date: draft.delivery_date || null,
@@ -576,7 +576,6 @@ export default function Reports({ userRoles = [], user }) {
             <table className="data-grid">
               <thead>
                 <tr>
-                  <th style={{ width: '50px', padding: '0.75rem' }}></th>
                   {visibleColumns.includes('language') && <th onClick={() => handleSort('language')} className="sortable-header">Language {renderSortIcon('language')}</th>}
                   {visibleColumns.includes('wo_date') && <th onClick={() => handleSort('wo_date')} className="sortable-header">WO Date {renderSortIcon('wo_date')}</th>}
                   {visibleColumns.includes('work_order_number') && <th onClick={() => handleSort('work_order_number')} className="sortable-header">Work Order # {renderSortIcon('work_order_number')}</th>}
@@ -607,18 +606,7 @@ export default function Reports({ userRoles = [], user }) {
                   const canEditAll = !isEmployee;
 
                   return (
-                    <tr key={record.id} style={isEditing ? { backgroundColor: 'rgba(99, 102, 241, 0.04)' } : {}}>
-                      <td>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                          <button 
-                            onClick={() => toggleInlineEdit(record)}
-                            style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#6366f1', padding: 0, display: 'flex', alignItems: 'center' }}
-                            title={isEditing ? "Deselect row" : "Select row for editing"}
-                          >
-                            {isEditing ? <CheckSquare size={18} /> : <Square size={18} />}
-                          </button>
-                        </div>
-                      </td>
+                    <tr key={record.id} onClick={() => { if (!isEditing) toggleInlineEdit(record); }} style={{ cursor: isEditing ? 'default' : 'pointer', ...(isEditing ? { backgroundColor: 'rgba(99, 102, 241, 0.04)' } : {}) }}>
                       {visibleColumns.includes('language') && <td>
                         {isEditing && canEditAll ? (
                           <select className="form-select" style={{ padding: '0.25rem', fontSize: '0.8rem', minWidth: '100px' }} value={draft.language} onChange={(e) => handleInlineChange(record.id, 'language', e.target.value)}>
@@ -658,11 +646,7 @@ export default function Reports({ userRoles = [], user }) {
                         {isEditing && canEditAll ? (
                           <input type="text" className="form-input" style={{ padding: '0.25rem', fontSize: '0.8rem', minWidth: '100px' }} value={draft.file_number || ''} onChange={(e) => handleInlineChange(record.id, 'file_number', e.target.value)} />
                         ) : (
-                          record.file_number ? (
-                            <button className="link-btn" onClick={() => setEditingRecord(record)} title="Open in Modal">{record.file_number}</button>
-                          ) : (
-                            <button className="link-btn" onClick={() => setEditingRecord(record)} title="Open in Modal">—</button>
-                          )
+                          record.file_number || '—'
                         )}
                       </td>}
                       {visibleColumns.includes('hearing_date') && <td>
@@ -714,17 +698,17 @@ export default function Reports({ userRoles = [], user }) {
                         )}
                       </td>}
                       {visibleColumns.includes('word_count') && <td>
-                        {isEditing ? (
-                          <input type="number" className="form-input" style={{ padding: '0.25rem', fontSize: '0.8rem', minWidth: '80px' }} value={draft.word_count || ''} onChange={(e) => handleInlineChange(record.id, 'word_count', e.target.value)} />
+                        {isEditing && canEditAll ? (
+                          <input type="text" className="form-input" style={{ padding: '0.25rem', fontSize: '0.8rem', minWidth: '80px' }} value={draft.word_count || ''} onChange={(e) => handleInlineChange(record.id, 'word_count', e.target.value)} />
                         ) : (
-                          record.word_count || 0
+                          record.word_count || ''
                         )}
                       </td>}
                       {visibleColumns.includes('character_wz_space') && <td>
-                        {isEditing ? (
-                          <input type="number" className="form-input" style={{ padding: '0.25rem', fontSize: '0.8rem', minWidth: '100px' }} value={draft.character_wz_space || ''} onChange={(e) => handleInlineChange(record.id, 'character_wz_space', e.target.value)} />
+                        {isEditing && canEditAll ? (
+                          <input type="text" className="form-input" style={{ padding: '0.25rem', fontSize: '0.8rem', minWidth: '100px' }} value={draft.character_wz_space || ''} onChange={(e) => handleInlineChange(record.id, 'character_wz_space', e.target.value)} />
                         ) : (
-                          record.character_wz_space || 0
+                          record.character_wz_space || ''
                         )}
                       </td>}
                       {visibleColumns.includes('line_count') && <td>{draft.line_count != null ? draft.line_count : (record.line_count || 0)}</td>}
@@ -751,21 +735,21 @@ export default function Reports({ userRoles = [], user }) {
                         {isEditing ? (
                           <input type="text" className="form-input" style={{ padding: '0.25rem', fontSize: '0.8rem', minWidth: '150px' }} value={draft.employee_comments || ''} onChange={(e) => handleInlineChange(record.id, 'employee_comments', e.target.value)} />
                         ) : (
-                          <div style={{ maxWidth: '150px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={record.employee_comments || ''}>{record.employee_comments || '—'}</div>
+                          <div style={{ minWidth: '150px', maxWidth: '250px', whiteSpace: 'normal', wordBreak: 'break-word' }}>{record.employee_comments || '—'}</div>
                         )}
                       </td>}
                       {visibleColumns.includes('regdeck_admin_comments') && <td>
                         {isEditing && canEditAll ? (
                           <input type="text" className="form-input" style={{ padding: '0.25rem', fontSize: '0.8rem', minWidth: '150px' }} value={draft.regdeck_admin_comments || ''} onChange={(e) => handleInlineChange(record.id, 'regdeck_admin_comments', e.target.value)} />
                         ) : (
-                          <div style={{ maxWidth: '150px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={record.regdeck_admin_comments || ''}>{record.regdeck_admin_comments || '—'}</div>
+                          <div style={{ minWidth: '150px', maxWidth: '250px', whiteSpace: 'normal', wordBreak: 'break-word' }}>{record.regdeck_admin_comments || '—'}</div>
                         )}
                       </td>}
                       {visibleColumns.includes('additional_comments') && <td>
                         {isEditing ? (
                           <input type="text" className="form-input" style={{ padding: '0.25rem', fontSize: '0.8rem', minWidth: '150px' }} value={draft.additional_comments || ''} onChange={(e) => handleInlineChange(record.id, 'additional_comments', e.target.value)} />
                         ) : (
-                          <div style={{ maxWidth: '150px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={record.additional_comments || ''}>{record.additional_comments || '—'}</div>
+                          <div style={{ minWidth: '150px', maxWidth: '250px', whiteSpace: 'normal', wordBreak: 'break-word' }}>{record.additional_comments || '—'}</div>
                         )}
                       </td>}
                     </tr>

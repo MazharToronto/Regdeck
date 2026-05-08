@@ -13,13 +13,13 @@ export default function CreateRecord({ user }) {
 
   const handleFileChange = (e) => {
     const selected = e.target.files[0];
-    if (selected && (selected.name.endsWith('.xlsx') || selected.name.endsWith('.csv'))) {
+    if (selected && selected.name.endsWith('.xlsx')) {
       setFile(selected);
       setError(null);
       setSuccessCount(0);
     } else {
       setFile(null);
-      setError('Please select a valid .xlsx or .csv file');
+      setError('Please select a valid .xlsx file');
     }
   };
 
@@ -297,12 +297,12 @@ export default function CreateRecord({ user }) {
           <UploadCloud size={48} color="#94a3b8" style={{ marginBottom: '16px' }} />
           <h3 style={{ fontSize: '1.2rem', marginBottom: '8px', color: '#334155' }}>Upload Excel File</h3>
           <p style={{ color: '#64748b', fontSize: '0.9rem', marginBottom: '20px' }}>
-            Drag and drop your .xlsx or .csv file here, or click to browse.
+            Drag and drop your .xlsx file here, or click to browse.
           </p>
           
           <input 
             type="file" 
-            accept=".xlsx, .csv" 
+            accept=".xlsx" 
             onChange={handleFileChange} 
             style={{ display: 'none' }} 
             id="file-upload" 

@@ -94,57 +94,51 @@ create policy "Anyone authenticated can read ref_tat_scores"
 -- STEP 3: Work Orders Table
 -- =============================================
 
-create table public.work_orders (
+CREATE TABLE public.work_orders (
   id text primary key,                                        -- Composite PK: WorkOrder_Assignee_Seq
   created_at timestamp with time zone default now() not null,
-  language text not null default 'EN'
-    references public.ref_languages(code),
-  wo_id text,
+  language text not null default 'EN',                        -- EN or FR
+  wo_date date,                                               -- Work Order Date
   work_order_number text not null,
-  region text not null
-    references public.ref_regions(name),
-  assigned_to text not null,
+  region text not null,
+  assigned_to text not null,                                  -- Mapped from Supabase Auth Users
   file_number text,
   hearing_date date,
-  division text not null
-    references public.ref_divisions(name),
-  request_type text not null
-    references public.ref_request_types(name),
-  tat integer not null default 5
-    references public.ref_tat_scores(value),
+  division text not null,
+  request_type text not null,
+  tat integer not null default 5,                             -- Turn Around Time (1, 2, 3, 4, 5, 10)
   due_date date,
-  audio_length text,
-  word_count integer default 0,
-  character_wz_space integer default 0,
+  audio_length text,                                          -- Format: HH:MM:SS or MM:SS
+  word_count text,
+  character_wz_space text,
   line_count integer default 0,
-  status text,
-  delivery_date date,
-  transcriptionist_comments text,
+  status text,                                                -- Pending, In progress, Done
+  delivery_date date,                                         -- Del Date
+  employee_comments text,
   regdeck_admin_comments text,
+  additional_comments text,
   delivery_status text,
   days_late integer default 0,
-  created_by uuid references auth.users not null
+  created_by uuid references auth.users not null              -- Foreign key to auth.users
 );
-
-
 -- =============================================
--- STEP 4: RLS Policies on work_orders
+-- RLS Policies on work_orders
 -- =============================================
-
-alter table public.work_orders enable row level security;
-
-create policy "Authenticated users can view all work orders"
-  on public.work_orders for select
-  using (auth.role() = 'authenticated');
-
-create policy "Authenticated users can insert work orders"
-  on public.work_orders for insert
-  with check (auth.uid() = created_by);
-
-create policy "Authenticated users can update their own work orders"
-  on public.work_orders for update
-  using (auth.uid() = created_by);
-
+ALTER TABLE public.work_orders ENABLE ROW LEVEL SECURITY;
+-- Allow authenticated users to view all work orders
+CREATE POLICY "Authenticated users can view all work orders"
+  ON public.work_orders FOR SELECT
+  USING (auth.role() = 'authenticated');
+-- Allow authenticated users to insert work orders
+CREATE POLICY "Authenticated users can insert work orders"
+  ON public.work_orders FOR INSERT
+  WITH CHECK (auth.uid() = created_by);
+-- Allow authenticated users to update work orders
+-- (Depending on your exact app rules, you might want managers/admins to update ALL, 
+-- but this allows the creator to update at minimum)
+CREATE POLICY "Authenticated users can update their own work orders"
+  ON public.work_orders FOR UPDATE
+  USING (auth.role() = 'authenticated');
 
 -- =============================================
 -- STEP 5: Profiles view (for Assigned To dropdown)

@@ -13,6 +13,7 @@ import AudioLengthCalculator from './pages/AudioLengthCalculator';
 import ProfileSettings from './pages/ProfileSettings';
 import GroupedWorkOrders from './pages/GroupedWorkOrders';
 import CreativeGroupedView from './pages/CreativeGroupedView';
+import Dashboard from './pages/Dashboard';
 
 function parseJwt(token) {
   try {
@@ -87,6 +88,7 @@ function App() {
             <Route path="/profile" element={<ProfileSettings user={session?.user} />} />
             {canManageUsers && (
               <>
+                <Route path="/dashboard" element={<Dashboard />} />
                 <Route path="/admin/users" element={<AllUsersScreen />} />
                 <Route path="/admin/create" element={<AdminScreen />} />
                 <Route path="/admin" element={<Navigate to="/admin/users" />} />

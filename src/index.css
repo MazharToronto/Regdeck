@@ -1387,3 +1387,386 @@ textarea.form-input {
     grid-template-columns: 1fr;
   }
 }
+
+/* ===== Dashboard ===== */
+.dashboard-filters {
+  display: flex;
+  align-items: center;
+  gap: 2rem;
+  background: #fff;
+  border-radius: 16px;
+  padding: 1.25rem 1.75rem;
+  margin-bottom: 1.5rem;
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.04);
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  flex-wrap: wrap;
+}
+
+.dashboard-filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.dashboard-filter-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #8a8a9a;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.dashboard-radio-group {
+  display: flex;
+  gap: 0.25rem;
+  background: #f1f1f8;
+  border-radius: 10px;
+  padding: 0.2rem;
+}
+
+.dashboard-radio-option {
+  position: relative;
+}
+
+.dashboard-radio-option input[type="radio"] {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.dashboard-radio-option label {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.5rem 1.1rem;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: #5a5a72;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  user-select: none;
+}
+
+.dashboard-radio-option input[type="radio"]:checked + label {
+  background: linear-gradient(135deg, #6366f1, #7c3aed);
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.3);
+  font-weight: 600;
+}
+
+.dashboard-radio-option label:hover {
+  background: rgba(99, 102, 241, 0.08);
+}
+
+.dashboard-radio-option input[type="radio"]:checked + label:hover {
+  background: linear-gradient(135deg, #6366f1, #7c3aed);
+}
+
+.dashboard-date-input {
+  padding: 0.55rem 0.85rem;
+  border: 1.5px solid #ececf1;
+  border-radius: 10px;
+  background: #f7f7fb;
+  color: #1e1e2f;
+  font-size: 0.85rem;
+  font-family: inherit;
+  outline: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  min-width: 160px;
+}
+
+.dashboard-date-input:focus {
+  border-color: #6366f1;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.08);
+  background: #fff;
+}
+
+.dashboard-selection-summary {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-left: auto;
+  padding: 0.45rem 1rem;
+  background: rgba(99, 102, 241, 0.06);
+  border-radius: 10px;
+  font-size: 0.8rem;
+  color: #6366f1;
+  font-weight: 500;
+}
+
+.dashboard-selection-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #6366f1;
+  animation: dashPulse 1.5s ease infinite;
+}
+
+@keyframes dashPulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(0.85); }
+}
+
+/* Kanban Grid */
+.dashboard-kanban {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(420px, 1fr));
+  gap: 1.25rem;
+  animation: fadeIn 0.35s ease;
+}
+
+@media (max-width: 900px) {
+  .dashboard-kanban {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Report Card */
+.dashboard-report-card {
+  background: #fff;
+  border-radius: 16px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.05);
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  overflow: hidden;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  animation: dashCardIn 0.4s ease both;
+}
+
+.dashboard-report-card:nth-child(1) { animation-delay: 0s; }
+.dashboard-report-card:nth-child(2) { animation-delay: 0.07s; }
+.dashboard-report-card:nth-child(3) { animation-delay: 0.14s; }
+.dashboard-report-card:nth-child(4) { animation-delay: 0.21s; }
+.dashboard-report-card:nth-child(5) { animation-delay: 0.28s; }
+
+@keyframes dashCardIn {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.dashboard-report-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.08);
+}
+
+/* Report Header */
+.dashboard-report-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.85rem 1.25rem;
+  background: linear-gradient(135deg, #1b5e20, #2e7d32);
+  color: #fff;
+}
+
+/* Language-specific header colors */
+.dashboard-report-header.lang-en {
+  background: linear-gradient(135deg, #1b5e20, #2e7d32);
+}
+
+.dashboard-report-header.lang-fr {
+  background: linear-gradient(135deg, #1565c0, #1976d2);
+}
+
+.dashboard-report-header.placeholder-header {
+  opacity: 0.78;
+}
+
+.dashboard-report-header.placeholder-header.lang-en {
+  background: linear-gradient(135deg, #2e7d32, #43a047);
+}
+
+.dashboard-report-header.placeholder-header.lang-fr {
+  background: linear-gradient(135deg, #1976d2, #2196f3);
+}
+
+.dashboard-report-title {
+  font-size: 0.9rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+.dashboard-report-count {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(6px);
+  padding: 0.25rem 0.7rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+/* Report Body */
+.dashboard-report-body {
+  padding: 0;
+  max-height: 380px;
+  overflow-y: auto;
+}
+
+.dashboard-report-body::-webkit-scrollbar {
+  width: 5px;
+}
+
+.dashboard-report-body::-webkit-scrollbar-thumb {
+  background: #d0d0e0;
+  border-radius: 10px;
+}
+
+/* Mini Table */
+.dashboard-mini-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.dashboard-mini-table th {
+  padding: 0.6rem 0.75rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #8a8a9a;
+  border-bottom: 1px solid #f0f0f5;
+  text-align: left;
+  white-space: nowrap;
+  position: sticky;
+  top: 0;
+  background: #fff;
+  z-index: 1;
+}
+
+.dashboard-mini-table td {
+  padding: 0.55rem 0.75rem;
+  font-size: 0.82rem;
+  color: #1e1e2f;
+  border-bottom: 1px solid #f5f5fa;
+}
+
+.dashboard-mini-table tbody tr:hover td {
+  background: #fafaff;
+}
+
+.dashboard-mini-table .assigned-badge {
+  display: inline-block;
+  padding: 0.15rem 0.6rem;
+  border-radius: 999px;
+  background: #fde8c8;
+  color: #8b5e3c;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+/* Status badges in dashboard mini tables */
+.dash-status-badge {
+  display: inline-block;
+  padding: 0.15rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  background: #f1f1f8;
+  color: #5a5a72;
+}
+
+.dash-status-done {
+  background: #d1fae5;
+  color: #047857;
+}
+
+.dash-status-inprogress {
+  background: #fef3c7;
+  color: #b45309;
+}
+
+.dash-status-pending {
+  background: #e0e7ff;
+  color: #4338ca;
+}
+
+/* Empty & Placeholder States */
+.dashboard-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2.5rem 1rem;
+  color: #8a8a9a;
+  text-align: center;
+  gap: 0.5rem;
+}
+
+.dashboard-empty-state svg {
+  opacity: 0.35;
+  margin-bottom: 0.25rem;
+}
+
+.dashboard-empty-state p {
+  font-size: 0.85rem;
+}
+
+.dashboard-placeholder-body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem 1.5rem;
+  text-align: center;
+  gap: 0.75rem;
+}
+
+.dashboard-coming-soon-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.35rem 1rem;
+  border-radius: 999px;
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.08), rgba(124, 58, 237, 0.08));
+  color: #6366f1;
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.dashboard-placeholder-text {
+  font-size: 0.85rem;
+  color: #8a8a9a;
+  max-width: 240px;
+  line-height: 1.5;
+}
+
+/* Prompt state when filters not selected */
+.dashboard-prompt {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 4rem 2rem;
+  text-align: center;
+  gap: 1rem;
+  animation: fadeIn 0.35s ease;
+}
+
+.dashboard-prompt-icon {
+  width: 72px;
+  height: 72px;
+  border-radius: 20px;
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.08), rgba(124, 58, 237, 0.08));
+  color: #6366f1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.dashboard-prompt h3 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #1e1e2f;
+}
+
+.dashboard-prompt p {
+  font-size: 0.9rem;
+  color: #8a8a9a;
+  max-width: 340px;
+  line-height: 1.55;
+}

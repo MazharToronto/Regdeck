@@ -159,8 +159,8 @@ export default function EditWorkOrderModal({ record, onClose, onSaved, userRoles
       tat: parseInt(formData.tat, 10),
       due_date: formData.due_date || null,
       audio_length: formData.audio_length || null,
-      word_count: formData.word_count ? parseInt(formData.word_count, 10) : 0,
-      character_wz_space: formData.character_wz_space ? parseInt(formData.character_wz_space, 10) : 0,
+      word_count: formData.word_count,
+      character_wz_space: formData.character_wz_space,
       line_count: formData.line_count ? parseInt(formData.line_count, 10) : 0,
       status: formData.status,
       delivery_date: formData.delivery_date || null,
@@ -294,11 +294,11 @@ export default function EditWorkOrderModal({ record, onClose, onSaved, userRoles
             <div className="form-row">
               <div className="form-group">
                 <label className="form-label">Word Count</label>
-                <input type="number" name="word_count" className="form-input" value={formData.word_count} onChange={handleChange} />
+                <input type="text" name="word_count" className="form-input" value={formData.word_count} onChange={handleChange} />
               </div>
               <div className="form-group">
                 <label className="form-label">Characters w/ Space</label>
-                <input type="number" name="character_wz_space" className="form-input" value={formData.character_wz_space} onChange={handleChange} />
+                <input type="text" name="character_wz_space" className="form-input" value={formData.character_wz_space} onChange={handleChange} />
               </div>
               <div className="form-group">
                 <label className="form-label">Line Count</label>
