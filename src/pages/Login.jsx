@@ -20,7 +20,20 @@ export default function Login() {
     if (error) {
       setError(error.message);
     } else if (data.session) {
-      navigate('/');
+      // Check if the user is active in ref_users
+      const { data: refUser } = await supabase
+        .from('ref_users')
+        .select('is_active')
+        .eq('user_id', data.session.user.id)
+        .maybeSingle();
+
+      // If a ref_users record exists and is explicitly disabled, block login
+      if (refUser && refUser.is_active === false) {
+        await supabase.auth.signOut();
+        setError('Your account has been disabled. Please contact your administrator.');
+      } else {
+        navigate('/');
+      }
     }
     setLoading(false);
   };

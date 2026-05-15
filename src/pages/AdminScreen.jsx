@@ -32,6 +32,7 @@ export default function AdminScreen() {
     role_id: '',
     email_confirm: true,
     phone_confirm: false,
+    is_active: true,
   });
 
   useEffect(() => {
@@ -73,6 +74,7 @@ export default function AdminScreen() {
       role_id: roles.length > 0 ? roles[0].id : '',
       email_confirm: true,
       phone_confirm: false,
+      is_active: true,
     });
   };
 
@@ -110,6 +112,7 @@ export default function AdminScreen() {
           role_id: form.role_id,
           email_confirm: form.email_confirm,
           phone_confirm: form.phone_confirm,
+          is_active: form.is_active,
         },
       });
 
@@ -304,6 +307,33 @@ export default function AdminScreen() {
                     </div>
                   </div>
                 </div>
+              </div>
+
+              {/* Account Status */}
+              <div className="form-group" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }}>
+                <label className="form-label">Account Status</label>
+                <label style={{
+                  display: 'flex', alignItems: 'center', gap: '10px',
+                  padding: '10px 14px',
+                  border: `1px solid ${form.is_active ? '#bbf7d0' : '#fecaca'}`,
+                  borderRadius: '8px',
+                  background: form.is_active ? '#f0fdf4' : '#fff1f2',
+                  cursor: 'pointer',
+                  userSelect: 'none',
+                }}>
+                  <input
+                    type="checkbox"
+                    checked={form.is_active}
+                    onChange={(e) => handleChange('is_active', e.target.checked)}
+                    style={{ width: '18px', height: '18px', accentColor: '#16a34a', cursor: 'pointer' }}
+                  />
+                  <span style={{
+                    fontSize: '14px', fontWeight: '600',
+                    color: form.is_active ? '#166534' : '#991b1b'
+                  }}>
+                    {form.is_active ? '✓ Active' : '✗ Disabled'}
+                  </span>
+                </label>
               </div>
             </div>
 

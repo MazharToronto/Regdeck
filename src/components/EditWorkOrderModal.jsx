@@ -124,7 +124,8 @@ export default function EditWorkOrderModal({ record, onClose, onSaved, userRoles
       
       // Auto-calculate line count when character w/ space changes
       if (name === 'character_wz_space') {
-        const chars = parseInt(value, 10);
+        const cleanValue = typeof value === 'string' ? value.replace(/,/g, '') : value;
+        const chars = parseInt(cleanValue, 10);
         if (!isNaN(chars)) {
           updated.line_count = Math.floor(chars / 65);
         } else {
@@ -147,6 +148,12 @@ export default function EditWorkOrderModal({ record, onClose, onSaved, userRoles
     setError(null);
     setSuccess(false);
 
+    const cleanWordCount = formData.word_count ? String(formData.word_count).replace(/,/g, '') : '';
+    const wordCountParsed = parseInt(cleanWordCount, 10);
+    
+    const cleanCharSpace = formData.character_wz_space ? String(formData.character_wz_space).replace(/,/g, '') : '';
+    const charSpaceParsed = parseInt(cleanCharSpace, 10);
+
     const updatePayload = {
       language: formData.language,
       work_order_number: formData.work_order_number,
@@ -159,8 +166,8 @@ export default function EditWorkOrderModal({ record, onClose, onSaved, userRoles
       tat: parseInt(formData.tat, 10),
       due_date: formData.due_date || null,
       audio_length: formData.audio_length || null,
-      word_count: formData.word_count,
-      character_wz_space: formData.character_wz_space,
+      word_count: !isNaN(wordCountParsed) ? wordCountParsed : null,
+      character_wz_space: !isNaN(charSpaceParsed) ? charSpaceParsed : null,
       line_count: formData.line_count ? parseInt(formData.line_count, 10) : 0,
       status: formData.status,
       delivery_date: formData.delivery_date || null,

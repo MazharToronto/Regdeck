@@ -61,6 +61,7 @@ export default function AllUsersScreen() {
           phone: editingUser.phone,
           full_name: editingUser.full_name,
           role_id: editingUser.role_id,
+          is_active: editingUser.is_active,
         },
       });
 
@@ -146,6 +147,7 @@ export default function AllUsersScreen() {
                   <th>Email</th>
                   <th>Phone</th>
                   <th>Role</th>
+                  <th>Status</th>
                   <th>Created At</th>
                   <th>Actions</th>
                 </tr>
@@ -169,12 +171,32 @@ export default function AllUsersScreen() {
                         {user.role_name}
                       </span>
                     </td>
+                    <td>
+                      <span style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '4px',
+                        padding: '3px 10px',
+                        borderRadius: '999px',
+                        fontSize: '12px',
+                        fontWeight: '600',
+                        background: user.is_active !== false ? '#dcfce7' : '#fee2e2',
+                        color: user.is_active !== false ? '#166534' : '#991b1b',
+                      }}>
+                        <span style={{
+                          width: '6px', height: '6px', borderRadius: '50%',
+                          background: user.is_active !== false ? '#16a34a' : '#dc2626',
+                          display: 'inline-block'
+                        }} />
+                        {user.is_active !== false ? 'Active' : 'Disabled'}
+                      </span>
+                    </td>
                     <td>{new Date(user.created_at).toLocaleDateString()}</td>
                     <td>
                       <button 
                         className="btn-secondary" 
                         style={{ padding: '6px 12px', fontSize: '13px' }}
-                        onClick={() => setEditingUser(user)}
+                        onClick={() => setEditingUser({ ...user, is_active: user.is_active ?? true })}
                       >
                         <Edit2 size={14} style={{ marginRight: '6px' }} />
                         Edit
@@ -251,6 +273,32 @@ export default function AllUsersScreen() {
                           </option>
                         ))}
                       </select>
+                    </div>
+
+                    <div className="form-group" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }}>
+                      <label className="form-label">Account Status</label>
+                      <label style={{
+                        display: 'flex', alignItems: 'center', gap: '10px',
+                        padding: '10px 14px',
+                        border: `1px solid ${editingUser.is_active ? '#bbf7d0' : '#fecaca'}`,
+                        borderRadius: '8px',
+                        background: editingUser.is_active ? '#f0fdf4' : '#fff1f2',
+                        cursor: 'pointer',
+                        userSelect: 'none',
+                      }}>
+                        <input
+                          type="checkbox"
+                          checked={editingUser.is_active ?? true}
+                          onChange={(e) => setEditingUser({...editingUser, is_active: e.target.checked})}
+                          style={{ width: '18px', height: '18px', accentColor: '#16a34a', cursor: 'pointer' }}
+                        />
+                        <span style={{
+                          fontSize: '14px', fontWeight: '600',
+                          color: editingUser.is_active ? '#166534' : '#991b1b'
+                        }}>
+                          {editingUser.is_active ? '✓ Active' : '✗ Disabled'}
+                        </span>
+                      </label>
                     </div>
                   </div>
                 </div>

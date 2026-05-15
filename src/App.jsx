@@ -14,6 +14,11 @@ import ProfileSettings from './pages/ProfileSettings';
 import GroupedWorkOrders from './pages/GroupedWorkOrders';
 import CreativeGroupedView from './pages/CreativeGroupedView';
 import Dashboard from './pages/Dashboard';
+import MyGroupViewRequest from './pages/MyGroupViewRequest';
+import InvoiceGeneration from './pages/InvoiceGeneration';
+import InvoiceDashboard from './pages/InvoiceDashboard';
+import EmployeeDashboard from './pages/EmployeeDashboard';
+import ReferenceRates from './pages/ReferenceRates';
 
 function parseJwt(token) {
   try {
@@ -62,13 +67,15 @@ function App() {
   const canCreate = isAdmin || isManager;
   const canManageUsers = isAdmin || isManager;
   const isEmployee = !isAdmin && !isManager;
-  const defaultRoute = isEmployee ? '/records' : '/home';
+  const defaultRoute = isEmployee ? '/records' : '/create';
 
   return (
     <div className={`app-shell ${!isSidebarOpen ? 'sidebar-collapsed' : ''}`}>
       <Sidebar 
         canManageUsers={canManageUsers} 
         canCreate={canCreate} 
+        isManager={isManager}
+        isAdmin={isAdmin}
         isOpen={isSidebarOpen}
         onToggle={() => setIsSidebarOpen(!isSidebarOpen)}
       />
@@ -81,18 +88,29 @@ function App() {
             {canCreate && (
               <Route path="/create" element={<CreateRecord user={session?.user} />} />
             )}
+            {isEmployee && (
+              <Route path="/ee-dashboard" element={<EmployeeDashboard user={session?.user} />} />
+            )}
             <Route path="/records" element={<Reports userRoles={userRoles} user={session?.user} />} />
             <Route path="/audio-calculator" element={<AudioLengthCalculator />} />
             <Route path="/grouped-view" element={<GroupedWorkOrders />} />
             <Route path="/board-view" element={<CreativeGroupedView />} />
+            <Route path="/group-view-request" element={<MyGroupViewRequest userRoles={userRoles} user={session?.user} />} />
             <Route path="/profile" element={<ProfileSettings user={session?.user} />} />
             {canManageUsers && (
               <>
                 <Route path="/dashboard" element={<Dashboard />} />
                 <Route path="/admin/users" element={<AllUsersScreen />} />
                 <Route path="/admin/create" element={<AdminScreen />} />
+                <Route path="/invoice-generation" element={<InvoiceGeneration userRoles={userRoles} />} />
                 <Route path="/admin" element={<Navigate to="/admin/users" />} />
               </>
+            )}
+            {isAdmin && (
+              <Route path="/admin/rates" element={<ReferenceRates />} />
+            )}
+            {isManager && (
+              <Route path="/invoice-dashboard" element={<InvoiceDashboard />} />
             )}
             <Route path="*" element={<Navigate to={defaultRoute} />} />
           </Routes>

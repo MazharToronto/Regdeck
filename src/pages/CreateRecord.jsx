@@ -156,24 +156,28 @@ export default function CreateRecord({ user }) {
     setLoading(true);
     setError(null);
     try {
-      // 1. Fetch users from Supabase API (ref_users table)
-      const { data: users, error: userError } = await supabase
-        .from('ref_users')
-        .select('name')
-        .order('name', { ascending: true });
+      // Call the existing edge function to get all users with roles and is_active status.
+      // This runs under the service role key — no RLS issues.
+      const { data: allUsers, error: usersError } = await supabase.functions.invoke('create-user', {
+        method: 'GET',
+      });
 
-      if (userError) throw userError;
+      if (usersError) throw usersError;
+      if (allUsers?.error) throw new Error(allUsers.error);
 
-      const userNames = users && users.length > 0 
-        ? users.map(u => u.name).filter(Boolean) 
-        : ['No users found'];
+      // Filter to only active users with the 'employee' role
+      const userNames = (allUsers || [])
+        .filter(u => u.role_name?.toLowerCase() === 'employee' && u.is_active !== false)
+        .map(u => u.full_name)
+        .filter(Boolean)
+        .sort();
 
       // 2. Initialize ExcelJS workbook
       const workbook = new ExcelJS.Workbook();
       workbook.creator = 'InvoiceGen';
       workbook.created = new Date();
 
-      // 3. Create the main Template sheet FIRST so it is the active tab
+      // 3. Create the main Template sheet FIRST
       const templateSheet = workbook.addWorksheet('Template');
       const headers = [
         "Work Order Date", "WorkOrder #", "Assigned to", "File Number", 
@@ -191,21 +195,21 @@ export default function CreateRecord({ user }) {
         else col.width = 15;
       });
 
-      // 4. Create a very-hidden Data sheet for the dropdown source
+      // 4. Create a hidden Data sheet for the dropdown source
       const dataSheet = workbook.addWorksheet('Data', { state: 'veryHidden' });
       userNames.forEach((name, index) => {
         dataSheet.getCell(`A${index + 1}`).value = name;
       });
 
-      // 5. Build a quoted comma-separated list for data validation
-      const quotedList = '"' + userNames.join(',') + '"';
+      // 5. Build range reference for data validation (more robust than comma-separated string)
+      const listRange = `Data!$A$1:$A$${userNames.length}`;
 
       // 6. Apply Data Validation to "Assigned to" (Column C) for rows 2 to 1000
       for (let i = 2; i <= 1000; i++) {
         templateSheet.getCell(`C${i}`).dataValidation = {
           type: 'list',
           allowBlank: true,
-          formulae: [quotedList],
+          formulae: [listRange],
           showErrorMessage: true,
           errorTitle: 'Invalid Entry',
           error: 'Please select a name from the dropdown list.'

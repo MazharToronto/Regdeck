@@ -73,9 +73,15 @@ Deno.serve(async (req: Request) => {
         `);
       if (rolesError) throw rolesError;
 
-      // 3. Merge data
+      // 3. Fetch is_active from ref_users (linked via user_id)
+      const { data: refUsersData } = await supabaseAdmin
+        .from('ref_users')
+        .select('user_id, is_active');
+
+      // 4. Merge data
       const usersWithRoles = usersData.users.map(u => {
         const userRole = rolesData.find(r => r.user_id === u.id);
+        const refUser = refUsersData?.find(ru => ru.user_id === u.id);
         return {
           id: u.id,
           email: u.email,
@@ -84,6 +90,7 @@ Deno.serve(async (req: Request) => {
           created_at: u.created_at,
           role_id: userRole?.role_id || null,
           role_name: userRole?.roles?.role_name || 'No Role',
+          is_active: refUser?.is_active ?? true,
         };
       });
 
@@ -98,7 +105,7 @@ Deno.serve(async (req: Request) => {
     // -------------------------------------------------------------
     if (req.method === "POST") {
       const body = await req.json();
-      const { email, password, phone, full_name, role_id } = body;
+      const { email, password, phone, full_name, role_id, is_active } = body;
 
       if (!email || !password || password.length < 6) {
         return new Response(JSON.stringify({ error: "Invalid email or password" }), {
@@ -121,6 +128,18 @@ Deno.serve(async (req: Request) => {
         await supabaseAdmin.from('user_roles').insert({ user_id: data.user.id, role_id });
       }
 
+      // Upsert a ref_users row linking the new user's auth id and is_active status.
+      // The row is keyed by full_name (the table's PK), so we set user_id + is_active.
+      // If a row for this full_name already exists, update user_id and is_active.
+      if (full_name?.trim()) {
+        await supabaseAdmin
+          .from('ref_users')
+          .upsert(
+            { name: full_name.trim(), user_id: data.user.id, is_active: is_active !== false },
+            { onConflict: 'name' }
+          );
+      }
+
       return new Response(JSON.stringify({ success: true, user: data.user }), {
         status: 201, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -131,7 +150,7 @@ Deno.serve(async (req: Request) => {
     // -------------------------------------------------------------
     if (req.method === "PUT") {
       const body = await req.json();
-      const { id, email, password, phone, full_name, role_id } = body;
+      const { id, email, password, phone, full_name, role_id, is_active } = body;
 
       if (!id) {
         return new Response(JSON.stringify({ error: "User ID is required" }), {
@@ -160,6 +179,14 @@ Deno.serve(async (req: Request) => {
         await supabaseAdmin.from('user_roles').delete().eq('user_id', id);
         // Insert new role mapping
         await supabaseAdmin.from('user_roles').insert({ user_id: id, role_id });
+      }
+
+      // Update is_active in ref_users (matched by user_id)
+      if (is_active !== undefined) {
+        await supabaseAdmin
+          .from('ref_users')
+          .update({ is_active: Boolean(is_active) })
+          .eq('user_id', id);
       }
 
       return new Response(JSON.stringify({ success: true, user: data.user }), {

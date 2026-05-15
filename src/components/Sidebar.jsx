@@ -1,8 +1,8 @@
 import { NavLink, useNavigate } from 'react-router-dom';
-import { Home, FileText, PlusCircle, LogOut, Shield, Users, UserPlus, Headphones, Settings, Menu, ChevronLeft, Layers, LayoutGrid, BarChart3 } from 'lucide-react';
+import { Home, FileText, PlusCircle, LogOut, Shield, Users, UserPlus, Headphones, Settings, Menu, ChevronLeft, Layers, LayoutGrid, BarChart3, List, FileSpreadsheet, TrendingUp, DollarSign } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 
-export default function Sidebar({ canManageUsers, canCreate, isOpen, onToggle }) {
+export default function Sidebar({ canManageUsers, canCreate, isManager, isAdmin, isOpen, onToggle }) {
   const navigate = useNavigate();
 
   const handleLogout = async () => {
@@ -40,6 +40,13 @@ export default function Sidebar({ canManageUsers, canCreate, isOpen, onToggle })
           <span>Home</span>
         </NavLink>
 
+        {!canManageUsers && (
+          <NavLink to="/ee-dashboard" className={({isActive}) => `sidebar-link ${isActive ? 'active' : ''}`}>
+            <LayoutGrid size={18} />
+            <span>Employee Dashboard</span>
+          </NavLink>
+        )}
+
         <NavLink to="/records" className={({isActive}) => `sidebar-link ${isActive ? 'active' : ''}`}>
           <FileText size={18} />
           <span>My Requests</span>
@@ -53,6 +60,11 @@ export default function Sidebar({ canManageUsers, canCreate, isOpen, onToggle })
         <NavLink to="/board-view" className={({isActive}) => `sidebar-link ${isActive ? 'active' : ''}`}>
           <LayoutGrid size={18} />
           <span>Board View</span>
+        </NavLink>
+
+        <NavLink to="/group-view-request" className={({isActive}) => `sidebar-link ${isActive ? 'active' : ''}`}>
+          <List size={18} />
+          <span>My Group View</span>
         </NavLink>
 
         <NavLink to="/audio-calculator" className={({isActive}) => `sidebar-link ${isActive ? 'active' : ''}`}>
@@ -82,6 +94,27 @@ export default function Sidebar({ canManageUsers, canCreate, isOpen, onToggle })
             <NavLink to="/admin/create" className={({isActive}) => `sidebar-link ${isActive ? 'active' : ''}`}>
               <UserPlus size={18} />
               <span>Add User</span>
+            </NavLink>
+            {isAdmin && (
+              <NavLink to="/admin/rates" className={({isActive}) => `sidebar-link ${isActive ? 'active' : ''}`}>
+                <DollarSign size={18} />
+                <span>Manage Rates</span>
+              </NavLink>
+            )}
+            <NavLink to="/invoice-generation" className={({isActive}) => `sidebar-link ${isActive ? 'active' : ''}`}>
+              <FileSpreadsheet size={18} />
+              <span>Invoice Gen</span>
+            </NavLink>
+          </>
+        )}
+
+        {isManager && (
+          <>
+            <div className="sidebar-divider" />
+            <div className="sidebar-section-title">Manager</div>
+            <NavLink to="/invoice-dashboard" className={({isActive}) => `sidebar-link ${isActive ? 'active' : ''}`}>
+              <TrendingUp size={18} />
+              <span>Invoice Dashboard</span>
             </NavLink>
           </>
         )}
