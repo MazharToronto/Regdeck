@@ -125,6 +125,16 @@ export default function Dashboard() {
   const filtersReady = language && selectedDate;
   const monthlyFiltersReady = monthlyLanguage && monthlyMonth && monthlyYear;
 
+  // Set today's date in EST timezone on mount
+  useEffect(() => {
+    const now = new Date();
+    const estDate = new Date(now.toLocaleString('en-US', { timeZone: 'America/New_York' }));
+    const yyyy = estDate.getFullYear();
+    const mm = String(estDate.getMonth() + 1).padStart(2, '0');
+    const dd = String(estDate.getDate()).padStart(2, '0');
+    setSelectedDate(`${yyyy}-${mm}-${dd}`);
+  }, []);
+
   // Fetch reports when filters change
   useEffect(() => {
     if (!filtersReady) {
@@ -155,7 +165,12 @@ export default function Dashboard() {
           setError(fetchError.message);
           setReport1Data([]);
         } else {
-          setReport1Data(data || []);
+          const sortedData = (data || []).sort((a, b) => {
+            const timeDiff = new Date(a.wo_date).getTime() - new Date(b.wo_date).getTime();
+            if (timeDiff !== 0) return timeDiff;
+            return (a.work_order_number || '').localeCompare(b.work_order_number || '');
+          });
+          setReport1Data(sortedData);
         }
       } catch (err) {
         setError('Failed to fetch report data.');
@@ -179,7 +194,12 @@ export default function Dashboard() {
           setError2(fetchError.message);
           setReport2Data([]);
         } else {
-          setReport2Data(data || []);
+          const sortedData = (data || []).sort((a, b) => {
+            const timeDiff = new Date(a.wo_date).getTime() - new Date(b.wo_date).getTime();
+            if (timeDiff !== 0) return timeDiff;
+            return (a.work_order_number || '').localeCompare(b.work_order_number || '');
+          });
+          setReport2Data(sortedData);
         }
       } catch (err) {
         setError2('Failed to fetch report data.');
@@ -203,7 +223,12 @@ export default function Dashboard() {
           setError3(fetchError.message);
           setReport3Data([]);
         } else {
-          setReport3Data(data || []);
+          const sortedData = (data || []).sort((a, b) => {
+            const timeDiff = new Date(a.wo_date).getTime() - new Date(b.wo_date).getTime();
+            if (timeDiff !== 0) return timeDiff;
+            return (a.work_order_number || '').localeCompare(b.work_order_number || '');
+          });
+          setReport3Data(sortedData);
         }
       } catch (err) {
         setError3('Failed to fetch report data.');
@@ -672,165 +697,156 @@ export default function Dashboard() {
               <p>Choose a language, month, and year above to generate the monthly dashboard report cards.</p>
             </div>
           ) : (
-            <div className="dashboard-kanban">
-              {/* Monthly Report 1 */}
-              <div className="dashboard-report-card">
-                <div className={`dashboard-report-header ${monthlyLanguage === 'FR' ? 'lang-fr' : 'lang-en'}`}>
-                  <span className="dashboard-report-title">{monthlyLanguage} Metrics by Region</span>
-                  <span className="dashboard-report-count">
-                    <BarChart3 size={13} />
-                    {loadingM1 ? '…' : monthlyReport1Data.length}
+            <div className="dashboard-kanban" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1.5rem', alignItems: 'start' }}>
+              {/* Monthly Report 1: Metrics by Region */}
+              <div className="work-order-card" style={{ background: '#fff', borderRadius: '16px', boxShadow: '0 4px 20px rgba(0, 0, 0, 0.04)', border: '1px solid #f1f5f9', borderTop: '6px solid #14b8a6', overflow: 'hidden' }}>
+                <div style={{ padding: '1.25rem', borderBottom: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+                  <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: '700', color: '#1e293b' }}>
+                    Metrics by Region
+                  </h3>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', padding: '0.4rem 0.85rem', background: '#ccfbf1', color: '#0f766e', borderRadius: '999px', fontSize: '0.85rem', fontWeight: '600' }}>
+                    <BarChart3 size={14} />
+                    {loadingM1 ? '…' : monthlyReport1Data.length} Regions
                   </span>
                 </div>
-                <div className="dashboard-report-body">
+                <div style={{ padding: '1.25rem', background: '#f8fafc' }}>
                   {loadingM1 ? (
-                    <div className="dashboard-empty-state">
+                    <div className="dashboard-empty-state" style={{ background: '#fff', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
                       <p>Loading report data…</p>
                     </div>
                   ) : errorM1 ? (
-                    <div className="dashboard-empty-state">
+                    <div className="dashboard-empty-state" style={{ background: '#fff', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
                       <p style={{ color: '#dc2626' }}>{errorM1}</p>
                     </div>
                   ) : monthlyReport1Data.length === 0 ? (
-                    <div className="dashboard-empty-state">
-                      <BarChart3 size={28} />
+                    <div className="dashboard-empty-state" style={{ background: '#fff', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                      <BarChart3 size={28} color="#94a3b8" />
                       <p>No data for this month.</p>
                     </div>
                   ) : (
-                <div className="kanban-card-grid">
-                  {monthlyReport1Data.map((row, idx) => (
-                    <div key={idx} className="kanban-card">
-                      <div className="kanban-card-header">
-                        <span style={{ 
-                          display: 'inline-block',
-                          padding: '4px 12px',
-                          borderRadius: '12px',
-                          fontSize: '0.9rem',
-                          fontWeight: '600',
-                          ...getRegionStyle(row.region)
-                        }}>
-                          {row.region}
-                        </span>
-                      </div>
-                      <div className="kanban-metrics-grid">
-                        <div className="kanban-metric-box">
-                          <span className="label">Audio Length</span>
-                          <span className="value">{formatSeconds(row.audioSeconds)}</span>
-                        </div>
-                        <div className="kanban-metric-box">
-                          <span className="label">Word Count</span>
-                          <span className="value">{row.wordCount.toLocaleString()}</span>
-                        </div>
-                        <div className="kanban-metric-box">
-                          <span className="label">Characters</span>
-                          <span className="value">{row.characterSpace.toLocaleString()}</span>
-                        </div>
-                        <div className="kanban-metric-box">
-                          <span className="label">Line Count</span>
-                          <span className="value">{row.lineCount.toLocaleString()}</span>
-                        </div>
-                      </div>
+                    <div style={{ overflowX: 'auto', background: '#fff', borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 1px 2px rgba(0,0,0,0.02)' }}>
+                      <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                        <thead>
+                          <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
+                            <th style={{ padding: '0.85rem 1rem', fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase', fontWeight: '600', letterSpacing: '0.05em' }}>Region</th>
+                            <th style={{ padding: '0.85rem 1rem', fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase', fontWeight: '600', letterSpacing: '0.05em' }}>Audio Length</th>
+                            <th style={{ padding: '0.85rem 1rem', fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase', fontWeight: '600', letterSpacing: '0.05em' }}>Word Count</th>
+                            <th style={{ padding: '0.85rem 1rem', fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase', fontWeight: '600', letterSpacing: '0.05em' }}>Characters</th>
+                            <th style={{ padding: '0.85rem 1rem', fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase', fontWeight: '600', letterSpacing: '0.05em' }}>Line Count</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {monthlyReport1Data.map((row, idx) => (
+                            <tr key={idx} style={{ borderBottom: idx === monthlyReport1Data.length - 1 ? 'none' : '1px solid #f1f5f9' }}>
+                              <td style={{ padding: '0.85rem 1rem', fontSize: '0.85rem', fontWeight: '600', color: '#334155' }}>
+                                <span style={{ display: 'inline-block', padding: '2px 8px', borderRadius: '8px', fontSize: '0.8rem', fontWeight: '600', ...getRegionStyle(row.region) }}>
+                                  {row.region}
+                                </span>
+                              </td>
+                              <td style={{ padding: '0.85rem 1rem', fontSize: '0.9rem', fontWeight: '700', color: '#6366f1', fontFamily: 'monospace' }}>{formatSeconds(row.audioSeconds)}</td>
+                              <td style={{ padding: '0.85rem 1rem', fontSize: '0.85rem', color: '#475569' }}>{row.wordCount.toLocaleString()}</td>
+                              <td style={{ padding: '0.85rem 1rem', fontSize: '0.85rem', color: '#475569' }}>{row.characterSpace.toLocaleString()}</td>
+                              <td style={{ padding: '0.85rem 1rem', fontSize: '0.85rem', color: '#475569' }}>{row.lineCount.toLocaleString()}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
                     </div>
-                  ))}
-                </div>
-              )}
+                  )}
                 </div>
               </div>
 
               {/* Monthly Report 2: By Assignee */}
-              <div className="dashboard-report-card">
-                <div className={`dashboard-report-header ${monthlyLanguage === 'FR' ? 'lang-fr' : 'lang-en'}`}>
-                  <span className="dashboard-report-title">{monthlyLanguage} Metrics by Assignee</span>
-                  <span className="dashboard-report-count">
-                    <BarChart3 size={13} />
-                    {loadingM1 ? '…' : monthlyReport2Data.length}
+              <div className="work-order-card" style={{ background: '#fff', borderRadius: '16px', boxShadow: '0 4px 20px rgba(0, 0, 0, 0.04)', border: '1px solid #f1f5f9', borderTop: '6px solid #eab308', overflow: 'hidden' }}>
+                <div style={{ padding: '1.25rem', borderBottom: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+                  <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: '700', color: '#1e293b' }}>
+                    Metrics by Assignee
+                  </h3>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', padding: '0.4rem 0.85rem', background: '#fef3c7', color: '#a16207', borderRadius: '999px', fontSize: '0.85rem', fontWeight: '600' }}>
+                    <BarChart3 size={14} />
+                    {loadingM1 ? '…' : monthlyReport2Data.length} Assignees
                   </span>
                 </div>
-                <div className="dashboard-report-body">
+                <div style={{ padding: '1.25rem', background: '#f8fafc' }}>
                   {loadingM1 ? (
-                    <div className="dashboard-empty-state">
+                    <div className="dashboard-empty-state" style={{ background: '#fff', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
                       <p>Loading report data…</p>
                     </div>
                   ) : errorM1 ? (
-                    <div className="dashboard-empty-state">
+                    <div className="dashboard-empty-state" style={{ background: '#fff', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
                       <p style={{ color: '#dc2626' }}>{errorM1}</p>
                     </div>
                   ) : monthlyReport2Data.length === 0 ? (
-                    <div className="dashboard-empty-state">
-                      <BarChart3 size={28} />
+                    <div className="dashboard-empty-state" style={{ background: '#fff', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                      <BarChart3 size={28} color="#94a3b8" />
                       <p>No data for this month.</p>
                     </div>
                   ) : (
-                <div className="kanban-card-grid">
-                  {monthlyReport2Data.map((row, idx) => (
-                    <div key={idx} className="kanban-card">
-                      <div className="kanban-card-header">
-                        <span style={{ 
-                          display: 'inline-block',
-                          padding: '4px 12px',
-                          borderRadius: '12px',
-                          fontSize: '0.9rem',
-                          fontWeight: '600',
-                          ...getAssigneeStyle(row.assigned_to)
-                        }}>
-                          {row.assigned_to}
-                        </span>
-                      </div>
-                      <div className="kanban-metrics-grid">
-                        <div className="kanban-metric-box">
-                          <span className="label">Audio Length</span>
-                          <span className="value">{formatSeconds(row.audioSeconds)}</span>
-                        </div>
-                        <div className="kanban-metric-box">
-                          <span className="label">Word Count</span>
-                          <span className="value">{row.wordCount.toLocaleString()}</span>
-                        </div>
-                        <div className="kanban-metric-box">
-                          <span className="label">Characters</span>
-                          <span className="value">{row.characterSpace.toLocaleString()}</span>
-                        </div>
-                        <div className="kanban-metric-box">
-                          <span className="label">Line Count</span>
-                          <span className="value">{row.lineCount.toLocaleString()}</span>
-                        </div>
-                      </div>
+                    <div style={{ overflowX: 'auto', background: '#fff', borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 1px 2px rgba(0,0,0,0.02)' }}>
+                      <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                        <thead>
+                          <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
+                            <th style={{ padding: '0.85rem 1rem', fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase', fontWeight: '600', letterSpacing: '0.05em' }}>Assignee</th>
+                            <th style={{ padding: '0.85rem 1rem', fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase', fontWeight: '600', letterSpacing: '0.05em' }}>Audio Length</th>
+                            <th style={{ padding: '0.85rem 1rem', fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase', fontWeight: '600', letterSpacing: '0.05em' }}>Word Count</th>
+                            <th style={{ padding: '0.85rem 1rem', fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase', fontWeight: '600', letterSpacing: '0.05em' }}>Characters</th>
+                            <th style={{ padding: '0.85rem 1rem', fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase', fontWeight: '600', letterSpacing: '0.05em' }}>Line Count</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {monthlyReport2Data.map((row, idx) => (
+                            <tr key={idx} style={{ borderBottom: idx === monthlyReport2Data.length - 1 ? 'none' : '1px solid #f1f5f9' }}>
+                              <td style={{ padding: '0.85rem 1rem', fontSize: '0.85rem', fontWeight: '600', color: '#334155' }}>
+                                <span style={{ display: 'inline-block', padding: '2px 8px', borderRadius: '8px', fontSize: '0.8rem', fontWeight: '600', ...getAssigneeStyle(row.assigned_to) }}>
+                                  {row.assigned_to}
+                                </span>
+                              </td>
+                              <td style={{ padding: '0.85rem 1rem', fontSize: '0.9rem', fontWeight: '700', color: '#6366f1', fontFamily: 'monospace' }}>{formatSeconds(row.audioSeconds)}</td>
+                              <td style={{ padding: '0.85rem 1rem', fontSize: '0.85rem', color: '#475569' }}>{row.wordCount.toLocaleString()}</td>
+                              <td style={{ padding: '0.85rem 1rem', fontSize: '0.85rem', color: '#475569' }}>{row.characterSpace.toLocaleString()}</td>
+                              <td style={{ padding: '0.85rem 1rem', fontSize: '0.85rem', color: '#475569' }}>{row.lineCount.toLocaleString()}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
                     </div>
-                  ))}
-                </div>
-              )}
+                  )}
                 </div>
               </div>
 
               {/* Monthly Report 4: Word Count by Assignee (Horizontal Bar) */}
-              <div className="dashboard-report-card dashboard-report-full-width">
-                <div className={`dashboard-report-header ${monthlyLanguage === 'FR' ? 'lang-fr' : 'lang-en'}`}>
-                  <span className="dashboard-report-title">{monthNameStr} {monthlyYear} Word Count</span>
-                  <span className="dashboard-report-count">
-                    <BarChart3 size={13} />
+              <div className="work-order-card" style={{ gridColumn: '1 / -1', background: '#fff', borderRadius: '16px', boxShadow: '0 4px 20px rgba(0, 0, 0, 0.04)', border: '1px solid #f1f5f9', borderTop: '6px solid #f97316', overflow: 'hidden' }}>
+                <div style={{ padding: '1.25rem', borderBottom: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+                  <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: '700', color: '#1e293b' }}>
+                    {monthNameStr} {monthlyYear} Word Count
+                  </h3>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', padding: '0.4rem 0.85rem', background: '#ffedd5', color: '#c2410c', borderRadius: '999px', fontSize: '0.85rem', fontWeight: '600' }}>
+                    <BarChart3 size={14} />
+                    {loadingM1 ? '…' : sortedWordCountData.length} Assignees
                   </span>
                 </div>
-                <div className="dashboard-report-body" style={{ padding: '1.5rem' }}>
+                <div style={{ padding: '1.25rem', background: '#f8fafc' }}>
                   {loadingM1 ? (
-                    <div className="dashboard-empty-state">
+                    <div className="dashboard-empty-state" style={{ background: '#fff', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
                       <p>Loading report data…</p>
                     </div>
                   ) : errorM1 ? (
-                    <div className="dashboard-empty-state">
+                    <div className="dashboard-empty-state" style={{ background: '#fff', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
                       <p style={{ color: '#dc2626' }}>{errorM1}</p>
                     </div>
                   ) : sortedWordCountData.length === 0 ? (
-                    <div className="dashboard-empty-state">
-                      <BarChart3 size={28} />
+                    <div className="dashboard-empty-state" style={{ background: '#fff', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                      <BarChart3 size={28} color="#94a3b8" />
                       <p>No data for this month.</p>
                     </div>
                   ) : (
-                    <div className="horizontal-bar-chart" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                    <div className="horizontal-bar-chart" style={{ display: 'flex', flexDirection: 'column', gap: '12px', background: '#fff', padding: '1.25rem', borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 1px 2px rgba(0,0,0,0.02)' }}>
                       {sortedWordCountData.map((d, i) => {
                         const widthPercent = Math.max((d.wordCount / maxWordCount) * 100, 1); // Min 1% to show a sliver
                         return (
                           <div key={i} style={{ display: 'flex', alignItems: 'center' }}>
                             {/* Name Label */}
-                            <div style={{ width: '120px', textAlign: 'right', paddingRight: '16px', fontSize: '0.85rem', color: '#475569', fontWeight: 500 }}>
+                            <div style={{ width: '120px', textAlign: 'right', paddingRight: '16px', fontSize: '0.85rem', color: '#475569', fontWeight: 600 }}>
                               {d.assigned_to}
                             </div>
                             {/* Bar Track */}
@@ -838,7 +854,7 @@ export default function Dashboard() {
                               <div style={{ 
                                 width: d.wordCount > 0 ? `${widthPercent}%` : '0%', 
                                 height: '24px', 
-                                backgroundColor: '#3f6212', // Match user screenshot green
+                                backgroundColor: '#f97316', 
                                 borderRadius: '0 4px 4px 0', 
                                 transition: 'width 1s cubic-bezier(0.4, 0, 0.2, 1)',
                                 boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
@@ -848,8 +864,8 @@ export default function Dashboard() {
                                 <div style={{ 
                                   marginLeft: '12px', 
                                   fontSize: '0.85rem', 
-                                  color: '#3f6212', 
-                                  fontWeight: 500,
+                                  color: '#c2410c', 
+                                  fontWeight: 600,
                                   fontVariantNumeric: 'tabular-nums',
                                   animation: 'fadeIn 0.5s ease forwards 0.5s'
                                 }}>
@@ -866,44 +882,47 @@ export default function Dashboard() {
               </div>
 
               {/* Monthly Report 3: Yearly Audio Length Bar Chart */}
-              <div className="dashboard-report-card dashboard-report-full-width">
-                <div className={`dashboard-report-header ${monthlyLanguage === 'FR' ? 'lang-fr' : 'lang-en'}`}>
-                  <span className="dashboard-report-title">{monthlyYear} Monthly Audio Length</span>
-                  <span className="dashboard-report-count">
-                    <BarChart3 size={13} />
+              <div className="work-order-card" style={{ gridColumn: '1 / -1', background: '#fff', borderRadius: '16px', boxShadow: '0 4px 20px rgba(0, 0, 0, 0.04)', border: '1px solid #f1f5f9', borderTop: '6px solid #3b82f6', overflow: 'hidden' }}>
+                <div style={{ padding: '1.25rem', borderBottom: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+                  <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: '700', color: '#1e293b' }}>
+                    {monthlyYear} Monthly Audio Length
+                  </h3>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', padding: '0.4rem 0.85rem', background: '#dbeafe', color: '#1d4ed8', borderRadius: '999px', fontSize: '0.85rem', fontWeight: '600' }}>
+                    <BarChart3 size={14} />
+                    {loadingM3 ? '…' : monthlyReport3Data.length} Months
                   </span>
                 </div>
-                <div className="dashboard-report-body">
+                <div style={{ padding: '1.25rem', background: '#f8fafc' }}>
                   {loadingM3 ? (
-                    <div className="dashboard-empty-state">
+                    <div className="dashboard-empty-state" style={{ background: '#fff', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
                       <p>Loading chart data…</p>
                     </div>
                   ) : errorM3 ? (
-                    <div className="dashboard-empty-state">
+                    <div className="dashboard-empty-state" style={{ background: '#fff', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
                       <p style={{ color: '#dc2626' }}>{errorM3}</p>
                     </div>
                   ) : monthlyReport3Data.length === 0 ? (
-                    <div className="dashboard-empty-state">
-                      <BarChart3 size={28} />
+                    <div className="dashboard-empty-state" style={{ background: '#fff', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                      <BarChart3 size={28} color="#94a3b8" />
                       <p>No data for this year.</p>
                     </div>
                   ) : (
-                    <div className="css-bar-chart-container">
+                    <div className="css-bar-chart-container" style={{ background: '#fff', padding: '2rem 1.25rem', borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 1px 2px rgba(0,0,0,0.02)' }}>
                       <div className="css-bar-chart-bars">
                         {monthlyReport3Data.map((d, i) => {
                           const heightPercent = Math.max((d.audioSeconds / maxAudioSeconds) * 100, 2); // Min 2% height so it's visible
                           return (
                             <div className="css-bar-wrapper" key={i}>
-                              <div className="css-bar-value" style={{ opacity: d.audioSeconds > 0 ? undefined : 0 }}>
+                              <div className="css-bar-value" style={{ opacity: d.audioSeconds > 0 ? undefined : 0, color: '#1e293b', fontWeight: 600 }}>
                                 {d.audioSeconds > 0 ? formatSeconds(d.audioSeconds) : ''}
                               </div>
                               <div className="css-bar-fill-container">
                                 <div 
                                   className="css-bar-fill" 
-                                  style={{ height: `${d.audioSeconds > 0 ? heightPercent : 0}%` }}
+                                  style={{ height: `${d.audioSeconds > 0 ? heightPercent : 0}%`, backgroundColor: '#3b82f6', borderRadius: '4px 4px 0 0' }}
                                 ></div>
                               </div>
-                              <div className="css-bar-label">{d.monthName}</div>
+                              <div className="css-bar-label" style={{ fontWeight: 600, color: '#475569' }}>{d.monthName}</div>
                             </div>
                           );
                         })}
@@ -914,58 +933,58 @@ export default function Dashboard() {
               </div>
 
               {/* Monthly Report 5: Rolling 5-Month Metrics */}
-              <div className="dashboard-report-card dashboard-report-full-width">
-                <div className={`dashboard-report-header ${monthlyLanguage === 'FR' ? 'lang-fr' : 'lang-en'}`}>
-                  <span className="dashboard-report-title">Monthly Rolling Metrics</span>
-                  <span className="dashboard-report-count">
-                    <BarChart3 size={13} />
+              <div className="work-order-card" style={{ gridColumn: '1 / -1', background: '#fff', borderRadius: '16px', boxShadow: '0 4px 20px rgba(0, 0, 0, 0.04)', border: '1px solid #f1f5f9', borderTop: '6px solid #8b5cf6', overflow: 'hidden' }}>
+                <div style={{ padding: '1.25rem', borderBottom: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+                  <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: '700', color: '#1e293b' }}>
+                    Monthly Rolling Metrics
+                  </h3>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', padding: '0.4rem 0.85rem', background: '#ede9fe', color: '#6d28d9', borderRadius: '999px', fontSize: '0.85rem', fontWeight: '600' }}>
+                    <BarChart3 size={14} />
+                    {loadingM5 ? '…' : monthlyReport5Data.length} Months
                   </span>
                 </div>
-                <div className="dashboard-report-body">
+                <div style={{ padding: '1.25rem', background: '#f8fafc' }}>
                   {loadingM5 ? (
-                    <div className="dashboard-empty-state">
+                    <div className="dashboard-empty-state" style={{ background: '#fff', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
                       <p>Loading report data…</p>
                     </div>
                   ) : errorM5 ? (
-                    <div className="dashboard-empty-state">
+                    <div className="dashboard-empty-state" style={{ background: '#fff', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
                       <p style={{ color: '#dc2626' }}>{errorM5}</p>
                     </div>
                   ) : monthlyReport5Data.length === 0 ? (
-                    <div className="dashboard-empty-state">
-                      <BarChart3 size={28} />
+                    <div className="dashboard-empty-state" style={{ background: '#fff', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                      <BarChart3 size={28} color="#94a3b8" />
                       <p>No data for these months.</p>
                     </div>
                   ) : (
-                <div className="kanban-card-grid">
-                  {monthlyReport5Data.map((row, idx) => (
-                    <div key={idx} className="kanban-card" style={row.isCurrentMonth ? { border: '2px solid #3f6212', backgroundColor: '#f8fafc' } : {}}>
-                      <div className="kanban-card-header">
-                        <span className="kanban-card-title" style={{ color: '#3f6212', fontStyle: row.isCurrentMonth ? 'normal' : 'italic' }}>
-                          {row.displayMonth} {row.isCurrentMonth && '(Current)'}
-                        </span>
-                      </div>
-                      <div className="kanban-metrics-grid">
-                        <div className="kanban-metric-box">
-                          <span className="label">Audio Length</span>
-                          <span className="value">{formatSeconds(row.audioSeconds)}</span>
-                        </div>
-                        <div className="kanban-metric-box">
-                          <span className="label">Word Count</span>
-                          <span className="value">{row.wordCount.toLocaleString()}</span>
-                        </div>
-                        <div className="kanban-metric-box">
-                          <span className="label">Characters</span>
-                          <span className="value">{row.characterSpace.toLocaleString()}</span>
-                        </div>
-                        <div className="kanban-metric-box">
-                          <span className="label">Line Count</span>
-                          <span className="value">{row.lineCount.toLocaleString()}</span>
-                        </div>
-                      </div>
+                    <div style={{ overflowX: 'auto', background: '#fff', borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 1px 2px rgba(0,0,0,0.02)' }}>
+                      <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                        <thead>
+                          <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
+                            <th style={{ padding: '0.85rem 1rem', fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase', fontWeight: '600', letterSpacing: '0.05em' }}>Month</th>
+                            <th style={{ padding: '0.85rem 1rem', fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase', fontWeight: '600', letterSpacing: '0.05em' }}>Audio Length</th>
+                            <th style={{ padding: '0.85rem 1rem', fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase', fontWeight: '600', letterSpacing: '0.05em' }}>Word Count</th>
+                            <th style={{ padding: '0.85rem 1rem', fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase', fontWeight: '600', letterSpacing: '0.05em' }}>Characters</th>
+                            <th style={{ padding: '0.85rem 1rem', fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase', fontWeight: '600', letterSpacing: '0.05em' }}>Line Count</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {monthlyReport5Data.map((row, idx) => (
+                            <tr key={idx} style={{ borderBottom: idx === monthlyReport5Data.length - 1 ? 'none' : '1px solid #f1f5f9', backgroundColor: row.isCurrentMonth ? '#fdf4ff' : 'transparent' }}>
+                              <td style={{ padding: '0.85rem 1rem', fontSize: '0.85rem', fontWeight: '600', color: row.isCurrentMonth ? '#8b5cf6' : '#334155' }}>
+                                {row.displayMonth} {row.isCurrentMonth && <span style={{ fontSize: '0.7rem', padding: '2px 6px', background: '#8b5cf6', color: '#fff', borderRadius: '4px', marginLeft: '6px' }}>Current</span>}
+                              </td>
+                              <td style={{ padding: '0.85rem 1rem', fontSize: '0.9rem', fontWeight: '700', color: '#6366f1', fontFamily: 'monospace' }}>{formatSeconds(row.audioSeconds)}</td>
+                              <td style={{ padding: '0.85rem 1rem', fontSize: '0.85rem', color: '#475569' }}>{row.wordCount.toLocaleString()}</td>
+                              <td style={{ padding: '0.85rem 1rem', fontSize: '0.85rem', color: '#475569' }}>{row.characterSpace.toLocaleString()}</td>
+                              <td style={{ padding: '0.85rem 1rem', fontSize: '0.85rem', color: '#475569' }}>{row.lineCount.toLocaleString()}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
                     </div>
-                  ))}
-                </div>
-              )}
+                  )}
                 </div>
               </div>
             </div>
@@ -1034,280 +1053,283 @@ export default function Dashboard() {
           <p>Choose a language and a date above to generate the dashboard report cards.</p>
         </div>
       ) : (
-        <div className="dashboard-kanban">
+        <div className="dashboard-kanban" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1.5rem', alignItems: 'start' }}>
           {/* ===== Report 1: Done – Not yet Delivered ===== */}
-          <div className="dashboard-report-card">
-            <div className={`dashboard-report-header ${language === 'FR' ? 'lang-fr' : 'lang-en'}`}>
-              <span className="dashboard-report-title">Done – Not yet Delivered</span>
-              <span className="dashboard-report-count">
-                <Inbox size={13} />
-                {loading ? '…' : report1Data.length}
+          <div className="work-order-card" style={{ background: '#fff', borderRadius: '16px', boxShadow: '0 4px 20px rgba(0, 0, 0, 0.04)', border: '1px solid #f1f5f9', borderTop: '6px solid #10b981', overflow: 'hidden' }}>
+            <div style={{ padding: '1.25rem', borderBottom: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+              <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: '700', color: '#1e293b' }}>
+                Done – Not yet Delivered
+              </h3>
+              <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', padding: '0.4rem 0.85rem', background: '#d1fae5', color: '#047857', borderRadius: '999px', fontSize: '0.85rem', fontWeight: '600' }}>
+                <Inbox size={14} />
+                {loading ? '…' : report1Data.length} Records
               </span>
             </div>
-            <div className="dashboard-report-body">
+            <div style={{ padding: '1.25rem', background: '#f8fafc' }}>
               {loading ? (
-                <div className="dashboard-empty-state">
+                <div className="dashboard-empty-state" style={{ background: '#fff', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
                   <p>Loading report data…</p>
                 </div>
               ) : error ? (
-                <div className="dashboard-empty-state">
+                <div className="dashboard-empty-state" style={{ background: '#fff', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
                   <p style={{ color: '#dc2626' }}>{error}</p>
                 </div>
               ) : report1Data.length === 0 ? (
-                <div className="dashboard-empty-state">
-                  <Inbox size={28} />
+                <div className="dashboard-empty-state" style={{ background: '#fff', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                  <Inbox size={28} color="#94a3b8" />
                   <p>No records match the criteria.</p>
                 </div>
               ) : (
-                <div className="kanban-card-grid">
-                  {report1Data.map((row, idx) => (
-                    <div key={idx} className="kanban-card">
-                      <div className="kanban-card-header">
-                        <span className="kanban-card-title">{row.work_order_number}</span>
-                        <span className="assigned-badge">{row.assigned_to}</span>
-                      </div>
-                      <div className="kanban-card-body">
-                        <div className="kanban-card-row">
-                          <span className="kanban-card-label">WO Date</span>
-                          <span className="kanban-card-value">{formatDdMmm(row.wo_date)}</span>
-                        </div>
-                        <div className="kanban-card-row">
-                          <span className="kanban-card-label">Due Date</span>
-                          <span className="kanban-card-value">{formatDdMmm(row.due_date)}</span>
-                        </div>
-                        <div className="kanban-card-row">
-                          <span className="kanban-card-label">TAT</span>
-                          <span className="kanban-card-value">{row.tat}</span>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
+                <div style={{ overflowX: 'auto', background: '#fff', borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 1px 2px rgba(0,0,0,0.02)' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                    <thead>
+                      <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
+                        <th style={{ padding: '0.85rem 1rem', fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase', fontWeight: '600', letterSpacing: '0.05em' }}>WO #</th>
+                        <th style={{ padding: '0.85rem 1rem', fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase', fontWeight: '600', letterSpacing: '0.05em' }}>Assigned To</th>
+                        <th style={{ padding: '0.85rem 1rem', fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase', fontWeight: '600', letterSpacing: '0.05em' }}>WO Date</th>
+                        <th style={{ padding: '0.85rem 1rem', fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase', fontWeight: '600', letterSpacing: '0.05em' }}>Due Date</th>
+                        <th style={{ padding: '0.85rem 1rem', fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase', fontWeight: '600', letterSpacing: '0.05em' }}>TAT</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {report1Data.map((row, idx) => (
+                        <tr key={idx} style={{ borderBottom: idx === report1Data.length - 1 ? 'none' : '1px solid #f1f5f9' }}>
+                          <td style={{ padding: '0.85rem 1rem', fontSize: '0.85rem', fontWeight: '600', color: '#334155' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><ClipboardList size={14} color="#94a3b8" /> {row.work_order_number}</div>
+                          </td>
+                          <td style={{ padding: '0.85rem 1rem', fontSize: '0.85rem', color: '#475569' }}>{row.assigned_to}</td>
+                          <td style={{ padding: '0.85rem 1rem', fontSize: '0.85rem', color: '#475569' }}>{formatDdMmm(row.wo_date)}</td>
+                          <td style={{ padding: '0.85rem 1rem', fontSize: '0.85rem', color: '#475569' }}>{formatDdMmm(row.due_date)}</td>
+                          <td style={{ padding: '0.85rem 1rem', fontSize: '0.85rem', color: '#475569' }}>{row.tat}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
               )}
             </div>
           </div>
 
           {/* ===== Report 2: Work Order Due Today ===== */}
-          <div className="dashboard-report-card">
-            <div className={`dashboard-report-header ${language === 'FR' ? 'lang-fr' : 'lang-en'}`}>
-              <span className="dashboard-report-title">{language} Work Order Due Today</span>
-              <span className="dashboard-report-count">
-                <CalendarCheck size={13} />
-                {loading2 ? '…' : report2Data.length}
+          <div className="work-order-card" style={{ background: '#fff', borderRadius: '16px', boxShadow: '0 4px 20px rgba(0, 0, 0, 0.04)', border: '1px solid #f1f5f9', borderTop: '6px solid #f59e0b', overflow: 'hidden' }}>
+            <div style={{ padding: '1.25rem', borderBottom: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+              <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: '700', color: '#1e293b' }}>
+                Work Order Due Today
+              </h3>
+              <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', padding: '0.4rem 0.85rem', background: '#fef3c7', color: '#b45309', borderRadius: '999px', fontSize: '0.85rem', fontWeight: '600' }}>
+                <CalendarCheck size={14} />
+                {loading2 ? '…' : report2Data.length} Records
               </span>
             </div>
-            <div className="dashboard-report-body">
+            <div style={{ padding: '1.25rem', background: '#f8fafc' }}>
               {loading2 ? (
-                <div className="dashboard-empty-state">
+                <div className="dashboard-empty-state" style={{ background: '#fff', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
                   <p>Loading report data…</p>
                 </div>
               ) : error2 ? (
-                <div className="dashboard-empty-state">
+                <div className="dashboard-empty-state" style={{ background: '#fff', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
                   <p style={{ color: '#dc2626' }}>{error2}</p>
                 </div>
               ) : report2Data.length === 0 ? (
-                <div className="dashboard-empty-state">
-                  <CalendarCheck size={28} />
+                <div className="dashboard-empty-state" style={{ background: '#fff', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                  <CalendarCheck size={28} color="#94a3b8" />
                   <p>No work orders due on this date.</p>
                 </div>
               ) : (
-                <div className="kanban-card-grid">
-                  {report2Data.map((row, idx) => (
-                    <div key={idx} className="kanban-card">
-                      <div className="kanban-card-header">
-                        <span className="kanban-card-title">{row.work_order_number}</span>
-                        <span className="assigned-badge">{row.assigned_to}</span>
-                      </div>
-                      <div className="kanban-card-body">
-                        <div className="kanban-card-row">
-                          <span className="kanban-card-label">WO Date</span>
-                          <span className="kanban-card-value">{formatDdMmm(row.wo_date)}</span>
-                        </div>
-                        <div className="kanban-card-row">
-                          <span className="kanban-card-label">Delivery Date</span>
-                          <span className="kanban-card-value">{formatDdMmm(row.delivery_date)}</span>
-                        </div>
-                        <div className="kanban-card-row">
-                          <span className="kanban-card-label">Status</span>
-                          <span className={`dash-status-badge ${getStatusClass(row.status)}`}>
-                            {row.status || '—'}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
+                <div style={{ overflowX: 'auto', background: '#fff', borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 1px 2px rgba(0,0,0,0.02)' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                    <thead>
+                      <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
+                        <th style={{ padding: '0.85rem 1rem', fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase', fontWeight: '600', letterSpacing: '0.05em' }}>WO #</th>
+                        <th style={{ padding: '0.85rem 1rem', fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase', fontWeight: '600', letterSpacing: '0.05em' }}>Assigned To</th>
+                        <th style={{ padding: '0.85rem 1rem', fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase', fontWeight: '600', letterSpacing: '0.05em' }}>WO Date</th>
+                        <th style={{ padding: '0.85rem 1rem', fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase', fontWeight: '600', letterSpacing: '0.05em' }}>Delivery Date</th>
+                        <th style={{ padding: '0.85rem 1rem', fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase', fontWeight: '600', letterSpacing: '0.05em' }}>Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {report2Data.map((row, idx) => (
+                        <tr key={idx} style={{ borderBottom: idx === report2Data.length - 1 ? 'none' : '1px solid #f1f5f9' }}>
+                          <td style={{ padding: '0.85rem 1rem', fontSize: '0.85rem', fontWeight: '600', color: '#334155' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><ClipboardList size={14} color="#94a3b8" /> {row.work_order_number}</div>
+                          </td>
+                          <td style={{ padding: '0.85rem 1rem', fontSize: '0.85rem', color: '#475569' }}>{row.assigned_to}</td>
+                          <td style={{ padding: '0.85rem 1rem', fontSize: '0.85rem', color: '#475569' }}>{formatDdMmm(row.wo_date)}</td>
+                          <td style={{ padding: '0.85rem 1rem', fontSize: '0.85rem', color: '#475569' }}>{formatDdMmm(row.delivery_date)}</td>
+                          <td style={{ padding: '0.85rem 1rem', fontSize: '0.85rem', color: '#475569' }}>
+                            <span className={`dash-status-badge ${getStatusClass(row.status)}`}>{row.status || '—'}</span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
               )}
             </div>
           </div>
 
           {/* ===== Report 3: Work Order Delivered Today ===== */}
-          <div className="dashboard-report-card">
-            <div className={`dashboard-report-header ${language === 'FR' ? 'lang-fr' : 'lang-en'}`}>
-              <span className="dashboard-report-title">{language} Work Order Delivered Today</span>
-              <span className="dashboard-report-count">
-                <Truck size={13} />
-                {loading3 ? '…' : report3Data.length}
+          <div className="work-order-card" style={{ background: '#fff', borderRadius: '16px', boxShadow: '0 4px 20px rgba(0, 0, 0, 0.04)', border: '1px solid #f1f5f9', borderTop: '6px solid #3b82f6', overflow: 'hidden' }}>
+            <div style={{ padding: '1.25rem', borderBottom: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+              <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: '700', color: '#1e293b' }}>
+                Work Order Delivered Today
+              </h3>
+              <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', padding: '0.4rem 0.85rem', background: '#dbeafe', color: '#1d4ed8', borderRadius: '999px', fontSize: '0.85rem', fontWeight: '600' }}>
+                <Truck size={14} />
+                {loading3 ? '…' : report3Data.length} Records
               </span>
             </div>
-            <div className="dashboard-report-body">
+            <div style={{ padding: '1.25rem', background: '#f8fafc' }}>
               {loading3 ? (
-                <div className="dashboard-empty-state">
+                <div className="dashboard-empty-state" style={{ background: '#fff', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
                   <p>Loading report data…</p>
                 </div>
               ) : error3 ? (
-                <div className="dashboard-empty-state">
+                <div className="dashboard-empty-state" style={{ background: '#fff', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
                   <p style={{ color: '#dc2626' }}>{error3}</p>
                 </div>
               ) : report3Data.length === 0 ? (
-                <div className="dashboard-empty-state">
-                  <Truck size={28} />
+                <div className="dashboard-empty-state" style={{ background: '#fff', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                  <Truck size={28} color="#94a3b8" />
                   <p>No work orders delivered on this date.</p>
                 </div>
               ) : (
-                <div className="kanban-card-grid">
-                  {report3Data.map((row, idx) => (
-                    <div key={idx} className="kanban-card">
-                      <div className="kanban-card-header">
-                        <span className="kanban-card-title">{row.work_order_number}</span>
-                        <span className="assigned-badge">{row.assigned_to}</span>
-                      </div>
-                      <div className="kanban-card-body">
-                        <div className="kanban-card-row">
-                          <span className="kanban-card-label">WO Date</span>
-                          <span className="kanban-card-value">{formatDdMmm(row.wo_date)}</span>
-                        </div>
-                        <div className="kanban-card-row">
-                          <span className="kanban-card-label">Due Date</span>
-                          <span className="kanban-card-value">{formatDdMmm(row.due_date)}</span>
-                        </div>
-                        <div className="kanban-card-row">
-                          <span className="kanban-card-label">Status</span>
-                          <span className={`dash-status-badge ${getStatusClass(row.status)}`}>
-                            {row.status || '—'}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
+                <div style={{ overflowX: 'auto', background: '#fff', borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 1px 2px rgba(0,0,0,0.02)' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                    <thead>
+                      <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
+                        <th style={{ padding: '0.85rem 1rem', fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase', fontWeight: '600', letterSpacing: '0.05em' }}>WO #</th>
+                        <th style={{ padding: '0.85rem 1rem', fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase', fontWeight: '600', letterSpacing: '0.05em' }}>Assigned To</th>
+                        <th style={{ padding: '0.85rem 1rem', fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase', fontWeight: '600', letterSpacing: '0.05em' }}>WO Date</th>
+                        <th style={{ padding: '0.85rem 1rem', fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase', fontWeight: '600', letterSpacing: '0.05em' }}>Due Date</th>
+                        <th style={{ padding: '0.85rem 1rem', fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase', fontWeight: '600', letterSpacing: '0.05em' }}>Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {report3Data.map((row, idx) => (
+                        <tr key={idx} style={{ borderBottom: idx === report3Data.length - 1 ? 'none' : '1px solid #f1f5f9' }}>
+                          <td style={{ padding: '0.85rem 1rem', fontSize: '0.85rem', fontWeight: '600', color: '#334155' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><ClipboardList size={14} color="#94a3b8" /> {row.work_order_number}</div>
+                          </td>
+                          <td style={{ padding: '0.85rem 1rem', fontSize: '0.85rem', color: '#475569' }}>{row.assigned_to}</td>
+                          <td style={{ padding: '0.85rem 1rem', fontSize: '0.85rem', color: '#475569' }}>{formatDdMmm(row.wo_date)}</td>
+                          <td style={{ padding: '0.85rem 1rem', fontSize: '0.85rem', color: '#475569' }}>{formatDdMmm(row.due_date)}</td>
+                          <td style={{ padding: '0.85rem 1rem', fontSize: '0.85rem', color: '#475569' }}>
+                            <span className={`dash-status-badge ${getStatusClass(row.status)}`}>{row.status || '—'}</span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
               )}
             </div>
           </div>
 
           {/* ===== Report 4: Work Order Assigned on [date] ===== */}
-          <div className="dashboard-report-card">
-            <div className={`dashboard-report-header ${language === 'FR' ? 'lang-fr' : 'lang-en'}`}>
-              <span className="dashboard-report-title">
-                {language} Work Order Assigned on {formatDdMmmYyyy(selectedDate)}
-              </span>
-              <span className="dashboard-report-count">
-                <ClipboardList size={13} />
-                {loading4 ? '…' : report4Data.length}
+          <div className="work-order-card" style={{ background: '#fff', borderRadius: '16px', boxShadow: '0 4px 20px rgba(0, 0, 0, 0.04)', border: '1px solid #f1f5f9', borderTop: '6px solid #8b5cf6', overflow: 'hidden' }}>
+            <div style={{ padding: '1.25rem', borderBottom: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+              <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: '700', color: '#1e293b' }}>
+                Work Order Assigned on {formatDdMmmYyyy(selectedDate)}
+              </h3>
+              <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', padding: '0.4rem 0.85rem', background: '#ede9fe', color: '#6d28d9', borderRadius: '999px', fontSize: '0.85rem', fontWeight: '600' }}>
+                <Clock size={14} />
+                {loading4 ? '…' : report4Data.length} Records
               </span>
             </div>
-            <div className="dashboard-report-body">
+            <div style={{ padding: '1.25rem', background: '#f8fafc' }}>
               {loading4 ? (
-                <div className="dashboard-empty-state">
+                <div className="dashboard-empty-state" style={{ background: '#fff', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
                   <p>Loading report data…</p>
                 </div>
               ) : error4 ? (
-                <div className="dashboard-empty-state">
+                <div className="dashboard-empty-state" style={{ background: '#fff', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
                   <p style={{ color: '#dc2626' }}>{error4}</p>
                 </div>
               ) : report4Data.length === 0 ? (
-                <div className="dashboard-empty-state">
-                  <ClipboardList size={28} />
+                <div className="dashboard-empty-state" style={{ background: '#fff', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                  <Clock size={28} color="#94a3b8" />
                   <p>No work orders assigned on this date.</p>
                 </div>
               ) : (
-                <div className="kanban-card-grid">
-                  {report4Data.map((row, idx) => (
-                    <div key={idx} className="kanban-card">
-                      <div className="kanban-card-header">
-                        <span className="kanban-card-title">{row.work_order_number}</span>
-                        <span className="assigned-badge">{row.assigned_to}</span>
-                      </div>
-                      <div className="kanban-card-body">
-                        <div className="kanban-card-row">
-                          <span className="kanban-card-label">TAT</span>
-                          <span className="kanban-card-value">{row.tat}</span>
-                        </div>
-                        <div className="kanban-card-row">
-                          <span className="kanban-card-label">Audio Length</span>
-                          <span className="kanban-card-value">{formatSeconds(row.totalSeconds)}</span>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
+                <div style={{ overflowX: 'auto', background: '#fff', borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 1px 2px rgba(0,0,0,0.02)' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                    <thead>
+                      <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
+                        <th style={{ padding: '0.85rem 1rem', fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase', fontWeight: '600', letterSpacing: '0.05em' }}>WO #</th>
+                        <th style={{ padding: '0.85rem 1rem', fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase', fontWeight: '600', letterSpacing: '0.05em' }}>Assigned To</th>
+                        <th style={{ padding: '0.85rem 1rem', fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase', fontWeight: '600', letterSpacing: '0.05em' }}>TAT</th>
+                        <th style={{ padding: '0.85rem 1rem', fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase', fontWeight: '600', letterSpacing: '0.05em' }}>Total Audio Length</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {report4Data.map((row, idx) => (
+                        <tr key={idx} style={{ borderBottom: idx === report4Data.length - 1 ? 'none' : '1px solid #f1f5f9' }}>
+                          <td style={{ padding: '0.85rem 1rem', fontSize: '0.85rem', fontWeight: '600', color: '#334155' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><ClipboardList size={14} color="#94a3b8" /> {row.work_order_number}</div>
+                          </td>
+                          <td style={{ padding: '0.85rem 1rem', fontSize: '0.85rem', color: '#475569' }}>{row.assigned_to}</td>
+                          <td style={{ padding: '0.85rem 1rem', fontSize: '0.85rem', color: '#475569' }}>{row.tat}</td>
+                          <td style={{ padding: '0.85rem 1rem', fontSize: '0.9rem', fontWeight: '700', color: '#6366f1', fontFamily: 'monospace' }}>{formatSeconds(row.totalSeconds)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
               )}
             </div>
           </div>
 
-          {/* ===== Report 5: Grouped by Assigned To & Request Type ===== */}
-          <div className="dashboard-report-card">
-            <div className={`dashboard-report-header ${language === 'FR' ? 'lang-fr' : 'lang-en'}`}>
-              <span className="dashboard-report-title">
-                {language} Audio Length by Assignee
-              </span>
-              <span className="dashboard-report-count">
-                <Clock size={13} />
-                {loading5 ? '…' : report5Data.length}
+          {/* ===== Report 5: Work Order Assigned on [date] (by Assignee & Type) ===== */}
+          <div className="work-order-card" style={{ background: '#fff', borderRadius: '16px', boxShadow: '0 4px 20px rgba(0, 0, 0, 0.04)', border: '1px solid #f1f5f9', borderTop: '6px solid #ec4899', overflow: 'hidden' }}>
+            <div style={{ padding: '1.25rem', borderBottom: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+              <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: '700', color: '#1e293b' }}>
+                Audio Length by Assignee
+              </h3>
+              <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', padding: '0.4rem 0.85rem', background: '#fce7f3', color: '#be185d', borderRadius: '999px', fontSize: '0.85rem', fontWeight: '600' }}>
+                <Sparkles size={14} />
+                Grand Total: {formatSeconds(report5GrandTotal)}
               </span>
             </div>
-            <div className="dashboard-report-body">
+            <div style={{ padding: '1.25rem', background: '#f8fafc' }}>
               {loading5 ? (
-                <div className="dashboard-empty-state">
+                <div className="dashboard-empty-state" style={{ background: '#fff', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
                   <p>Loading report data…</p>
                 </div>
               ) : error5 ? (
-                <div className="dashboard-empty-state">
+                <div className="dashboard-empty-state" style={{ background: '#fff', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
                   <p style={{ color: '#dc2626' }}>{error5}</p>
                 </div>
               ) : report5Data.length === 0 ? (
-                <div className="dashboard-empty-state">
-                  <Clock size={28} />
-                  <p>No audio length data for this date.</p>
+                <div className="dashboard-empty-state" style={{ background: '#fff', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                  <Sparkles size={28} color="#94a3b8" />
+                  <p>No records to calculate audio length.</p>
                 </div>
               ) : (
-                <table className="dashboard-mini-table">
-                  <thead>
-                    <tr>
-                      <th>Assigned to</th>
-                      <th>Request Type</th>
-                      <th>Audio Length</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {report5Data.map((row, idx) => (
-                      <tr key={idx}>
-                        <td>
-                          <span className="assigned-badge">{row.assigned_to}</span>
-                        </td>
-                        <td>{row.request_type || '—'}</td>
-                        <td style={{ fontWeight: 500, fontVariantNumeric: 'tabular-nums' }}>
-                          {formatSeconds(row.totalSeconds)}
-                        </td>
+                <div style={{ overflowX: 'auto', background: '#fff', borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 1px 2px rgba(0,0,0,0.02)' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                    <thead>
+                      <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
+                        <th style={{ padding: '0.85rem 1rem', fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase', fontWeight: '600', letterSpacing: '0.05em' }}>Assigned To</th>
+                        <th style={{ padding: '0.85rem 1rem', fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase', fontWeight: '600', letterSpacing: '0.05em' }}>Request Type</th>
+                        <th style={{ padding: '0.85rem 1rem', fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase', fontWeight: '600', letterSpacing: '0.05em' }}>Total Audio Length</th>
                       </tr>
-                    ))}
-                    {/* Grand Total Row */}
-                    {report5Data.length > 0 && (
-                      <tr style={{ backgroundColor: '#f8fafc', borderTop: '2px solid #e2e8f0' }}>
-                        <td colSpan={2} style={{ fontWeight: 600, textAlign: 'right', paddingRight: '1rem' }}>
-                          Grand Total
-                        </td>
-                        <td style={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: '#0f172a' }}>
-                          {formatSeconds(report5GrandTotal)}
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody>
+                      {report5Data.map((row, idx) => (
+                        <tr key={idx} style={{ borderBottom: idx === report5Data.length - 1 ? 'none' : '1px solid #f1f5f9' }}>
+                          <td style={{ padding: '0.85rem 1rem', fontSize: '0.85rem', fontWeight: '600', color: '#334155' }}>{row.assigned_to}</td>
+                          <td style={{ padding: '0.85rem 1rem', fontSize: '0.85rem', color: '#475569' }}>{row.request_type}</td>
+                          <td style={{ padding: '0.85rem 1rem', fontSize: '0.9rem', fontWeight: '700', color: '#6366f1', fontFamily: 'monospace' }}>{formatSeconds(row.totalSeconds)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               )}
             </div>
           </div>
-          </div>
+        </div>
         )}
         </>
       )}

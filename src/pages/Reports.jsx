@@ -39,9 +39,14 @@ export default function Reports({ userRoles = [], user }) {
   const [error, setError] = useState(null);
   const [editingRecord, setEditingRecord] = useState(null);
   const [noResults, setNoResults] = useState(false);
-  const [sortConfig, setSortConfig] = useState({ key: 'created_at', direction: 'desc' });
+  const [sortConfig, setSortConfig] = useState({ key: 'wo_date', direction: 'desc' });
   const [searchTerm, setSearchTerm] = useState('');
   const [recordToDelete, setRecordToDelete] = useState(null);
+
+  // Pagination State
+  const [currentPage, setCurrentPage] = useState(1);
+  const [rowsPerPage, setRowsPerPage] = useState(25);
+  const ROWS_PER_PAGE_OPTIONS = [25, 50, 100, 200];
   
   // Inline Editing State
   const [inlineEdits, setInlineEdits] = useState({});
@@ -189,7 +194,8 @@ export default function Reports({ userRoles = [], user }) {
     let query = supabase
       .from('work_orders')
       .select('*')
-      .order('created_at', { ascending: false });
+      .order('wo_date', { ascending: false })
+      .limit(10000);
 
     // Apply filters if provided
     const f = activeFilters || filters;
@@ -226,6 +232,7 @@ export default function Reports({ userRoles = [], user }) {
   };
 
   const handleApply = () => {
+    setCurrentPage(1);
     fetchRecords(filters);
   };
 
@@ -243,6 +250,7 @@ export default function Reports({ userRoles = [], user }) {
     };
     setFilters(cleared);
     setSearchTerm('');
+    setCurrentPage(1);
     fetchRecords(cleared);
   };
 
@@ -518,6 +526,55 @@ export default function Reports({ userRoles = [], user }) {
     return items;
   }, [records, sortConfig, searchTerm]);
 
+  // Pagination computed values
+  const totalRecords = filteredAndSorted.length;
+  const totalPages = Math.max(1, Math.ceil(totalRecords / rowsPerPage));
+  const safeCurrentPage = Math.min(currentPage, totalPages);
+  const startIndex = (safeCurrentPage - 1) * rowsPerPage;
+  const endIndex = startIndex + rowsPerPage;
+  const paginatedRecords = filteredAndSorted.slice(startIndex, endIndex);
+
+  // Reset to page 1 when search term changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm]);
+
+  const handleRowsPerPageChange = (e) => {
+    setRowsPerPage(Number(e.target.value));
+    setCurrentPage(1);
+  };
+
+  // Generate page numbers to display (with ellipsis logic)
+  const getPageNumbers = () => {
+    const pages = [];
+    const maxVisiblePages = 7;
+    
+    if (totalPages <= maxVisiblePages) {
+      for (let i = 1; i <= totalPages; i++) pages.push(i);
+    } else {
+      pages.push(1);
+      
+      if (safeCurrentPage > 3) {
+        pages.push('...');
+      }
+      
+      const start = Math.max(2, safeCurrentPage - 1);
+      const end = Math.min(totalPages - 1, safeCurrentPage + 1);
+      
+      for (let i = start; i <= end; i++) {
+        pages.push(i);
+      }
+      
+      if (safeCurrentPage < totalPages - 2) {
+        pages.push('...');
+      }
+      
+      pages.push(totalPages);
+    }
+    
+    return pages;
+  };
+
   const renderSortIcon = (columnName) => {
     if (sortConfig.key !== columnName) {
       return <span className="sort-icon invisible">↕</span>;
@@ -605,14 +662,6 @@ export default function Reports({ userRoles = [], user }) {
               {statusOptions.map(s => <option key={s} value={s}>{s}</option>)}
             </select>
           </div>
-          <div className="filter-group">
-            <label className="filter-label">Work Order #</label>
-            <input type="text" name="work_order_number" className="filter-select" placeholder="Search WO#" value={filters.work_order_number} onChange={handleFilterChange} />
-          </div>
-          <div className="filter-group">
-            <label className="filter-label">File #</label>
-            <input type="text" name="file_number" className="filter-select" placeholder="Search File#" value={filters.file_number} onChange={handleFilterChange} />
-          </div>
         </div>
         <div className="filter-actions">
           <button className="btn-filter-apply" onClick={handleApply}>Apply</button>
@@ -650,6 +699,20 @@ export default function Reports({ userRoles = [], user }) {
             <Download size={16} />
             Export
           </button>
+
+          {/* Rows Per Page Dropdown */}
+          <div className="rows-per-page-container">
+            <label className="rows-per-page-label">Rows</label>
+            <select
+              className="rows-per-page-select"
+              value={rowsPerPage}
+              onChange={handleRowsPerPageChange}
+            >
+              {ROWS_PER_PAGE_OPTIONS.map(opt => (
+                <option key={opt} value={opt}>{opt}</option>
+              ))}
+            </select>
+          </div>
 
           {/* Column Toggle Dropdown */}
           <div className="column-toggle-container" ref={columnMenuRef} style={{ position: 'relative' }}>
@@ -731,7 +794,7 @@ export default function Reports({ userRoles = [], user }) {
                 </tr>
               </thead>
               <tbody>
-                {filteredAndSorted.map(record => {
+                {paginatedRecords.map(record => {
                   const isEditing = !!inlineEdits[record.id];
                   const draft = inlineEdits[record.id] || record;
                   const canEditAll = !isEmployee;
@@ -768,6 +831,45 @@ export default function Reports({ userRoles = [], user }) {
                 })}
               </tbody>
             </table>
+
+            {/* Pagination Controls */}
+            {totalRecords > 0 && (
+              <div className="pagination-container">
+                <div className="pagination-info">
+                  Showing {startIndex + 1}–{Math.min(endIndex, totalRecords)} of {totalRecords} records
+                </div>
+                <div className="pagination-nav">
+                  <button
+                    className="pagination-btn pagination-prev"
+                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                    disabled={safeCurrentPage === 1}
+                  >
+                    ‹ Prev
+                  </button>
+                  {getPageNumbers().map((page, idx) => (
+                    page === '...' ? (
+                      <span key={`ellipsis-${idx}`} className="pagination-ellipsis">…</span>
+                    ) : (
+                      <a
+                        key={page}
+                        href="#"
+                        className={`pagination-link ${page === safeCurrentPage ? 'active' : ''}`}
+                        onClick={(e) => { e.preventDefault(); setCurrentPage(page); }}
+                      >
+                        {page}
+                      </a>
+                    )
+                  ))}
+                  <button
+                    className="pagination-btn pagination-next"
+                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                    disabled={safeCurrentPage === totalPages}
+                  >
+                    Next ›
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>
