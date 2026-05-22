@@ -156,28 +156,41 @@ export default function CreateRecord({ user }) {
     setLoading(true);
     setError(null);
     try {
-      // Call the existing edge function to get all users with roles and is_active status.
-      // This runs under the service role key — no RLS issues.
-      const { data: allUsers, error: usersError } = await supabase.functions.invoke('create-user', {
-        method: 'GET',
-      });
+      // Fetch all dropdown data in parallel
+      const [usersResult, divResult, rtResult, tatResult] = await Promise.all([
+        // Active employee users via edge function (service role key — no RLS issues)
+        supabase.functions.invoke('create-user', { method: 'GET' }),
+        // Division values from ref_divisions
+        supabase.from('ref_divisions').select('name'),
+        // Request Type values from ref_request_types
+        supabase.from('ref_request_types').select('name'),
+        // TAT values from ref_tat_scores (descending order)
+        supabase.from('ref_tat_scores').select('value').order('value', { ascending: false }),
+      ]);
 
-      if (usersError) throw usersError;
-      if (allUsers?.error) throw new Error(allUsers.error);
+      if (usersResult.error) throw usersResult.error;
+      if (usersResult.data?.error) throw new Error(usersResult.data.error);
+      if (divResult.error) throw divResult.error;
+      if (rtResult.error) throw rtResult.error;
+      if (tatResult.error) throw tatResult.error;
 
       // Filter to only active users with the 'employee' role
-      const userNames = (allUsers || [])
+      const userNames = (usersResult.data || [])
         .filter(u => u.role_name?.toLowerCase() === 'employee' && u.is_active !== false)
         .map(u => u.full_name)
         .filter(Boolean)
         .sort();
 
-      // 2. Initialize ExcelJS workbook
+      const divisionNames = (divResult.data || []).map(d => d.name).filter(Boolean);
+      const requestTypes = (rtResult.data || []).map(r => r.name).filter(Boolean);
+      const tatValues = (tatResult.data || []).map(t => String(t.value)).filter(Boolean);
+
+      // Initialize ExcelJS workbook
       const workbook = new ExcelJS.Workbook();
       workbook.creator = 'InvoiceGen';
       workbook.created = new Date();
 
-      // 3. Create the main Template sheet FIRST
+      // Create the main Template sheet FIRST
       const templateSheet = workbook.addWorksheet('Template');
       const headers = [
         "Work Order Date", "WorkOrder #", "Assigned to", "File Number", 
@@ -195,28 +208,79 @@ export default function CreateRecord({ user }) {
         else col.width = 15;
       });
 
-      // 4. Create a hidden Data sheet for the dropdown source
+      // Create a hidden Data sheet for all dropdown sources
       const dataSheet = workbook.addWorksheet('Data', { state: 'veryHidden' });
+
+      // Column A: User names (for "Assigned to")
       userNames.forEach((name, index) => {
         dataSheet.getCell(`A${index + 1}`).value = name;
       });
 
-      // 5. Build range reference for data validation (more robust than comma-separated string)
-      const listRange = `Data!$A$1:$A$${userNames.length}`;
+      // Column B: Division values
+      divisionNames.forEach((name, index) => {
+        dataSheet.getCell(`B${index + 1}`).value = name;
+      });
 
-      // 6. Apply Data Validation to "Assigned to" (Column C) for rows 2 to 1000
+      // Column C: Request Type values
+      requestTypes.forEach((name, index) => {
+        dataSheet.getCell(`C${index + 1}`).value = name;
+      });
+
+      // Column D: TAT values
+      tatValues.forEach((val, index) => {
+        dataSheet.getCell(`D${index + 1}`).value = val;
+      });
+
+      // Build range references for data validation
+      const usersRange = `Data!$A$1:$A$${userNames.length}`;
+      const divisionRange = `Data!$B$1:$B$${divisionNames.length}`;
+      const requestTypeRange = `Data!$C$1:$C$${requestTypes.length}`;
+      const tatRange = `Data!$D$1:$D$${tatValues.length}`;
+
+      // Apply Data Validation to dropdown columns for rows 2 to 1000
       for (let i = 2; i <= 1000; i++) {
+        // Column C: Assigned to
         templateSheet.getCell(`C${i}`).dataValidation = {
           type: 'list',
           allowBlank: true,
-          formulae: [listRange],
+          formulae: [usersRange],
           showErrorMessage: true,
           errorTitle: 'Invalid Entry',
           error: 'Please select a name from the dropdown list.'
         };
+
+        // Column F: Division
+        templateSheet.getCell(`F${i}`).dataValidation = {
+          type: 'list',
+          allowBlank: true,
+          formulae: [divisionRange],
+          showErrorMessage: true,
+          errorTitle: 'Invalid Entry',
+          error: 'Please select a division from the dropdown list.'
+        };
+
+        // Column G: Request Type
+        templateSheet.getCell(`G${i}`).dataValidation = {
+          type: 'list',
+          allowBlank: true,
+          formulae: [requestTypeRange],
+          showErrorMessage: true,
+          errorTitle: 'Invalid Entry',
+          error: 'Please select a request type from the dropdown list.'
+        };
+
+        // Column H: TAT
+        templateSheet.getCell(`H${i}`).dataValidation = {
+          type: 'list',
+          allowBlank: true,
+          formulae: [tatRange],
+          showErrorMessage: true,
+          errorTitle: 'Invalid Entry',
+          error: 'Please select a TAT value from the dropdown list.'
+        };
       }
 
-      // 6. Generate buffer and trigger download
+      // Generate buffer and trigger download
       const buffer = await workbook.xlsx.writeBuffer();
       const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
       saveAs(blob, 'WorkOrder_Upload_Template.xlsx');
