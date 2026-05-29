@@ -208,6 +208,10 @@ export default function CreateRecord({ user }) {
         else col.width = 15;
       });
 
+      // Set date format dd-MMM-yy for Work Order Date (Col A) and Due Date (Col I)
+      templateSheet.getColumn(1).numFmt = 'dd-mmm-yy';
+      templateSheet.getColumn(9).numFmt = 'dd-mmm-yy';
+
       // Create a hidden Data sheet for all dropdown sources
       const dataSheet = workbook.addWorksheet('Data', { state: 'veryHidden' });
 

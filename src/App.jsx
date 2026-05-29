@@ -19,6 +19,7 @@ import InvoiceGeneration from './pages/InvoiceGeneration';
 import InvoiceDashboard from './pages/InvoiceDashboard';
 import EmployeeDashboard from './pages/EmployeeDashboard';
 import ReferenceRates from './pages/ReferenceRates';
+import BulkUpdateWorkOrders from './pages/BulkUpdateWorkOrders';
 
 function parseJwt(token) {
   try {
@@ -103,6 +104,7 @@ function App() {
                 <Route path="/admin/users" element={<AllUsersScreen />} />
                 <Route path="/admin/create" element={<AdminScreen />} />
                 <Route path="/invoice-generation" element={<InvoiceGeneration userRoles={userRoles} />} />
+                <Route path="/bulk-update" element={<BulkUpdateWorkOrders />} />
                 <Route path="/admin" element={<Navigate to="/admin/users" />} />
               </>
             )}

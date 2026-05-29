@@ -328,7 +328,7 @@ export default function MyGroupViewRequest({ userRoles = [], user }) {
       if (field === 'character_wz_space') {
         const cleanValue = typeof value === 'string' ? value.replace(/,/g, '') : value;
         const chars = parseInt(cleanValue, 10);
-        draft.line_count = !isNaN(chars) ? Math.floor(chars / 65) : '';
+        draft.line_count = !isNaN(chars) ? Math.round(chars / 65) : '';
       }
       if (field === 'due_date' || field === 'delivery_date') {
         draft.days_late = calculateBusinessDays(draft.due_date, draft.delivery_date);

@@ -1,5 +1,5 @@
 import { NavLink, useNavigate } from 'react-router-dom';
-import { Home, FileText, PlusCircle, LogOut, Shield, Users, UserPlus, Headphones, Settings, Menu, ChevronLeft, Layers, LayoutGrid, BarChart3, List, FileSpreadsheet, TrendingUp, DollarSign } from 'lucide-react';
+import { Home, FileText, PlusCircle, LogOut, Shield, Users, UserPlus, Headphones, Settings, Menu, ChevronLeft, Layers, LayoutGrid, BarChart3, List, FileSpreadsheet, TrendingUp, DollarSign, RefreshCw } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 
 export default function Sidebar({ canManageUsers, canCreate, isManager, isAdmin, isOpen, onToggle }) {
@@ -104,6 +104,10 @@ export default function Sidebar({ canManageUsers, canCreate, isManager, isAdmin,
             <NavLink to="/invoice-generation" className={({isActive}) => `sidebar-link ${isActive ? 'active' : ''}`}>
               <FileSpreadsheet size={18} />
               <span>Invoice Gen</span>
+            </NavLink>
+            <NavLink to="/bulk-update" className={({isActive}) => `sidebar-link ${isActive ? 'active' : ''}`}>
+              <RefreshCw size={18} />
+              <span>Bulk Update</span>
             </NavLink>
           </>
         )}

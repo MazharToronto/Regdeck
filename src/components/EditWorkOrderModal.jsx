@@ -127,7 +127,7 @@ export default function EditWorkOrderModal({ record, onClose, onSaved, userRoles
         const cleanValue = typeof value === 'string' ? value.replace(/,/g, '') : value;
         const chars = parseInt(cleanValue, 10);
         if (!isNaN(chars)) {
-          updated.line_count = Math.floor(chars / 65);
+          updated.line_count = Math.round(chars / 65);
         } else {
           updated.line_count = '';
         }
