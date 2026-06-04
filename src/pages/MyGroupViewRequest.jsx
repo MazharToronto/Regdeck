@@ -64,8 +64,23 @@ export default function MyGroupViewRequest({ userRoles = [], user }) {
   const [noResults, setNoResults] = useState(false);
   const [sortConfig, setSortConfig] = useState({ key: 'due_date', direction: 'desc' });
   const [searchTerm, setSearchTerm] = useState('');
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
   const [expandedGroups, setExpandedGroups] = useState({});
   const [recordToDelete, setRecordToDelete] = useState(null);
+
+  // Pagination State
+  const [currentPage, setCurrentPage] = useState(1);
+  const [rowsPerPage, setRowsPerPage] = useState(50);
+  const [totalRecords, setTotalRecords] = useState(0);
+  const ROWS_PER_PAGE_OPTIONS = [25, 50, 100, 200];
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedSearchTerm(searchTerm);
+      setCurrentPage(1);
+    }, 400);
+    return () => clearTimeout(handler);
+  }, [searchTerm]);
 
   // Inline Editing State
   const [inlineEdits, setInlineEdits] = useState({});
@@ -211,20 +226,23 @@ export default function MyGroupViewRequest({ userRoles = [], user }) {
       if (ratesData?.length) setReferenceRates(ratesData);
     };
     loadFilterOptions();
-    fetchRecords();
   }, []);
 
-  const fetchRecords = async (activeFilters = null) => {
+  const fetchRecords = async (activeFilters = null, targetPage = currentPage, targetRowsPerPage = rowsPerPage, targetSortConfig = sortConfig, searchVal = debouncedSearchTerm) => {
     setLoading(true);
     setError(null);
     setNoResults(false);
 
+    const f = activeFilters || filters;
+    const start = (targetPage - 1) * targetRowsPerPage;
+    const end = start + targetRowsPerPage - 1;
+
     let query = supabase
       .from('work_orders')
-      .select('*')
-      .order('created_at', { ascending: false });
+      .select('*', { count: 'exact' })
+      .order(targetSortConfig.key, { ascending: targetSortConfig.direction === 'asc' })
+      .range(start, end);
 
-    const f = activeFilters || filters;
     if (f.language) query = query.eq('language', f.language);
     if (f.region) query = query.eq('region', f.region);
     if (f.assigned_to && !isEmployee) query = query.eq('assigned_to', f.assigned_to);
@@ -239,25 +257,54 @@ export default function MyGroupViewRequest({ userRoles = [], user }) {
       query = query.eq('assigned_to', userName);
     }
 
-    const { data, error } = await query;
+    // Like search across selected string columns
+    const cleanSearch = searchVal.trim();
+    if (cleanSearch) {
+      const conditions = [
+        `work_order_number.ilike.%${cleanSearch}%`,
+        `file_number.ilike.%${cleanSearch}%`,
+        `assigned_to.ilike.%${cleanSearch}%`,
+        `region.ilike.%${cleanSearch}%`,
+        `division.ilike.%${cleanSearch}%`,
+        `request_type.ilike.%${cleanSearch}%`,
+        `status.ilike.%${cleanSearch}%`,
+        `employee_comments.ilike.%${cleanSearch}%`,
+        `regdeck_admin_comments.ilike.%${cleanSearch}%`,
+        `additional_comments.ilike.%${cleanSearch}%`
+      ];
+      query = query.or(conditions.join(','));
+    }
 
-    if (error) {
-      setError(error.message);
-    } else if (!data || data.length === 0) {
+    const { data, error: fetchError, count } = await query;
+
+    if (fetchError) {
+      setError(fetchError.message);
       setRecords([]);
-      setNoResults(true);
+      setTotalRecords(0);
     } else {
-      setRecords(data);
+      setRecords(data || []);
+      setTotalRecords(count || 0);
+      if (!data || data.length === 0) {
+        setNoResults(true);
+      }
     }
     setLoading(false);
   };
+
+  useEffect(() => {
+    fetchRecords(filters, currentPage, rowsPerPage, sortConfig, debouncedSearchTerm);
+  }, [currentPage, rowsPerPage, sortConfig, debouncedSearchTerm]);
 
   const handleFilterChange = (e) => {
     setFilters(prev => ({ ...prev, [e.target.name]: e.target.value }));
   };
 
   const handleApply = () => {
-    fetchRecords(filters);
+    if (currentPage === 1) {
+      fetchRecords(filters, 1, rowsPerPage, sortConfig, debouncedSearchTerm);
+    } else {
+      setCurrentPage(1);
+    }
   };
 
   const handleReset = () => {
@@ -274,7 +321,11 @@ export default function MyGroupViewRequest({ userRoles = [], user }) {
     };
     setFilters(cleared);
     setSearchTerm('');
-    fetchRecords(cleared);
+    if (currentPage === 1) {
+      fetchRecords(cleared, 1, rowsPerPage, sortConfig, '');
+    } else {
+      setCurrentPage(1);
+    }
   };
 
   const handleSort = (key) => {
@@ -428,29 +479,51 @@ export default function MyGroupViewRequest({ userRoles = [], user }) {
     return `${day}-${months[monthIndex]}-${year}`;
   };
 
+  // Pagination computed values
+  const totalPages = Math.max(1, Math.ceil(totalRecords / rowsPerPage));
+  const safeCurrentPage = Math.min(currentPage, totalPages);
+  const startIndex = (safeCurrentPage - 1) * rowsPerPage;
+  const endIndex = Math.min(startIndex + records.length, totalRecords);
+
+  const handleRowsPerPageChange = (e) => {
+    setRowsPerPage(Number(e.target.value));
+    setCurrentPage(1);
+  };
+
+  // Generate page numbers to display (with ellipsis logic)
+  const getPageNumbers = () => {
+    const pages = [];
+    const maxVisiblePages = 7;
+    
+    if (totalPages <= maxVisiblePages) {
+      for (let i = 1; i <= totalPages; i++) pages.push(i);
+    } else {
+      pages.push(1);
+      
+      if (safeCurrentPage > 3) {
+        pages.push('...');
+      }
+      
+      const start = Math.max(2, safeCurrentPage - 1);
+      const end = Math.min(totalPages - 1, safeCurrentPage + 1);
+      
+      for (let i = start; i <= end; i++) {
+        pages.push(i);
+      }
+      
+      if (safeCurrentPage < totalPages - 2) {
+        pages.push('...');
+      }
+      
+      pages.push(totalPages);
+    }
+    
+    return pages;
+  };
+
   // Filter & search, then group by work_order_number
   const groupedData = useMemo(() => {
     let items = [...records];
-
-    // Global search
-    if (searchTerm.trim()) {
-      const term = searchTerm.toLowerCase().trim();
-      items = items.filter(r => {
-        const searchableValues = [
-          r.work_order_number, r.region, r.file_number,
-          r.division, r.request_type, r.assigned_to,
-          r.tat != null ? String(r.tat) : '',
-          r.due_date ? formatDdMmm(r.due_date) : '',
-          r.wo_date ? formatDdMmm(r.wo_date) : '',
-          r.hearing_date ? formatDdMmmYyyy(r.hearing_date) : '',
-          r.audio_length, r.status,
-          r.word_count != null ? String(r.word_count) : '',
-          r.character_wz_space != null ? String(r.character_wz_space) : '',
-          r.line_count != null ? String(r.line_count) : ''
-        ];
-        return searchableValues.some(v => v && v.toLowerCase().includes(term));
-      });
-    }
 
     // Group by work_order_number
     const groups = {};
@@ -483,7 +556,7 @@ export default function MyGroupViewRequest({ userRoles = [], user }) {
     });
 
     return groupArray;
-  }, [records, sortConfig, searchTerm]);
+  }, [records, sortConfig]);
 
   const toggleGroup = (woNumber) => {
     setExpandedGroups(prev => ({
@@ -500,9 +573,113 @@ export default function MyGroupViewRequest({ userRoles = [], user }) {
   };
 
   // Export
-  const handleExportExcel = () => {
+  const handleExportExcel = async () => {
+    setLoading(true);
+    let allExportData = [];
+    let page = 0;
+    const pageSize = 1000;
+    let hasMore = true;
+    let fetchError = null;
+
+    const f = filters;
+
+    while (hasMore) {
+      const start = page * pageSize;
+      const end = start + pageSize - 1;
+
+      let query = supabase
+        .from('work_orders')
+        .select('*')
+        .order(sortConfig.key, { ascending: sortConfig.direction === 'asc' })
+        .range(start, end);
+
+      if (f.language) query = query.eq('language', f.language);
+      if (f.region) query = query.eq('region', f.region);
+      if (f.assigned_to && !isEmployee) query = query.eq('assigned_to', f.assigned_to);
+      if (f.from_due_date) query = query.gte('due_date', f.from_due_date);
+      if (f.to_due_date) query = query.lte('due_date', f.to_due_date);
+      if (f.delivery_date) query = query.eq('delivery_date', f.delivery_date);
+      if (f.status) query = query.eq('status', f.status);
+      if (f.work_order_number) query = query.ilike('work_order_number', `%${f.work_order_number}%`);
+      if (f.file_number) query = query.ilike('file_number', `%${f.file_number}%`);
+
+      if (isEmployee && userName) {
+        query = query.eq('assigned_to', userName);
+      }
+
+      const cleanSearch = debouncedSearchTerm.trim();
+      if (cleanSearch) {
+        const conditions = [
+          `work_order_number.ilike.%${cleanSearch}%`,
+          `file_number.ilike.%${cleanSearch}%`,
+          `assigned_to.ilike.%${cleanSearch}%`,
+          `region.ilike.%${cleanSearch}%`,
+          `division.ilike.%${cleanSearch}%`,
+          `request_type.ilike.%${cleanSearch}%`,
+          `status.ilike.%${cleanSearch}%`,
+          `employee_comments.ilike.%${cleanSearch}%`,
+          `regdeck_admin_comments.ilike.%${cleanSearch}%`,
+          `additional_comments.ilike.%${cleanSearch}%`
+        ];
+        query = query.or(conditions.join(','));
+      }
+
+      const { data, error } = await query;
+      if (error) {
+        fetchError = error;
+        break;
+      }
+
+      if (data && data.length > 0) {
+        allExportData = allExportData.concat(data);
+        if (data.length < pageSize) {
+          hasMore = false;
+        } else {
+          page++;
+        }
+      } else {
+        hasMore = false;
+      }
+    }
+
+    setLoading(false);
+
+    if (fetchError) {
+      setError('Export failed: ' + fetchError.message);
+      return;
+    }
+
+    // Group the retrieved records
+    const groups = {};
+    allExportData.forEach(record => {
+      const key = record.work_order_number || 'Unknown';
+      if (!groups[key]) {
+        groups[key] = {
+          work_order_number: record.work_order_number,
+          wo_date: record.wo_date,
+          region: record.region,
+          tat: record.tat,
+          due_date: record.due_date,
+          assigned_to: record.assigned_to,
+          children: []
+        };
+      }
+      groups[key].children.push(record);
+    });
+
+    let groupArray = Object.values(groups);
+    groupArray.sort((a, b) => {
+      let valA = a[sortConfig.key];
+      let valB = b[sortConfig.key];
+      if (valA === null || valA === undefined) valA = '';
+      if (valB === null || valB === undefined) valB = '';
+      if (valA < valB) return sortConfig.direction === 'asc' ? -1 : 1;
+      if (valA > valB) return sortConfig.direction === 'asc' ? 1 : -1;
+      return 0;
+    });
+
     const exportData = [];
-    groupedData.forEach(group => {
+    groupArray.forEach(group => {
       group.children.forEach(child => {
         exportData.push({
           'WO Date': formatDdMmm(child.wo_date),
@@ -521,6 +698,7 @@ export default function MyGroupViewRequest({ userRoles = [], user }) {
         });
       });
     });
+
     const worksheet = XLSX.utils.json_to_sheet(exportData);
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, "Group View");
@@ -646,6 +824,20 @@ export default function MyGroupViewRequest({ userRoles = [], user }) {
             Export
           </button>
 
+          {/* Rows Per Page Dropdown */}
+          <div className="rows-per-page-container">
+            <label className="rows-per-page-label">Rows</label>
+            <select
+              className="rows-per-page-select"
+              value={rowsPerPage}
+              onChange={handleRowsPerPageChange}
+            >
+              {ROWS_PER_PAGE_OPTIONS.map(opt => (
+                <option key={opt} value={opt}>{opt}</option>
+              ))}
+            </select>
+          </div>
+
           {/* Column Toggle Dropdown */}
           <div className="column-toggle-container" ref={columnMenuRef} style={{ position: 'relative' }}>
             <button 
@@ -686,7 +878,7 @@ export default function MyGroupViewRequest({ userRoles = [], user }) {
 
       {/* ===== Summary ===== */}
       <div style={{ marginBottom: '1rem', fontSize: '0.85rem', color: '#6b7280' }}>
-        Showing <strong>{groupedData.length}</strong> work order group{groupedData.length !== 1 ? 's' : ''} ({records.length} total records)
+        Showing <strong>{groupedData.length}</strong> work order group{groupedData.length !== 1 ? 's' : ''} ({totalRecords} total matching records)
       </div>
 
       {/* ===== Main Table ===== */}
@@ -872,6 +1064,45 @@ export default function MyGroupViewRequest({ userRoles = [], user }) {
               })}
             </tbody>
           </table>
+
+          {/* Pagination Controls */}
+          {totalRecords > 0 && (
+            <div className="pagination-container">
+              <div className="pagination-info">
+                Showing {startIndex + 1}–{Math.min(endIndex, totalRecords)} of {totalRecords} records
+              </div>
+              <div className="pagination-nav">
+                <button
+                  className="pagination-btn pagination-prev"
+                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                  disabled={safeCurrentPage === 1}
+                >
+                  ‹ Prev
+                </button>
+                {getPageNumbers().map((page, idx) => (
+                  page === '...' ? (
+                    <span key={`ellipsis-${idx}`} className="pagination-ellipsis">…</span>
+                  ) : (
+                    <a
+                      key={page}
+                      href="#"
+                      className={`pagination-link ${page === safeCurrentPage ? 'active' : ''}`}
+                      onClick={(e) => { e.preventDefault(); setCurrentPage(page); }}
+                    >
+                      {page}
+                    </a>
+                  )
+                ))}
+                <button
+                  className="pagination-btn pagination-next"
+                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                  disabled={safeCurrentPage === totalPages}
+                >
+                  Next ›
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
 

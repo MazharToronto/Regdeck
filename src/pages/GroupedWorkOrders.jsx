@@ -17,21 +17,50 @@ export default function GroupedWorkOrders() {
   const fetchRecords = async () => {
     setLoading(true);
     setError(null);
-    const { data, error } = await supabase
-      .from('work_orders')
-      .select('*')
-      .order('due_date', { ascending: true })
-      .order('work_order_number', { ascending: true });
+    
+    let allData = [];
+    let page = 0;
+    const pageSize = 1000;
+    let hasMore = true;
+    let fetchError = null;
 
-    if (error) {
-      setError(error.message);
+    while (hasMore) {
+      const start = page * pageSize;
+      const end = start + pageSize - 1;
+
+      const { data, error } = await supabase
+        .from('work_orders')
+        .select('*')
+        .order('due_date', { ascending: true })
+        .order('work_order_number', { ascending: true })
+        .range(start, end);
+
+      if (error) {
+        fetchError = error;
+        break;
+      }
+
+      if (data && data.length > 0) {
+        allData = allData.concat(data);
+        if (data.length < pageSize) {
+          hasMore = false;
+        } else {
+          page++;
+        }
+      } else {
+        hasMore = false;
+      }
+    }
+
+    if (fetchError) {
+      setError(fetchError.message);
     } else {
-      setRecords(data || []);
+      setRecords(allData);
       
       // Expand the first few dates by default
-      if (data && data.length > 0) {
+      if (allData.length > 0) {
         const initialExpanded = {};
-        const uniqueDates = [...new Set(data.map(r => r.due_date || 'Unassigned'))].slice(0, 3);
+        const uniqueDates = [...new Set(allData.map(r => r.due_date || 'Unassigned'))].slice(0, 3);
         uniqueDates.forEach(d => initialExpanded[d] = true);
         setExpandedDates(initialExpanded);
       }

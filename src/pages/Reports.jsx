@@ -41,12 +41,22 @@ export default function Reports({ userRoles = [], user }) {
   const [noResults, setNoResults] = useState(false);
   const [sortConfig, setSortConfig] = useState({ key: 'wo_date', direction: 'desc' });
   const [searchTerm, setSearchTerm] = useState('');
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
   const [recordToDelete, setRecordToDelete] = useState(null);
 
   // Pagination State
   const [currentPage, setCurrentPage] = useState(1);
-  const [rowsPerPage, setRowsPerPage] = useState(25);
+  const [rowsPerPage, setRowsPerPage] = useState(50);
+  const [totalRecords, setTotalRecords] = useState(0);
   const ROWS_PER_PAGE_OPTIONS = [25, 50, 100, 200];
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedSearchTerm(searchTerm);
+      setCurrentPage(1);
+    }, 400);
+    return () => clearTimeout(handler);
+  }, [searchTerm]);
   
   // Inline Editing State
   const [inlineEdits, setInlineEdits] = useState({});
@@ -183,22 +193,24 @@ export default function Reports({ userRoles = [], user }) {
       if (ratesData?.length) setReferenceRates(ratesData);
     };
     loadFilterOptions();
-    fetchRecords();
   }, []);
 
-  const fetchRecords = async (activeFilters = null) => {
+  const fetchRecords = async (activeFilters = null, targetPage = currentPage, targetRowsPerPage = rowsPerPage, targetSortConfig = sortConfig, searchVal = debouncedSearchTerm) => {
     setLoading(true);
     setError(null);
     setNoResults(false);
 
+    const f = activeFilters || filters;
+    const start = (targetPage - 1) * targetRowsPerPage;
+    const end = start + targetRowsPerPage - 1;
+
     let query = supabase
       .from('work_orders')
-      .select('*')
-      .order('wo_date', { ascending: false })
-      .limit(10000);
+      .select('*', { count: 'exact' })
+      .order(targetSortConfig.key, { ascending: targetSortConfig.direction === 'asc' })
+      .range(start, end);
 
     // Apply filters if provided
-    const f = activeFilters || filters;
     if (f.language) query = query.eq('language', f.language);
     if (f.region) query = query.eq('region', f.region);
     if (f.assigned_to && !isEmployee) query = query.eq('assigned_to', f.assigned_to);
@@ -214,26 +226,54 @@ export default function Reports({ userRoles = [], user }) {
       query = query.eq('assigned_to', userName);
     }
 
-    const { data, error } = await query;
+    // Like search across selected string columns
+    const cleanSearch = searchVal.trim();
+    if (cleanSearch) {
+      const conditions = [
+        `work_order_number.ilike.%${cleanSearch}%`,
+        `file_number.ilike.%${cleanSearch}%`,
+        `assigned_to.ilike.%${cleanSearch}%`,
+        `region.ilike.%${cleanSearch}%`,
+        `division.ilike.%${cleanSearch}%`,
+        `request_type.ilike.%${cleanSearch}%`,
+        `status.ilike.%${cleanSearch}%`,
+        `employee_comments.ilike.%${cleanSearch}%`,
+        `regdeck_admin_comments.ilike.%${cleanSearch}%`,
+        `additional_comments.ilike.%${cleanSearch}%`
+      ];
+      query = query.or(conditions.join(','));
+    }
 
-    if (error) {
-      setError(error.message);
-    } else if (!data || data.length === 0) {
+    const { data, error: fetchError, count } = await query;
+
+    if (fetchError) {
+      setError(fetchError.message);
       setRecords([]);
-      setNoResults(true);
+      setTotalRecords(0);
     } else {
-      setRecords(data);
+      setRecords(data || []);
+      setTotalRecords(count || 0);
+      if (!data || data.length === 0) {
+        setNoResults(true);
+      }
     }
     setLoading(false);
   };
+
+  useEffect(() => {
+    fetchRecords(filters, currentPage, rowsPerPage, sortConfig, debouncedSearchTerm);
+  }, [currentPage, rowsPerPage, sortConfig, debouncedSearchTerm]);
 
   const handleFilterChange = (e) => {
     setFilters(prev => ({ ...prev, [e.target.name]: e.target.value }));
   };
 
   const handleApply = () => {
-    setCurrentPage(1);
-    fetchRecords(filters);
+    if (currentPage === 1) {
+      fetchRecords(filters, 1, rowsPerPage, sortConfig, debouncedSearchTerm);
+    } else {
+      setCurrentPage(1);
+    }
   };
 
   const handleReset = () => {
@@ -250,8 +290,11 @@ export default function Reports({ userRoles = [], user }) {
     };
     setFilters(cleared);
     setSearchTerm('');
-    setCurrentPage(1);
-    fetchRecords(cleared);
+    if (currentPage === 1) {
+      fetchRecords(cleared, 1, rowsPerPage, sortConfig, '');
+    } else {
+      setCurrentPage(1);
+    }
   };
 
   const handleSort = (key) => {
@@ -423,10 +466,85 @@ export default function Reports({ userRoles = [], user }) {
   };
   // ----- END INLINE EDIT LOGIC -----
 
-  const handleExportExcel = () => {
+  const handleExportExcel = async () => {
+    setLoading(true);
+    let allExportData = [];
+    let page = 0;
+    const pageSize = 1000;
+    let hasMore = true;
+    let fetchError = null;
+
+    const f = filters;
+
+    while (hasMore) {
+      const start = page * pageSize;
+      const end = start + pageSize - 1;
+
+      let query = supabase
+        .from('work_orders')
+        .select('*')
+        .order(sortConfig.key, { ascending: sortConfig.direction === 'asc' })
+        .range(start, end);
+
+      if (f.language) query = query.eq('language', f.language);
+      if (f.region) query = query.eq('region', f.region);
+      if (f.assigned_to && !isEmployee) query = query.eq('assigned_to', f.assigned_to);
+      if (f.from_due_date) query = query.gte('due_date', f.from_due_date);
+      if (f.to_due_date) query = query.lte('due_date', f.to_due_date);
+      if (f.delivery_date) query = query.eq('delivery_date', f.delivery_date);
+      if (f.status) query = query.eq('status', f.status);
+      if (f.work_order_number) query = query.ilike('work_order_number', `%${f.work_order_number}%`);
+      if (f.file_number) query = query.ilike('file_number', `%${f.file_number}%`);
+
+      if (isEmployee && userName) {
+        query = query.eq('assigned_to', userName);
+      }
+
+      const cleanSearch = debouncedSearchTerm.trim();
+      if (cleanSearch) {
+        const conditions = [
+          `work_order_number.ilike.%${cleanSearch}%`,
+          `file_number.ilike.%${cleanSearch}%`,
+          `assigned_to.ilike.%${cleanSearch}%`,
+          `region.ilike.%${cleanSearch}%`,
+          `division.ilike.%${cleanSearch}%`,
+          `request_type.ilike.%${cleanSearch}%`,
+          `status.ilike.%${cleanSearch}%`,
+          `employee_comments.ilike.%${cleanSearch}%`,
+          `regdeck_admin_comments.ilike.%${cleanSearch}%`,
+          `additional_comments.ilike.%${cleanSearch}%`
+        ];
+        query = query.or(conditions.join(','));
+      }
+
+      const { data, error } = await query;
+      if (error) {
+        fetchError = error;
+        break;
+      }
+
+      if (data && data.length > 0) {
+        allExportData = allExportData.concat(data);
+        if (data.length < pageSize) {
+          hasMore = false;
+        } else {
+          page++;
+        }
+      } else {
+        hasMore = false;
+      }
+    }
+
+    setLoading(false);
+
+    if (fetchError) {
+      setError('Export failed: ' + fetchError.message);
+      return;
+    }
+
     const exportColumns = COLUMN_CONFIG.filter(col => visibleColumns.includes(col.key));
     
-    const exportData = filteredAndSorted.map(record => {
+    const exportData = allExportData.map(record => {
       const rowData = {};
       exportColumns.forEach(col => {
         if (col.key === 'wo_date') {
@@ -475,69 +593,12 @@ export default function Reports({ userRoles = [], user }) {
     return `${day}-${months[monthIndex]}-${year}`;
   };
 
-  // Sort + search filtering
-  const filteredAndSorted = useMemo(() => {
-    let items = [...records];
-
-    // Global search across all visible fields
-    if (searchTerm.trim()) {
-      const term = searchTerm.toLowerCase().trim();
-      items = items.filter(r => {
-        const searchableValues = [
-          r.language,
-          r.wo_date ? formatDdMmm(r.wo_date) : '',
-          r.work_order_number,
-          r.file_number,
-          r.region,
-          r.assigned_to,
-          r.division,
-          r.request_type,
-          r.tat != null ? String(r.tat) : '',
-          r.hearing_date ? formatDdMmmYyyy(r.hearing_date) : '',
-          r.due_date ? formatDdMmm(r.due_date) : '',
-          r.delivery_date ? formatDdMmm(r.delivery_date) : '',
-          r.audio_length,
-          r.word_count != null ? String(r.word_count) : '',
-          r.character_wz_space != null ? String(r.character_wz_space) : '',
-          r.line_count != null ? String(r.line_count) : '',
-          r.status,
-          r.days_late != null ? String(r.days_late) : '',
-          r.employee_comments,
-          r.regdeck_admin_comments,
-          r.additional_comments
-        ];
-        return searchableValues.some(v => v && v.toLowerCase().includes(term));
-      });
-    }
-
-    // Sort
-    items.sort((a, b) => {
-      let valA = a[sortConfig.key];
-      let valB = b[sortConfig.key];
-      
-      if (valA === null || valA === undefined) valA = '';
-      if (valB === null || valB === undefined) valB = '';
-
-      if (valA < valB) return sortConfig.direction === 'asc' ? -1 : 1;
-      if (valA > valB) return sortConfig.direction === 'asc' ? 1 : -1;
-      return 0;
-    });
-
-    return items;
-  }, [records, sortConfig, searchTerm]);
-
   // Pagination computed values
-  const totalRecords = filteredAndSorted.length;
   const totalPages = Math.max(1, Math.ceil(totalRecords / rowsPerPage));
   const safeCurrentPage = Math.min(currentPage, totalPages);
   const startIndex = (safeCurrentPage - 1) * rowsPerPage;
-  const endIndex = startIndex + rowsPerPage;
-  const paginatedRecords = filteredAndSorted.slice(startIndex, endIndex);
-
-  // Reset to page 1 when search term changes
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [searchTerm]);
+  const endIndex = Math.min(startIndex + records.length, totalRecords);
+  const paginatedRecords = records;
 
   const handleRowsPerPageChange = (e) => {
     setRowsPerPage(Number(e.target.value));
