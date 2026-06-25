@@ -686,7 +686,7 @@ export default function MyGroupViewRequest({ userRoles = [], user }) {
           'Work Order #': child.work_order_number,
           'Region': child.region,
           'TAT': child.tat,
-          'Due Date': formatDdMmm(child.due_date),
+          'Due': formatDdMmm(child.due_date),
           'File Number': child.file_number || '',
           'Hearing Date': formatDdMmmYyyy(child.hearing_date),
           'Division': child.division || '',
@@ -761,11 +761,11 @@ export default function MyGroupViewRequest({ userRoles = [], user }) {
             </div>
           )}
           <div className="filter-group">
-            <label className="filter-label">From Due Date</label>
+            <label className="filter-label">From Due</label>
             <input type="date" name="from_due_date" className="filter-select" value={filters.from_due_date} onChange={handleFilterChange} />
           </div>
           <div className="filter-group">
-            <label className="filter-label">To Due Date</label>
+            <label className="filter-label">To Due</label>
             <input type="date" name="to_due_date" className="filter-select" value={filters.to_due_date} onChange={handleFilterChange} />
           </div>
           <div className="filter-group">
@@ -898,7 +898,7 @@ export default function MyGroupViewRequest({ userRoles = [], user }) {
                     'work_order_number': 'Work Order #',
                     'region': 'Region',
                     'tat': 'TAT',
-                    'due_date': 'Due Date',
+                    'due_date': 'Due',
                     'total_audio_length': 'Total Audio Length'
                   };
                   return (
@@ -1010,6 +1010,12 @@ export default function MyGroupViewRequest({ userRoles = [], user }) {
                                       if (colKey === 'employee_comments') return <input type="text" className="form-input" style={{...inputStyle, minWidth: '150px'}} value={draft.employee_comments || ''} onChange={(e) => handleInlineChange(child.id, 'employee_comments', e.target.value)} />;
                                       if (colKey === 'regdeck_admin_comments') return <input type="text" className="form-input" style={{...inputStyle, minWidth: '150px'}} value={draft.regdeck_admin_comments || ''} onChange={(e) => handleInlineChange(child.id, 'regdeck_admin_comments', e.target.value)} />;
                                       if (colKey === 'additional_comments') return <input type="text" className="form-input" style={{...inputStyle, minWidth: '150px'}} value={draft.additional_comments || ''} onChange={(e) => handleInlineChange(child.id, 'additional_comments', e.target.value)} />;
+                                    }
+                                    // Employee-specific: allow editing word_count and character_wz_space
+                                    if (isEditing && isEmployee) {
+                                      if (colKey === 'word_count') return <input type="text" className="form-input" style={inputStyle} value={draft.word_count || ''} onChange={(e) => handleInlineChange(child.id, 'word_count', e.target.value)} />;
+                                      if (colKey === 'character_wz_space') return <input type="text" className="form-input" style={inputStyle} value={draft.character_wz_space || ''} onChange={(e) => handleInlineChange(child.id, 'character_wz_space', e.target.value)} />;
+                                      if (colKey === 'line_count') return <span>{Number(draft.line_count != null ? draft.line_count : (child.line_count || 0)).toLocaleString()}</span>;
                                     }
                                     // Read-only display
                                     if (colKey === 'hearing_date') return formatDdMmmYyyy(child.hearing_date);

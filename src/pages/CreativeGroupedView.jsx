@@ -2,12 +2,15 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../supabaseClient';
 import { Calendar, ChevronDown, ChevronUp, FileText, CheckCircle, Clock } from 'lucide-react';
 
-export default function CreativeGroupedView() {
+export default function CreativeGroupedView({ userRoles = [], user }) {
   const [records, setRecords] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [selectedDueDate, setSelectedDueDate] = useState('');
   const [expandedCards, setExpandedCards] = useState({});
+
+  const isEmployee = !userRoles.includes('admin') && !userRoles.includes('manager');
+  const userName = user?.user_metadata?.full_name || '';
 
   useEffect(() => {
     fetchRecords();
@@ -27,12 +30,18 @@ export default function CreativeGroupedView() {
       const start = page * pageSize;
       const end = start + pageSize - 1;
 
-      const { data, error } = await supabase
+      let query = supabase
         .from('work_orders')
         .select('*')
         .order('due_date', { ascending: true })
         .order('work_order_number', { ascending: true })
         .range(start, end);
+
+      if (isEmployee && userName) {
+        query = query.eq('assigned_to', userName);
+      }
+
+      const { data, error } = await query;
 
       if (error) {
         fetchError = error;
@@ -55,18 +64,6 @@ export default function CreativeGroupedView() {
       setError(fetchError.message);
     } else {
       setRecords(allData);
-      
-      // Auto-select the first available date
-      if (allData.length > 0) {
-        const uniqueDates = [...new Set(allData.map(r => r.due_date || 'Unassigned'))].sort((a, b) => {
-          if (a === 'Unassigned') return -1;
-          if (b === 'Unassigned') return 1;
-          return new Date(a) - new Date(b);
-        });
-        if (uniqueDates.length > 0) {
-          setSelectedDueDate(uniqueDates[0]);
-        }
-      }
     }
     setLoading(false);
   };
@@ -110,16 +107,6 @@ export default function CreativeGroupedView() {
     }
     return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
   };
-
-  // Extract unique due dates for the pill selector
-  const uniqueDueDates = useMemo(() => {
-    const dates = [...new Set(records.map(r => r.due_date || 'Unassigned'))];
-    return dates.sort((a, b) => {
-      if (a === 'Unassigned') return -1;
-      if (b === 'Unassigned') return 1;
-      return new Date(a) - new Date(b);
-    });
-  }, [records]);
 
   // Group records by the SELECTED due date, then combine identical work orders
   const groupedDataForSelectedDate = useMemo(() => {
@@ -165,98 +152,177 @@ export default function CreativeGroupedView() {
     return finalGroups;
   }, [records, selectedDueDate]);
 
+  const totalAudioSum = useMemo(() => {
+    if (!selectedDueDate || groupedDataForSelectedDate.length === 0) return '00:00';
+    const allLengths = groupedDataForSelectedDate.map(card => card.audio_length);
+    return sumAudioLengths(allLengths);
+  }, [groupedDataForSelectedDate, selectedDueDate]);
+
   return (
     <div className="page-container" style={{ paddingBottom: '3rem' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
         <h1 className="page-title" style={{ margin: 0 }}>Work Order Board</h1>
       </div>
 
-      {/* Interactive Date Strip */}
+      <style dangerouslySetInnerHTML={{__html: `
+        .custom-date-input:focus {
+          border-color: #6366f1 !important;
+          box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15) !important;
+        }
+        .work-order-card {
+          background: #fff;
+          border-radius: 16px;
+          box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
+          border: 1px solid #f1f5f9;
+          overflow: hidden;
+          transition: all 0.2s ease;
+          display: flex;
+          flex-direction: column;
+        }
+        .work-order-card:hover {
+          transform: translateY(-3px);
+          box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+          border-color: #e2e8f0;
+        }
+        .work-order-card.status-done { border-top: 4px solid #10b981; }
+        .work-order-card.status-in-progress { border-top: 4px solid #f59e0b; }
+        .work-order-card.status-default { border-top: 4px solid #6366f1; }
+      `}} />
+
+      {/* Date Selector Row */}
       <div style={{ 
-        display: 'flex', 
-        gap: '0.75rem', 
-        overflowX: 'auto', 
-        paddingBottom: '1rem', 
-        marginBottom: '1.5rem',
-        scrollbarWidth: 'none', /* Firefox */
+        display: 'flex',
+        alignItems: 'center',
+        gap: '1rem',
+        flexWrap: 'wrap',
+        marginBottom: '2.5rem'
       }}>
-        <style dangerouslySetInnerHTML={{__html: `
-          .date-strip::-webkit-scrollbar { display: none; }
-          .date-pill {
-            padding: 0.6rem 1.25rem;
-            border-radius: 999px;
-            font-size: 0.95rem;
-            font-weight: 600;
-            cursor: pointer;
-            white-space: nowrap;
-            transition: all 0.2s ease;
-            border: 2px solid transparent;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-          }
-          .date-pill:hover {
-            transform: translateY(-2px);
-          }
-          .date-pill.active {
-            background: linear-gradient(135deg, #6366f1, #7c3aed);
-            color: white;
-            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);
-          }
-          .date-pill.inactive {
-            background: #fff;
-            color: #64748b;
-            border-color: #e2e8f0;
-          }
-          .date-pill.inactive:hover {
-            border-color: #cbd5e1;
-            color: #334155;
-          }
-          .work-order-card {
-            background: #fff;
-            border-radius: 16px;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
-            border: 1px solid #f1f5f9;
-            overflow: hidden;
-            transition: all 0.2s ease;
-            display: flex;
-            flex-direction: column;
-          }
-          .work-order-card:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
-            border-color: #e2e8f0;
-          }
-          .work-order-card.status-done { border-top: 4px solid #10b981; }
-          .work-order-card.status-in-progress { border-top: 4px solid #f59e0b; }
-          .work-order-card.status-default { border-top: 4px solid #6366f1; }
-        `}} />
-        
-        <div className="date-strip" style={{ display: 'flex', gap: '0.75rem', overflowX: 'auto', width: '100%' }}>
-          {uniqueDueDates.length === 0 && !loading && (
-            <p className="text-muted">No dates available.</p>
-          )}
-          {uniqueDueDates.map(d => (
-            <div 
-              key={d} 
-              className={`date-pill ${selectedDueDate === d ? 'active' : 'inactive'}`}
-              onClick={() => setSelectedDueDate(d)}
-            >
-              <Calendar size={16} />
-              {formatDdMmm(d)}
-            </div>
-          ))}
+        {/* Date Input Wrapper */}
+        <div style={{ 
+          display: 'flex', 
+          alignItems: 'center', 
+          gap: '0.75rem', 
+          background: '#fff', 
+          padding: '0.55rem 1rem', 
+          borderRadius: '10px', 
+          border: '1.5px solid #ececf1', 
+          boxShadow: '0 1px 3px rgba(0,0,0,0.02)' 
+        }}>
+          <Calendar size={18} color="#64748b" />
+          <input 
+            type="date" 
+            value={selectedDueDate && selectedDueDate !== 'Unassigned' ? selectedDueDate : ''} 
+            onChange={(e) => setSelectedDueDate(e.target.value)}
+            style={{
+              border: 'none',
+              background: 'transparent',
+              outline: 'none',
+              color: '#1e1e2f',
+              fontWeight: '600',
+              fontSize: '0.85rem',
+              cursor: 'pointer',
+              minWidth: '150px',
+              fontFamily: 'inherit'
+            }}
+            className="custom-date-input"
+          />
         </div>
+
+        {/* Unassigned Button */}
+        <button 
+          type="button"
+          onClick={() => setSelectedDueDate('Unassigned')}
+          style={{
+            padding: '0.6rem 1.25rem',
+            borderRadius: '10px',
+            border: '1.5px solid ' + (selectedDueDate === 'Unassigned' ? 'transparent' : '#ececf1'),
+            background: selectedDueDate === 'Unassigned' 
+              ? 'linear-gradient(135deg, #6366f1, #7c3aed)' 
+              : '#fff',
+            color: selectedDueDate === 'Unassigned' ? '#fff' : '#5a5a72',
+            fontSize: '0.85rem',
+            fontWeight: '600',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.5rem',
+            transition: 'all 0.2s ease',
+            boxShadow: selectedDueDate === 'Unassigned' ? '0 3px 12px rgba(99, 102, 241, 0.25)' : 'none'
+          }}
+          onMouseOver={(e) => {
+            if (selectedDueDate !== 'Unassigned') {
+              e.currentTarget.style.background = '#f7f7fb';
+              e.currentTarget.style.borderColor = '#c0c0d0';
+            }
+          }}
+          onMouseOut={(e) => {
+            if (selectedDueDate !== 'Unassigned') {
+              e.currentTarget.style.background = '#fff';
+              e.currentTarget.style.borderColor = '#ececf1';
+            }
+          }}
+        >
+          Unassigned
+        </button>
       </div>
 
-      {/* Masonry / Grid Board */}
-      {loading ? (
+      {/* Total Audio Length Display */}
+      {selectedDueDate && groupedDataForSelectedDate.length > 0 && (
+        <div style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: '0.75rem',
+          background: 'linear-gradient(135deg, #f0fdf4, #ecfdf5)',
+          border: '1px solid #bbf7d0',
+          padding: '0.55rem 1.1rem',
+          borderRadius: '12px',
+          marginBottom: '2rem',
+          boxShadow: '0 2px 8px rgba(16, 185, 129, 0.04)'
+        }}>
+          <span style={{ fontSize: '0.8rem', fontWeight: '600', color: '#15803d', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+            Total Audio Length
+          </span>
+          <span style={{ 
+            fontSize: '1.1rem', 
+            fontWeight: '700', 
+            color: '#166534', 
+            fontFamily: 'monospace',
+            background: '#fff',
+            padding: '0.2rem 0.55rem',
+            borderRadius: '6px',
+            border: '1px solid #dcfce7'
+          }}>
+            {totalAudioSum}
+          </span>
+        </div>
+      )}
+
+      {/* Board Content */}
+      {!selectedDueDate ? (
+        <div style={{ 
+          background: '#fff', 
+          borderRadius: '16px', 
+          padding: '4rem 2rem', 
+          textAlign: 'center', 
+          border: '1px dashed #cbd5e1',
+          boxShadow: '0 4px 20px rgba(0, 0, 0, 0.02)',
+          marginTop: '1.5rem'
+        }}>
+          <Calendar size={48} color="#6366f1" style={{ margin: '0 auto 1.5rem', opacity: 0.8 }} />
+          <h3 style={{ fontSize: '1.25rem', fontWeight: '600', color: '#1e293b', marginBottom: '0.5rem' }}>
+            Select a Due Date
+          </h3>
+          <p style={{ color: '#64748b', maxWidth: '400px', margin: '0 auto', fontSize: '0.95rem' }}>
+            Please select a due date from the date picker above or click "Unassigned" to view active work orders on the board.
+          </p>
+        </div>
+      ) : loading ? (
         <p className="text-muted">Loading board...</p>
       ) : error ? (
         <div className="alert alert-error">{error}</div>
       ) : groupedDataForSelectedDate.length === 0 ? (
         <div className="empty-state">
-          <p className="text-muted">No records found for this due date.</p>
+          <p className="text-muted">No records found for this due.</p>
         </div>
       ) : (
         <div style={{ 
@@ -327,25 +393,26 @@ export default function CreativeGroupedView() {
                       {card.subRecords.map((sub, idx) => {
                         const fileId = sub.id || `${card.id}-${idx}`;
                         return (
-                        <div key={fileId} style={{ 
-                          display: 'flex', 
-                          justifyContent: 'space-between', 
-                          alignItems: 'center',
-                          padding: '0.6rem 0.8rem',
-                          background: '#fff',
-                          borderRadius: '8px',
-                          border: '1px solid #e2e8f0',
-                          boxShadow: '0 1px 2px rgba(0,0,0,0.02)'
-                        }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#334155', fontSize: '0.85rem', fontWeight: '500' }}>
-                            <FileText size={14} color="#94a3b8" />
-                            {sub.file_number || '—'}
+                          <div key={fileId} style={{ 
+                            display: 'flex', 
+                            justifyContent: 'space-between', 
+                            alignItems: 'center',
+                            padding: '0.6rem 0.8rem',
+                            background: '#fff',
+                            borderRadius: '8px',
+                            border: '1px solid #e2e8f0',
+                            boxShadow: '0 1px 2px rgba(0,0,0,0.02)'
+                          }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#334155', fontSize: '0.85rem', fontWeight: '500' }}>
+                              <FileText size={14} color="#94a3b8" />
+                              {sub.file_number || '—'}
+                            </div>
+                            <span style={{ fontSize: '0.85rem', color: '#64748b', fontFamily: 'monospace', fontWeight: '600' }}>
+                              {sub.audio_length || '—'}
+                            </span>
                           </div>
-                          <span style={{ fontSize: '0.85rem', color: '#64748b', fontFamily: 'monospace', fontWeight: '600' }}>
-                            {sub.audio_length || '—'}
-                          </span>
-                        </div>
-                      )})}
+                        );
+                      })}
                     </div>
                   </div>
                 )}

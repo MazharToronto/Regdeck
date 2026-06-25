@@ -165,7 +165,13 @@ export default function Dashboard() {
           setError(fetchError.message);
           setReport1Data([]);
         } else {
-          const sortedData = (data || []).sort((a, b) => {
+          // Deduplicate by work_order_number — keep first occurrence per WO#
+          const seen = new Map();
+          (data || []).forEach(row => {
+            if (!seen.has(row.work_order_number)) seen.set(row.work_order_number, row);
+          });
+          const uniqueData = Array.from(seen.values());
+          const sortedData = uniqueData.sort((a, b) => {
             const timeDiff = new Date(a.wo_date).getTime() - new Date(b.wo_date).getTime();
             if (timeDiff !== 0) return timeDiff;
             return (a.work_order_number || '').localeCompare(b.work_order_number || '');
@@ -194,7 +200,13 @@ export default function Dashboard() {
           setError2(fetchError.message);
           setReport2Data([]);
         } else {
-          const sortedData = (data || []).sort((a, b) => {
+          // Deduplicate by work_order_number — keep first occurrence per WO#
+          const seen = new Map();
+          (data || []).forEach(row => {
+            if (!seen.has(row.work_order_number)) seen.set(row.work_order_number, row);
+          });
+          const uniqueData = Array.from(seen.values());
+          const sortedData = uniqueData.sort((a, b) => {
             const timeDiff = new Date(a.wo_date).getTime() - new Date(b.wo_date).getTime();
             if (timeDiff !== 0) return timeDiff;
             return (a.work_order_number || '').localeCompare(b.work_order_number || '');
@@ -1087,7 +1099,7 @@ export default function Dashboard() {
                         <th style={{ padding: '0.85rem 1rem', fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase', fontWeight: '600', letterSpacing: '0.05em' }}>WO #</th>
                         <th style={{ padding: '0.85rem 1rem', fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase', fontWeight: '600', letterSpacing: '0.05em' }}>Assigned To</th>
                         <th style={{ padding: '0.85rem 1rem', fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase', fontWeight: '600', letterSpacing: '0.05em' }}>WO Date</th>
-                        <th style={{ padding: '0.85rem 1rem', fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase', fontWeight: '600', letterSpacing: '0.05em' }}>Due Date</th>
+                        <th style={{ padding: '0.85rem 1rem', fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase', fontWeight: '600', letterSpacing: '0.05em' }}>Due</th>
                         <th style={{ padding: '0.85rem 1rem', fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase', fontWeight: '600', letterSpacing: '0.05em' }}>TAT</th>
                       </tr>
                     </thead>
@@ -1201,7 +1213,7 @@ export default function Dashboard() {
                         <th style={{ padding: '0.85rem 1rem', fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase', fontWeight: '600', letterSpacing: '0.05em' }}>WO #</th>
                         <th style={{ padding: '0.85rem 1rem', fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase', fontWeight: '600', letterSpacing: '0.05em' }}>Assigned To</th>
                         <th style={{ padding: '0.85rem 1rem', fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase', fontWeight: '600', letterSpacing: '0.05em' }}>WO Date</th>
-                        <th style={{ padding: '0.85rem 1rem', fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase', fontWeight: '600', letterSpacing: '0.05em' }}>Due Date</th>
+                        <th style={{ padding: '0.85rem 1rem', fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase', fontWeight: '600', letterSpacing: '0.05em' }}>Due</th>
                         <th style={{ padding: '0.85rem 1rem', fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase', fontWeight: '600', letterSpacing: '0.05em' }}>Status</th>
                       </tr>
                     </thead>

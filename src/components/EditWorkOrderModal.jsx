@@ -284,7 +284,7 @@ export default function EditWorkOrderModal({ record, onClose, onSaved, userRoles
             {/* Row 4 */}
             <div className="form-row">
               <div className="form-group">
-                <label className="form-label">Due Date</label>
+                <label className="form-label">Due</label>
                 <input type="date" name="due_date" className="form-input" value={formData.due_date} onChange={handleChange} disabled={!canEditAll} />
               </div>
               <div className="form-group">

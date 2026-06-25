@@ -38,6 +38,22 @@ const formatShortDate = (dateStr) => {
   return `${d.getDate()}-${months[d.getMonth()]}`;
 };
 
+// Group records by WO# + Type + Due Date, summing audio lengths
+const groupByWO = (items) => {
+  const grouped = new Map();
+  items.forEach(item => {
+    const key = `${item.work_order_number}|${item.request_type}|${item.due_date}`;
+    if (grouped.has(key)) {
+      const existing = grouped.get(key);
+      existing.secondsValue += item.secondsValue;
+      existing.displayAudio = formatSecondsToAudioLength(existing.secondsValue);
+    } else {
+      grouped.set(key, { ...item });
+    }
+  });
+  return Array.from(grouped.values());
+};
+
 export default function EmployeeDashboard({ user }) {
   const [workOrders, setWorkOrders] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -73,15 +89,18 @@ export default function EmployeeDashboard({ user }) {
 
   const reportData = useMemo(() => {
     const today = new Date();
-    today.setHours(0, 0, 0, 0); // Normalize to start of day for accurate past due comparison
+    today.setHours(0, 0, 0, 0); // Normalize to start of day for accurate comparison
 
-    const inProcess = [];
-    const pastDue = [];
-    const pending2Tat = [];
+    // Calculate the date 2 days from now
+    const twoDaysFromNow = new Date(today);
+    twoDaysFromNow.setDate(twoDaysFromNow.getDate() + 2);
+
+    const active = [];
+    const needsAttention = [];
+    const workDue = [];
 
     workOrders.forEach(wo => {
       const status = (wo.status || '').toLowerCase();
-      const tat = parseInt(wo.tat, 10);
       const seconds = parseAudioToSeconds(wo.audio_length);
       const mappedRecord = {
         ...wo,
@@ -89,28 +108,38 @@ export default function EmployeeDashboard({ user }) {
         secondsValue: seconds
       };
 
-      // 1. Work In Process
-      if (status === 'in progress') {
-        inProcess.push(mappedRecord);
+      const isActiveStatus = status === 'in progress' || status === 'pending';
+
+      // 1. Active: records with status "In Progress" or "Pending"
+      if (isActiveStatus) {
+        active.push(mappedRecord);
       }
 
-      // 2. Past Due
-      if (wo.due_date) {
+      // 2. Needs Attention: due within 2 days AND status is "In Progress" or "Pending"
+      if (wo.due_date && isActiveStatus) {
         const dueDateObj = new Date(wo.due_date);
         dueDateObj.setHours(0, 0, 0, 0);
-        // Only consider past due if it's not done (assuming 'done' means completed)
-        if (dueDateObj < today && status !== 'done') {
-          pastDue.push(mappedRecord);
+        if (dueDateObj >= today && dueDateObj <= twoDaysFromNow) {
+          needsAttention.push(mappedRecord);
         }
       }
 
-      // 3. 2 TAT - Assigned (Pending & Work in Progress)
-      if (tat === 2 && (status === 'pending' || status === 'in progress')) {
-        pending2Tat.push(mappedRecord);
+      // 3. Work Due: past due date AND status is "In Progress" or "Pending"
+      if (wo.due_date && isActiveStatus) {
+        const dueDateObj = new Date(wo.due_date);
+        dueDateObj.setHours(0, 0, 0, 0);
+        if (dueDateObj < today) {
+          workDue.push(mappedRecord);
+        }
       }
     });
 
-    return { inProcess, pastDue, pending2Tat };
+    // Group all reports by WO# + Type + Due Date, summing audio lengths
+    return {
+      active: groupByWO(active),
+      needsAttention: groupByWO(needsAttention),
+      workDue: groupByWO(workDue)
+    };
   }, [workOrders]);
 
   const renderKanbanCard = (title, items, icon, colorHex) => {
@@ -148,7 +177,7 @@ export default function EmployeeDashboard({ user }) {
               <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e2e8f0' }}>
                 <th style={{ padding: '10px 12px', textAlign: 'left', color: '#475569', fontWeight: '600' }}>WO #</th>
                 <th style={{ padding: '10px 12px', textAlign: 'left', color: '#475569', fontWeight: '600' }}>Type</th>
-                <th style={{ padding: '10px 12px', textAlign: 'left', color: '#475569', fontWeight: '600' }}>Due date</th>
+                <th style={{ padding: '10px 12px', textAlign: 'left', color: '#475569', fontWeight: '600' }}>Due</th>
                 <th style={{ padding: '10px 12px', textAlign: 'right', color: '#475569', fontWeight: '600' }}>Audio length</th>
               </tr>
             </thead>
@@ -198,7 +227,7 @@ export default function EmployeeDashboard({ user }) {
   return (
     <div className="page-container">
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
-        <h1 className="page-title" style={{ margin: 0 }}>Employee Dashboard</h1>
+        <h1 className="page-title" style={{ margin: 0 }}>Dashboard</h1>
         <div style={{ color: '#64748b', fontSize: '14px' }}>
           Welcome back, <strong>{userName}</strong>
         </div>
@@ -211,24 +240,24 @@ export default function EmployeeDashboard({ user }) {
         alignItems: 'start'
       }}>
         {renderKanbanCard(
-          "Work In progress",
-          reportData.inProcess,
+          "Active",
+          reportData.active,
           <Clock size={18} />,
           '#3b82f6' // Blue
         )}
-        
-        {renderKanbanCard(
-          "Work Order past due date",
-          reportData.pastDue,
-          <AlertTriangle size={18} />,
-          '#ef4444' // Red
-        )}
 
         {renderKanbanCard(
-          "TAT of score 2 and Status with Pending and In progress",
-          reportData.pending2Tat,
+          "Needs Attention",
+          reportData.needsAttention,
           <AlertCircle size={18} />,
           '#f59e0b' // Amber
+        )}
+        
+        {renderKanbanCard(
+          "Work Due",
+          reportData.workDue,
+          <AlertTriangle size={18} />,
+          '#ef4444' // Red
         )}
       </div>
     </div>

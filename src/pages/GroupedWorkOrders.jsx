@@ -179,7 +179,7 @@ export default function GroupedWorkOrders() {
 
   return (
     <div className="page-container">
-      <h1 className="page-title">By Due Date</h1>
+      <h1 className="page-title">By Due</h1>
 
       <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', background: '#fff', padding: '0.5rem 1rem', borderRadius: '8px', border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
@@ -189,7 +189,7 @@ export default function GroupedWorkOrders() {
             onChange={(e) => setSelectedDueDate(e.target.value)}
             style={{ border: 'none', background: 'transparent', outline: 'none', color: '#334155', fontWeight: '500', fontSize: '0.95rem', cursor: 'pointer', minWidth: '150px' }}
           >
-            <option value="">All Due Dates</option>
+            <option value="">All Due</option>
             {uniqueDueDates.map(d => (
               <option key={d} value={d}>{formatDdMmm(d)}</option>
             ))}
@@ -211,7 +211,7 @@ export default function GroupedWorkOrders() {
             <table className="data-grid" style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr>
-                  <th style={{ width: '150px', padding: '0.75rem', textAlign: 'left', borderBottom: '2px solid #e2e8f0', color: '#64748b', fontSize: '0.85rem' }}>Due Date</th>
+                  <th style={{ width: '150px', padding: '0.75rem', textAlign: 'left', borderBottom: '2px solid #e2e8f0', color: '#64748b', fontSize: '0.85rem' }}>Due</th>
                   <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '2px solid #e2e8f0', color: '#64748b', fontSize: '0.85rem' }}>Work Order #</th>
                   <th style={{ width: '150px', padding: '0.75rem', textAlign: 'left', borderBottom: '2px solid #e2e8f0', color: '#64748b', fontSize: '0.85rem' }}>Status</th>
                   <th style={{ width: '150px', padding: '0.75rem', textAlign: 'left', borderBottom: '2px solid #e2e8f0', color: '#64748b', fontSize: '0.85rem' }}>Request Type</th>

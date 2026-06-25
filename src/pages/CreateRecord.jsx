@@ -194,7 +194,7 @@ export default function CreateRecord({ user }) {
       const templateSheet = workbook.addWorksheet('Template');
       const headers = [
         "Work Order Date", "WorkOrder #", "Assigned to", "File Number", 
-        "Hearing Date", "Division", "Request Type", "TAT", "Due Date", "Audio Length"
+        "Hearing Date", "Division", "Request Type", "TAT", "Due", "Audio Length"
       ];
 
       templateSheet.addRow(headers);
@@ -208,7 +208,7 @@ export default function CreateRecord({ user }) {
         else col.width = 15;
       });
 
-      // Set date format dd-MMM-yy for Work Order Date (Col A) and Due Date (Col I)
+      // Set date format dd-MMM-yy for Work Order Date (Col A) and Due (Col I)
       templateSheet.getColumn(1).numFmt = 'dd-mmm-yy';
       templateSheet.getColumn(9).numFmt = 'dd-mmm-yy';
 
@@ -356,7 +356,7 @@ export default function CreateRecord({ user }) {
               division: row["Division"],
               request_type: row["Request Type"],
               tat: parseInt(row["TAT"], 10) || null,
-              due_date: parseDdMon(row["Due Date"]),
+              due_date: parseDdMon(row["Due"]),
               audio_length: row["Audio Length"],
               created_by: user?.id
             });

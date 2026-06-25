@@ -3,6 +3,7 @@
 -- Existing DB design:
 --   public.ref_users (name TEXT PK, user_id UUID -> auth.users)
 --   public.user_profiles is a VIEW on auth.users (id, full_name, email)
+--     ⚠️  DEPRECATED — view dropped in 20260614_drop_user_profiles_view.sql
 --   public.user_roles (user_id UUID, role_id UUID -> public.roles)
 --   public.roles (id UUID PK, role_name TEXT)
 -- ================================================================

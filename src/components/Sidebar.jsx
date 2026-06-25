@@ -43,7 +43,7 @@ export default function Sidebar({ canManageUsers, canCreate, isManager, isAdmin,
         {!canManageUsers && (
           <NavLink to="/ee-dashboard" className={({isActive}) => `sidebar-link ${isActive ? 'active' : ''}`}>
             <LayoutGrid size={18} />
-            <span>Employee Dashboard</span>
+            <span>Dashboard</span>
           </NavLink>
         )}
 

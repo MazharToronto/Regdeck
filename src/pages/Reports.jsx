@@ -18,7 +18,7 @@ const COLUMN_CONFIG = [
   { key: 'division', label: 'Division', defaultVisible: true },
   { key: 'request_type', label: 'Request Type', defaultVisible: true },
   { key: 'tat', label: 'TAT', defaultVisible: true },
-  { key: 'due_date', label: 'Due Date', defaultVisible: true },
+  { key: 'due_date', label: 'Due', defaultVisible: true },
   { key: 'audio_length', label: 'Audio Length', defaultVisible: true },
   { key: 'word_count', label: 'Word Count', defaultVisible: true },
   { key: 'character_wz_space', label: 'Character wz Space', defaultVisible: true },
@@ -39,7 +39,7 @@ export default function Reports({ userRoles = [], user }) {
   const [error, setError] = useState(null);
   const [editingRecord, setEditingRecord] = useState(null);
   const [noResults, setNoResults] = useState(false);
-  const [sortConfig, setSortConfig] = useState({ key: 'wo_date', direction: 'desc' });
+  const [sortConfig, setSortConfig] = useState({ key: 'due_date', direction: 'desc' });
   const [searchTerm, setSearchTerm] = useState('');
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
   const [recordToDelete, setRecordToDelete] = useState(null);
@@ -657,8 +657,8 @@ export default function Reports({ userRoles = [], user }) {
       case 'tat': return (isEditing && canEditAll ? <select className="form-select" style={{ padding: '0.25rem', fontSize: '0.8rem', minWidth: '60px' }} value={draft.tat} onChange={(e) => handleInlineChange(record.id, 'tat', e.target.value)}>{tatValues.map(t => <option key={t} value={t}>{t}</option>)}</select> : record.tat);
       case 'due_date': return (isEditing && canEditAll ? <input type="date" className="form-input" style={{ padding: '0.25rem', fontSize: '0.8rem', minWidth: '130px' }} value={draft.due_date || ''} onChange={(e) => handleInlineChange(record.id, 'due_date', e.target.value)} /> : formatDdMmm(record.due_date));
       case 'audio_length': return (isEditing && canEditAll ? <input type="text" className="form-input" style={{ padding: '0.25rem', fontSize: '0.8rem', minWidth: '80px' }} placeholder="0:15" value={draft.audio_length || ''} onChange={(e) => handleInlineChange(record.id, 'audio_length', e.target.value)} /> : record.audio_length || '—');
-      case 'word_count': return (isEditing && canEditAll ? <input type="text" className="form-input" style={{ padding: '0.25rem', fontSize: '0.8rem', minWidth: '80px' }} value={draft.word_count || ''} onChange={(e) => handleInlineChange(record.id, 'word_count', e.target.value)} /> : record.word_count != null ? Number(record.word_count).toLocaleString() : '');
-      case 'character_wz_space': return (isEditing && canEditAll ? <input type="text" className="form-input" style={{ padding: '0.25rem', fontSize: '0.8rem', minWidth: '100px' }} value={draft.character_wz_space || ''} onChange={(e) => handleInlineChange(record.id, 'character_wz_space', e.target.value)} /> : record.character_wz_space != null ? Number(record.character_wz_space).toLocaleString() : '');
+      case 'word_count': return (isEditing ? <input type="text" className="form-input" style={{ padding: '0.25rem', fontSize: '0.8rem', minWidth: '80px' }} value={draft.word_count || ''} onChange={(e) => handleInlineChange(record.id, 'word_count', e.target.value)} /> : record.word_count != null ? Number(record.word_count).toLocaleString() : '');
+      case 'character_wz_space': return (isEditing ? <input type="text" className="form-input" style={{ padding: '0.25rem', fontSize: '0.8rem', minWidth: '100px' }} value={draft.character_wz_space || ''} onChange={(e) => handleInlineChange(record.id, 'character_wz_space', e.target.value)} /> : record.character_wz_space != null ? Number(record.character_wz_space).toLocaleString() : '');
       case 'line_count': return Number(draft.line_count != null ? draft.line_count : (record.line_count || 0)).toLocaleString();
       case 'status': return (isEditing ? <select className="form-select" style={{ padding: '0.25rem', fontSize: '0.8rem', minWidth: '120px' }} value={draft.status} onChange={(e) => handleInlineChange(record.id, 'status', e.target.value)}>{statusOptions.map(s => <option key={s} value={s}>{s}</option>)}</select> : <span className={`status-badge ${record.status === 'Done' ? 'paid' : record.status === 'In progress' ? 'pending' : ''}`}>{record.status || '—'}</span>);
       case 'delivery_date': return (isEditing && canEditAll ? <input type="date" className="form-input" style={{ padding: '0.25rem', fontSize: '0.8rem', minWidth: '130px' }} value={draft.delivery_date || ''} onChange={(e) => handleInlineChange(record.id, 'delivery_date', e.target.value)} /> : formatDdMmm(record.delivery_date));
@@ -705,11 +705,11 @@ export default function Reports({ userRoles = [], user }) {
             </div>
           )}
           <div className="filter-group">
-            <label className="filter-label">From Due Date</label>
+            <label className="filter-label">From Due</label>
             <input type="date" name="from_due_date" className="filter-select" value={filters.from_due_date} onChange={handleFilterChange} />
           </div>
           <div className="filter-group">
-            <label className="filter-label">To Due Date</label>
+            <label className="filter-label">To Due</label>
             <input type="date" name="to_due_date" className="filter-select" value={filters.to_due_date} onChange={handleFilterChange} />
           </div>
           <div className="filter-group">

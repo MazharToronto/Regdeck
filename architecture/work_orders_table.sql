@@ -141,19 +141,14 @@ CREATE POLICY "Authenticated users can update their own work orders"
   USING (auth.role() = 'authenticated');
 
 -- =============================================
--- STEP 5: Profiles view (for Assigned To dropdown)
--- Creates a view that exposes user names from auth
+-- STEP 5: Profiles view — DROPPED (Security Fix)
+-- The public.user_profiles view was removed because it
+-- exposed auth.users data to any authenticated role via
+-- PostgREST. User data is now fetched securely via:
+--   1. The 'create-user' edge function (service role key)
+--   2. The 'ref_users' table (has proper RLS policies)
+-- See: migrations/20260614_drop_user_profiles_view.sql
 -- =============================================
-
-create or replace view public.user_profiles as
-select
-  id,
-  raw_user_meta_data->>'full_name' as full_name,
-  email
-from auth.users;
-
--- Grant access to authenticated users
-grant select on public.user_profiles to authenticated;
 
 
 -- =============================================

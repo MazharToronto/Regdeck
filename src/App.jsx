@@ -95,7 +95,7 @@ function App() {
             <Route path="/records" element={<Reports userRoles={userRoles} user={session?.user} />} />
             <Route path="/audio-calculator" element={<AudioLengthCalculator />} />
             <Route path="/grouped-view" element={<GroupedWorkOrders />} />
-            <Route path="/board-view" element={<CreativeGroupedView />} />
+            <Route path="/board-view" element={<CreativeGroupedView userRoles={userRoles} user={session?.user} />} />
             <Route path="/group-view-request" element={<MyGroupViewRequest userRoles={userRoles} user={session?.user} />} />
             <Route path="/profile" element={<ProfileSettings user={session?.user} />} />
             {canManageUsers && (

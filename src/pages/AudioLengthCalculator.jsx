@@ -53,7 +53,7 @@ export default function AudioLengthCalculator() {
       if (error) throw error;
 
       if (!data || data.length === 0) {
-        setError(`No records found for ${searchType === 'due_date' ? 'Due Date' : 'Work Order #'} = "${searchValue}"`);
+        setError(`No records found for ${searchType === 'due_date' ? 'Due' : 'Work Order #'} = "${searchValue}"`);
       } else {
         const totalFormatted = calculateCombinedAudioLength(data);
         setResult({
@@ -102,14 +102,14 @@ export default function AudioLengthCalculator() {
                   onChange={(e) => { setSearchType(e.target.value); setSearchValue(''); setResult(null); setError(null); }}
                   style={{ accentColor: '#4f46e5' }}
                 />
-                Due Date
+                Due
               </label>
             </div>
           </div>
 
           <div className="form-group" style={{ marginBottom: '1.5rem' }}>
             <label className="form-label">
-              {searchType === 'due_date' ? 'Select Due Date' : 'Enter Work Order #'}
+              {searchType === 'due_date' ? 'Select Due' : 'Enter Work Order #'}
             </label>
             <input
               type={searchType === 'due_date' ? 'date' : 'text'}
