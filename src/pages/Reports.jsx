@@ -67,6 +67,7 @@ export default function Reports({ userRoles = [], user }) {
   // Column Visibility State
   const [showColumnMenu, setShowColumnMenu] = useState(false);
   const columnMenuRef = useRef(null);
+  const contextMenuRef = useRef(null);
   const [visibleColumns, setVisibleColumns] = useState(() => {
     const saved = localStorage.getItem('invoicegen_visible_columns_v4');
     if (saved) {
@@ -130,9 +131,13 @@ export default function Reports({ userRoles = [], user }) {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Dismiss context menu on any outside click
+  // Dismiss context menu when clicking OUTSIDE the menu
   useEffect(() => {
-    const dismiss = () => setContextMenu(null);
+    const dismiss = (e) => {
+      // If the click target is inside the context menu div, do NOT dismiss
+      if (contextMenuRef.current && contextMenuRef.current.contains(e.target)) return;
+      setContextMenu(null);
+    };
     document.addEventListener('mousedown', dismiss);
     return () => document.removeEventListener('mousedown', dismiss);
   }, []);
@@ -703,18 +708,18 @@ export default function Reports({ userRoles = [], user }) {
       {/* ===== Del Date Copy/Paste Context Menu ===== */}
       {contextMenu && (
         <div
-          onMouseDown={(e) => e.stopPropagation()}
+          ref={contextMenuRef}
           style={{
             position: 'fixed',
             top: contextMenu.y,
             left: contextMenu.x,
-            zIndex: 999,
+            zIndex: 9999,
             background: '#fff',
             border: '1px solid #e2e8f0',
             borderRadius: '10px',
             boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
             padding: '0.35rem',
-            minWidth: '160px',
+            minWidth: '175px',
             animation: 'dropdownFade 0.15s ease'
           }}
         >
@@ -722,10 +727,9 @@ export default function Reports({ userRoles = [], user }) {
             style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', width: '100%', padding: '0.5rem 0.75rem', background: 'none', border: 'none', borderRadius: '7px', cursor: 'pointer', fontSize: '0.85rem', color: '#334155', fontFamily: 'inherit', fontWeight: '500', transition: 'background 0.15s' }}
             onMouseOver={(e) => e.currentTarget.style.background = '#f1f5f9'}
             onMouseOut={(e) => e.currentTarget.style.background = 'none'}
+            onMouseDown={(e) => e.preventDefault()}
             onClick={() => {
-              if (contextMenu.dateValue) {
-                setCopiedDelDate(contextMenu.dateValue);
-              }
+              if (contextMenu.dateValue) setCopiedDelDate(contextMenu.dateValue);
               setContextMenu(null);
             }}
           >
@@ -736,9 +740,23 @@ export default function Reports({ userRoles = [], user }) {
             style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', width: '100%', padding: '0.5rem 0.75rem', background: 'none', border: 'none', borderRadius: '7px', cursor: copiedDelDate ? 'pointer' : 'not-allowed', fontSize: '0.85rem', color: copiedDelDate ? '#334155' : '#94a3b8', fontFamily: 'inherit', fontWeight: '500', transition: 'background 0.15s' }}
             onMouseOver={(e) => { if (copiedDelDate) e.currentTarget.style.background = '#f1f5f9'; }}
             onMouseOut={(e) => e.currentTarget.style.background = 'none'}
+            onMouseDown={(e) => e.preventDefault()}
             onClick={() => {
               if (!copiedDelDate || !contextMenu.recordId) return;
-              handleInlineChange(contextMenu.recordId, 'delivery_date', copiedDelDate);
+              const targetRecord = records.find(r => r.id === contextMenu.recordId);
+              if (!targetRecord) return;
+              // Seed full draft for this row if it isn't already in edit mode,
+              // then apply the copied delivery_date and recalculate days_late.
+              setInlineEdits(prev => {
+                const base = prev[targetRecord.id] || {
+                  ...targetRecord,
+                  tat: targetRecord.tat || 5,
+                  status: targetRecord.status || 'Pending'
+                };
+                const updatedDraft = { ...base, delivery_date: copiedDelDate };
+                updatedDraft.days_late = calculateBusinessDays(updatedDraft.due_date, copiedDelDate);
+                return { ...prev, [targetRecord.id]: updatedDraft };
+              });
               setContextMenu(null);
             }}
           >
