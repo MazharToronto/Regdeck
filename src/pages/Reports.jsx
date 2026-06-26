@@ -685,10 +685,10 @@ export default function Reports({ userRoles = [], user }) {
           setContextMenu({ x: e.clientX, y: e.clientY, recordId: record.id, dateValue: dateVal });
         };
         return (
-          <div onContextMenu={handleCtxMenu} style={{ display: 'inline-block' }}>
+          <div onContextMenu={handleCtxMenu} style={{ display: 'block', width: '100%', minHeight: '1.5em', cursor: 'context-menu' }}>
             {isEditing && canEditAll
-              ? <input type="date" className="form-input" style={{ padding: '0.25rem', fontSize: '0.8rem', minWidth: '130px' }} value={draft.delivery_date || ''} onChange={(e) => handleInlineChange(record.id, 'delivery_date', e.target.value)} />
-              : formatDdMmm(record.delivery_date)
+              ? <input type="date" className="form-input" style={{ padding: '0.25rem', fontSize: '0.8rem', minWidth: '130px' }} value={draft.delivery_date || ''} onChange={(e) => handleInlineChange(record.id, 'delivery_date', e.target.value)} onContextMenu={handleCtxMenu} />
+              : (formatDdMmm(record.delivery_date) || '—')
             }
           </div>
         );
