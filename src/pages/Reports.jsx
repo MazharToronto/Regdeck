@@ -81,6 +81,10 @@ export default function Reports({ userRoles = [], user }) {
   });
   const [draggedColumn, setDraggedColumn] = useState(null);
 
+  // Del Date Copy/Paste state
+  const [copiedDelDate, setCopiedDelDate] = useState(null);
+  const [contextMenu, setContextMenu] = useState(null); // { x, y, recordId, dateValue }
+
   const handleDragStart = (e, colKey) => {
     setDraggedColumn(colKey);
     // Needed for Firefox
@@ -124,6 +128,13 @@ export default function Reports({ userRoles = [], user }) {
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // Dismiss context menu on any outside click
+  useEffect(() => {
+    const dismiss = () => setContextMenu(null);
+    document.addEventListener('mousedown', dismiss);
+    return () => document.removeEventListener('mousedown', dismiss);
   }, []);
 
   const toggleColumn = (colKey) => {
@@ -661,7 +672,22 @@ export default function Reports({ userRoles = [], user }) {
       case 'character_wz_space': return (isEditing ? <input type="text" className="form-input" style={{ padding: '0.25rem', fontSize: '0.8rem', minWidth: '100px' }} value={draft.character_wz_space || ''} onChange={(e) => handleInlineChange(record.id, 'character_wz_space', e.target.value)} /> : record.character_wz_space != null ? Number(record.character_wz_space).toLocaleString() : '');
       case 'line_count': return Number(draft.line_count != null ? draft.line_count : (record.line_count || 0)).toLocaleString();
       case 'status': return (isEditing ? <select className="form-select" style={{ padding: '0.25rem', fontSize: '0.8rem', minWidth: '120px' }} value={draft.status} onChange={(e) => handleInlineChange(record.id, 'status', e.target.value)}>{statusOptions.map(s => <option key={s} value={s}>{s}</option>)}</select> : <span className={`status-badge ${record.status === 'Done' ? 'paid' : record.status === 'In progress' ? 'pending' : ''}`}>{record.status || '—'}</span>);
-      case 'delivery_date': return (isEditing && canEditAll ? <input type="date" className="form-input" style={{ padding: '0.25rem', fontSize: '0.8rem', minWidth: '130px' }} value={draft.delivery_date || ''} onChange={(e) => handleInlineChange(record.id, 'delivery_date', e.target.value)} /> : formatDdMmm(record.delivery_date));
+      case 'delivery_date': {
+        const dateVal = draft.delivery_date || record.delivery_date || '';
+        const handleCtxMenu = (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          setContextMenu({ x: e.clientX, y: e.clientY, recordId: record.id, dateValue: dateVal });
+        };
+        return (
+          <div onContextMenu={handleCtxMenu} style={{ display: 'inline-block' }}>
+            {isEditing && canEditAll
+              ? <input type="date" className="form-input" style={{ padding: '0.25rem', fontSize: '0.8rem', minWidth: '130px' }} value={draft.delivery_date || ''} onChange={(e) => handleInlineChange(record.id, 'delivery_date', e.target.value)} />
+              : formatDdMmm(record.delivery_date)
+            }
+          </div>
+        );
+      }
       case 'days_late': return draft.days_late != null ? draft.days_late : (record.days_late || 0);
       case 'employee_comments': return (isEditing ? <input type="text" className="form-input" style={{ padding: '0.25rem', fontSize: '0.8rem', minWidth: '150px' }} value={draft.employee_comments || ''} onChange={(e) => handleInlineChange(record.id, 'employee_comments', e.target.value)} /> : <div style={{ minWidth: '150px', maxWidth: '250px', whiteSpace: 'normal', wordBreak: 'break-word' }}>{record.employee_comments || '—'}</div>);
       case 'regdeck_admin_comments': return (isEditing && canEditAll ? <input type="text" className="form-input" style={{ padding: '0.25rem', fontSize: '0.8rem', minWidth: '150px' }} value={draft.regdeck_admin_comments || ''} onChange={(e) => handleInlineChange(record.id, 'regdeck_admin_comments', e.target.value)} /> : <div style={{ minWidth: '150px', maxWidth: '250px', whiteSpace: 'normal', wordBreak: 'break-word' }}>{record.regdeck_admin_comments || '—'}</div>);
@@ -673,6 +699,61 @@ export default function Reports({ userRoles = [], user }) {
   return (
     <div className="page-container">
       <h1 className="page-title">My Requests</h1>
+
+      {/* ===== Del Date Copy/Paste Context Menu ===== */}
+      {contextMenu && (
+        <div
+          onMouseDown={(e) => e.stopPropagation()}
+          style={{
+            position: 'fixed',
+            top: contextMenu.y,
+            left: contextMenu.x,
+            zIndex: 999,
+            background: '#fff',
+            border: '1px solid #e2e8f0',
+            borderRadius: '10px',
+            boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
+            padding: '0.35rem',
+            minWidth: '160px',
+            animation: 'dropdownFade 0.15s ease'
+          }}
+        >
+          <button
+            style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', width: '100%', padding: '0.5rem 0.75rem', background: 'none', border: 'none', borderRadius: '7px', cursor: 'pointer', fontSize: '0.85rem', color: '#334155', fontFamily: 'inherit', fontWeight: '500', transition: 'background 0.15s' }}
+            onMouseOver={(e) => e.currentTarget.style.background = '#f1f5f9'}
+            onMouseOut={(e) => e.currentTarget.style.background = 'none'}
+            onClick={() => {
+              if (contextMenu.dateValue) {
+                setCopiedDelDate(contextMenu.dateValue);
+              }
+              setContextMenu(null);
+            }}
+          >
+            📋 Copy Date {contextMenu.dateValue ? `(${contextMenu.dateValue})` : '(empty)'}
+          </button>
+          <button
+            disabled={!copiedDelDate}
+            style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', width: '100%', padding: '0.5rem 0.75rem', background: 'none', border: 'none', borderRadius: '7px', cursor: copiedDelDate ? 'pointer' : 'not-allowed', fontSize: '0.85rem', color: copiedDelDate ? '#334155' : '#94a3b8', fontFamily: 'inherit', fontWeight: '500', transition: 'background 0.15s' }}
+            onMouseOver={(e) => { if (copiedDelDate) e.currentTarget.style.background = '#f1f5f9'; }}
+            onMouseOut={(e) => e.currentTarget.style.background = 'none'}
+            onClick={() => {
+              if (!copiedDelDate || !contextMenu.recordId) return;
+              handleInlineChange(contextMenu.recordId, 'delivery_date', copiedDelDate);
+              setContextMenu(null);
+            }}
+          >
+            📌 Paste Date {copiedDelDate ? `(${copiedDelDate})` : '—'}
+          </button>
+        </div>
+      )}
+
+      {/* ===== Del Date Copy hint ===== */}
+      {copiedDelDate && (
+        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', background: '#eff6ff', border: '1px solid #bfdbfe', color: '#1d4ed8', padding: '0.3rem 0.85rem', borderRadius: '8px', fontSize: '0.8rem', fontWeight: '500', marginBottom: '0.75rem' }}>
+          📋 Del Date copied: <strong>{copiedDelDate}</strong>
+          <button onClick={() => setCopiedDelDate(null)} style={{ marginLeft: '0.25rem', background: 'none', border: 'none', cursor: 'pointer', color: '#1d4ed8', fontFamily: 'inherit', fontSize: '0.8rem', padding: 0, lineHeight: 1 }}>✕ Clear</button>
+        </div>
+      )}
 
       {/* ===== Filter Bar ===== */}
       <div className="filter-bar">
