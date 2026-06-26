@@ -208,8 +208,9 @@ export default function CreateRecord({ user }) {
         else col.width = 15;
       });
 
-      // Set date format dd-MMM-yy for Work Order Date (Col A) and Due (Col I)
+      // Set date format dd-MMM-yy for Work Order Date (Col A) and Due (Col I), and dd-mmm-yyyy for Hearing Date (Col E)
       templateSheet.getColumn(1).numFmt = 'dd-mmm-yy';
+      templateSheet.getColumn(5).numFmt = 'dd-mmm-yyyy';
       templateSheet.getColumn(9).numFmt = 'dd-mmm-yy';
 
       // Create a hidden Data sheet for all dropdown sources
