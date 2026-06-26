@@ -67,7 +67,7 @@ export default function Reports({ userRoles = [], user }) {
   // Column Visibility State
   const [showColumnMenu, setShowColumnMenu] = useState(false);
   const columnMenuRef = useRef(null);
-  const contextMenuRef = useRef(null);
+
   const [visibleColumns, setVisibleColumns] = useState(() => {
     const saved = localStorage.getItem('invoicegen_visible_columns_v4');
     if (saved) {
@@ -84,7 +84,6 @@ export default function Reports({ userRoles = [], user }) {
 
   // Del Date Copy/Paste state
   const [copiedDelDate, setCopiedDelDate] = useState(null);
-  const [contextMenu, setContextMenu] = useState(null); // { x, y, recordId, dateValue }
 
   const handleDragStart = (e, colKey) => {
     setDraggedColumn(colKey);
@@ -131,16 +130,7 @@ export default function Reports({ userRoles = [], user }) {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Dismiss context menu when clicking OUTSIDE the menu
-  useEffect(() => {
-    const dismiss = (e) => {
-      // If the click target is inside the context menu div, do NOT dismiss
-      if (contextMenuRef.current && contextMenuRef.current.contains(e.target)) return;
-      setContextMenu(null);
-    };
-    document.addEventListener('mousedown', dismiss);
-    return () => document.removeEventListener('mousedown', dismiss);
-  }, []);
+
 
   const toggleColumn = (colKey) => {
     setVisibleColumns(prev => 
@@ -397,8 +387,8 @@ export default function Reports({ userRoles = [], user }) {
     });
   };
 
-  const handleRowSave = async (recordId) => {
-    const draft = inlineEdits[recordId];
+  const handleRowSave = async (recordId, explicitDraft) => {
+    const draft = explicitDraft || inlineEdits[recordId];
     if (!draft) return; // Nothing to save
 
     const cleanWordCount = draft.word_count ? String(draft.word_count).replace(/,/g, '') : '';
@@ -679,17 +669,59 @@ export default function Reports({ userRoles = [], user }) {
       case 'status': return (isEditing ? <select className="form-select" style={{ padding: '0.25rem', fontSize: '0.8rem', minWidth: '120px' }} value={draft.status} onChange={(e) => handleInlineChange(record.id, 'status', e.target.value)}>{statusOptions.map(s => <option key={s} value={s}>{s}</option>)}</select> : <span className={`status-badge ${record.status === 'Done' ? 'paid' : record.status === 'In progress' ? 'pending' : ''}`}>{record.status || '—'}</span>);
       case 'delivery_date': {
         const dateVal = draft.delivery_date || record.delivery_date || '';
-        const handleCtxMenu = (e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          setContextMenu({ x: e.clientX, y: e.clientY, recordId: record.id, dateValue: dateVal });
-        };
         return (
-          <div onContextMenu={handleCtxMenu} style={{ display: 'block', width: '100%', minHeight: '1.5em', cursor: 'context-menu' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
             {isEditing && canEditAll
-              ? <input type="date" className="form-input" style={{ padding: '0.25rem', fontSize: '0.8rem', minWidth: '130px' }} value={draft.delivery_date || ''} onChange={(e) => handleInlineChange(record.id, 'delivery_date', e.target.value)} onContextMenu={handleCtxMenu} />
-              : (formatDdMmm(record.delivery_date) || '—')
+              ? <input type="date" className="form-input" style={{ padding: '0.25rem', fontSize: '0.8rem', minWidth: '130px' }} value={draft.delivery_date || ''} onChange={(e) => handleInlineChange(record.id, 'delivery_date', e.target.value)} />
+              : <span>{formatDdMmm(record.delivery_date) || '—'}</span>
             }
+            {dateVal && (
+              <button
+                title={copiedDelDate === dateVal ? 'Copied!' : `Copy date: ${dateVal}`}
+                onClick={(e) => { e.stopPropagation(); setCopiedDelDate(dateVal); }}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px', lineHeight: 1, fontSize: '0.85rem', opacity: copiedDelDate === dateVal ? 1 : 0.4, transition: 'opacity 0.15s', borderRadius: '4px' }}
+                onMouseOver={(e) => e.currentTarget.style.opacity = '1'}
+                onMouseOut={(e) => e.currentTarget.style.opacity = copiedDelDate === dateVal ? '1' : '0.4'}
+              >
+                {copiedDelDate === dateVal ? '✅' : '📋'}
+              </button>
+            )}
+            {copiedDelDate && copiedDelDate !== dateVal && (
+              <button
+                title={`Paste date: ${copiedDelDate}`}
+                onClick={async (e) => {
+                  e.stopPropagation();
+                  const target = records.find(r => r.id === record.id);
+                  if (!target) return;
+                  
+                  const base = inlineEdits[target.id] || { ...target, tat: target.tat || 5, status: target.status || 'Pending' };
+                  const updated = { ...base, delivery_date: copiedDelDate };
+                  updated.days_late = calculateBusinessDays(updated.due_date, copiedDelDate);
+                  
+                  // Recalculate financial amounts based on updated delivery date
+                  const wordCount = parseInt(String(updated.word_count || '0').replace(/,/g, ''), 10) || 0;
+                  const daysLate = parseInt(updated.days_late, 10) || 0;
+                  const matchingRate = referenceRates.find(r => r.language === updated.language && String(r.tat) === String(updated.tat));
+                  const ratePerWord = matchingRate ? parseFloat(matchingRate.rate_per_word) : 0;
+                  const lateDeduction = daysLate > 0 ? parseFloat((wordCount * ratePerWord * 0.05 * daysLate).toFixed(2)) : 0;
+                  const totalAmount = parseFloat(((ratePerWord * wordCount) - lateDeduction).toFixed(2));
+                  
+                  updated.late_deduction_amount = lateDeduction;
+                  updated.total_amount = totalAmount;
+
+                  // Update state
+                  setInlineEdits(prev => ({ ...prev, [target.id]: updated }));
+                  
+                  // Save to DB immediately
+                  await handleRowSave(target.id, updated);
+                }}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px', lineHeight: 1, fontSize: '0.85rem', opacity: 0.4, transition: 'opacity 0.15s', borderRadius: '4px' }}
+                onMouseOver={(e) => e.currentTarget.style.opacity = '1'}
+                onMouseOut={(e) => e.currentTarget.style.opacity = '0.4'}
+              >
+                📌
+              </button>
+            )}
           </div>
         );
       }
@@ -705,71 +737,11 @@ export default function Reports({ userRoles = [], user }) {
     <div className="page-container">
       <h1 className="page-title">My Requests</h1>
 
-      {/* ===== Del Date Copy/Paste Context Menu ===== */}
-      {contextMenu && (
-        <div
-          ref={contextMenuRef}
-          style={{
-            position: 'fixed',
-            top: contextMenu.y,
-            left: contextMenu.x,
-            zIndex: 9999,
-            background: '#fff',
-            border: '1px solid #e2e8f0',
-            borderRadius: '10px',
-            boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
-            padding: '0.35rem',
-            minWidth: '175px',
-            animation: 'dropdownFade 0.15s ease'
-          }}
-        >
-          <button
-            style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', width: '100%', padding: '0.5rem 0.75rem', background: 'none', border: 'none', borderRadius: '7px', cursor: 'pointer', fontSize: '0.85rem', color: '#334155', fontFamily: 'inherit', fontWeight: '500', transition: 'background 0.15s' }}
-            onMouseOver={(e) => e.currentTarget.style.background = '#f1f5f9'}
-            onMouseOut={(e) => e.currentTarget.style.background = 'none'}
-            onMouseDown={(e) => e.preventDefault()}
-            onClick={() => {
-              if (contextMenu.dateValue) setCopiedDelDate(contextMenu.dateValue);
-              setContextMenu(null);
-            }}
-          >
-            📋 Copy Date {contextMenu.dateValue ? `(${contextMenu.dateValue})` : '(empty)'}
-          </button>
-          <button
-            disabled={!copiedDelDate}
-            style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', width: '100%', padding: '0.5rem 0.75rem', background: 'none', border: 'none', borderRadius: '7px', cursor: copiedDelDate ? 'pointer' : 'not-allowed', fontSize: '0.85rem', color: copiedDelDate ? '#334155' : '#94a3b8', fontFamily: 'inherit', fontWeight: '500', transition: 'background 0.15s' }}
-            onMouseOver={(e) => { if (copiedDelDate) e.currentTarget.style.background = '#f1f5f9'; }}
-            onMouseOut={(e) => e.currentTarget.style.background = 'none'}
-            onMouseDown={(e) => e.preventDefault()}
-            onClick={() => {
-              if (!copiedDelDate || !contextMenu.recordId) return;
-              const targetRecord = records.find(r => r.id === contextMenu.recordId);
-              if (!targetRecord) return;
-              // Seed full draft for this row if it isn't already in edit mode,
-              // then apply the copied delivery_date and recalculate days_late.
-              setInlineEdits(prev => {
-                const base = prev[targetRecord.id] || {
-                  ...targetRecord,
-                  tat: targetRecord.tat || 5,
-                  status: targetRecord.status || 'Pending'
-                };
-                const updatedDraft = { ...base, delivery_date: copiedDelDate };
-                updatedDraft.days_late = calculateBusinessDays(updatedDraft.due_date, copiedDelDate);
-                return { ...prev, [targetRecord.id]: updatedDraft };
-              });
-              setContextMenu(null);
-            }}
-          >
-            📌 Paste Date {copiedDelDate ? `(${copiedDelDate})` : '—'}
-          </button>
-        </div>
-      )}
-
       {/* ===== Del Date Copy hint ===== */}
       {copiedDelDate && (
         <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', background: '#eff6ff', border: '1px solid #bfdbfe', color: '#1d4ed8', padding: '0.3rem 0.85rem', borderRadius: '8px', fontSize: '0.8rem', fontWeight: '500', marginBottom: '0.75rem' }}>
           📋 Del Date copied: <strong>{copiedDelDate}</strong>
-          <button onClick={() => setCopiedDelDate(null)} style={{ marginLeft: '0.25rem', background: 'none', border: 'none', cursor: 'pointer', color: '#1d4ed8', fontFamily: 'inherit', fontSize: '0.8rem', padding: 0, lineHeight: 1 }}>✕ Clear</button>
+          <button onClick={(e) => { e.stopPropagation(); setCopiedDelDate(null); }} style={{ marginLeft: '0.25rem', background: 'none', border: 'none', cursor: 'pointer', color: '#1d4ed8', fontFamily: 'inherit', fontSize: '0.8rem', padding: 0, lineHeight: 1 }}>✕ Clear</button>
         </div>
       )}
 
