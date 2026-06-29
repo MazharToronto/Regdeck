@@ -606,6 +606,24 @@ export default function Reports({ userRoles = [], user }) {
   const endIndex = Math.min(startIndex + records.length, totalRecords);
   const paginatedRecords = records;
 
+  // Duplicate detection: work_order_number + file_number + hearing_date
+  const duplicateIds = useMemo(() => {
+    const seen = new Map();
+    const dupes = new Set();
+    records.forEach(record => {
+      const wo = (record.work_order_number || '').trim().toLowerCase();
+      const fn = (record.file_number || '').trim().toLowerCase();
+      const hd = (record.hearing_date || '').trim();
+      const key = `${wo}|${fn}|${hd}`;
+      if (seen.has(key)) {
+        dupes.add(record.id);
+      } else {
+        seen.set(key, record.id);
+      }
+    });
+    return dupes;
+  }, [records]);
+
   const handleRowsPerPageChange = (e) => {
     setRowsPerPage(Number(e.target.value));
     setCurrentPage(1);
@@ -666,7 +684,7 @@ export default function Reports({ userRoles = [], user }) {
       case 'word_count': return (isEditing ? <input type="text" className="form-input" style={{ padding: '0.25rem', fontSize: '0.8rem', minWidth: '80px' }} value={draft.word_count || ''} onChange={(e) => handleInlineChange(record.id, 'word_count', e.target.value)} /> : record.word_count != null ? Number(record.word_count).toLocaleString() : '');
       case 'character_wz_space': return (isEditing ? <input type="text" className="form-input" style={{ padding: '0.25rem', fontSize: '0.8rem', minWidth: '100px' }} value={draft.character_wz_space || ''} onChange={(e) => handleInlineChange(record.id, 'character_wz_space', e.target.value)} /> : record.character_wz_space != null ? Number(record.character_wz_space).toLocaleString() : '');
       case 'line_count': return Number(draft.line_count != null ? draft.line_count : (record.line_count || 0)).toLocaleString();
-      case 'status': return (isEditing ? <select className="form-select" style={{ padding: '0.25rem', fontSize: '0.8rem', minWidth: '120px' }} value={draft.status} onChange={(e) => handleInlineChange(record.id, 'status', e.target.value)}>{statusOptions.map(s => <option key={s} value={s}>{s}</option>)}</select> : <span className={`status-badge ${record.status === 'Done' ? 'paid' : record.status === 'In progress' ? 'pending' : ''}`}>{record.status || '—'}</span>);
+      case 'status': return (isEditing ? <select className="form-select" style={{ padding: '0.25rem', fontSize: '0.8rem', minWidth: '120px' }} value={draft.status} onChange={(e) => handleInlineChange(record.id, 'status', e.target.value)}>{statusOptions.map(s => <option key={s} value={s}>{s}</option>)}</select> : <span className={`status-badge ${record.status === 'Done' ? 'paid' : record.status === 'In Process' ? 'pending' : ''}`}>{record.status || '—'}</span>);
       case 'delivery_date': {
         const dateVal = draft.delivery_date || record.delivery_date || '';
         return (
@@ -940,7 +958,7 @@ export default function Reports({ userRoles = [], user }) {
                           handleRowSave(record.id);
                         }
                       }}
-                      style={{ cursor: isEditing ? 'default' : 'pointer', ...(isEditing ? { backgroundColor: 'rgba(99, 102, 241, 0.04)' } : {}) }}
+                      style={{ cursor: isEditing ? 'default' : 'pointer', ...(isEditing ? { backgroundColor: 'rgba(99, 102, 241, 0.04)' } : duplicateIds.has(record.id) ? { backgroundColor: 'rgba(239, 68, 68, 0.12)' } : {}) }}
                     >
                       <td className="row-action-delete" onClick={(e) => e.stopPropagation()}>
                         {canEditAll && (

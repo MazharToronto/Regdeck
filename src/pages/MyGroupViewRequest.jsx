@@ -558,6 +558,24 @@ export default function MyGroupViewRequest({ userRoles = [], user }) {
     return groupArray;
   }, [records, sortConfig]);
 
+  // Duplicate detection: work_order_number + file_number + hearing_date
+  const duplicateIds = useMemo(() => {
+    const seen = new Map();
+    const dupes = new Set();
+    records.forEach(record => {
+      const wo = (record.work_order_number || '').trim().toLowerCase();
+      const fn = (record.file_number || '').trim().toLowerCase();
+      const hd = (record.hearing_date || '').trim();
+      const key = `${wo}|${fn}|${hd}`;
+      if (seen.has(key)) {
+        dupes.add(record.id);
+      } else {
+        seen.set(key, record.id);
+      }
+    });
+    return dupes;
+  }, [records]);
+
   const toggleGroup = (woNumber) => {
     setExpandedGroups(prev => ({
       ...prev,
@@ -1023,7 +1041,7 @@ export default function MyGroupViewRequest({ userRoles = [], user }) {
                                     if (colKey === 'word_count') return child.word_count != null ? Number(child.word_count).toLocaleString() : '';
                                     if (colKey === 'character_wz_space') return child.character_wz_space != null ? Number(child.character_wz_space).toLocaleString() : '';
                                     if (colKey === 'delivery_date') return formatDdMmm(child.delivery_date);
-                                    if (colKey === 'status') return <span className={`status-badge ${child.status === 'Done' ? 'paid' : child.status === 'In progress' ? 'pending' : ''}`}>{child.status || '—'}</span>;
+                                    if (colKey === 'status') return <span className={`status-badge ${child.status === 'Done' ? 'paid' : child.status === 'In Process' ? 'pending' : ''}`}>{child.status || '—'}</span>;
                                     if (['employee_comments', 'regdeck_admin_comments', 'additional_comments'].includes(colKey)) return <div style={{ minWidth: '150px', maxWidth: '250px' }}>{child[colKey] || '—'}</div>;
                                     
                                     return child[colKey] || '—';
@@ -1032,7 +1050,7 @@ export default function MyGroupViewRequest({ userRoles = [], user }) {
                                   return (
                                     <tr 
                                       key={child.id} 
-                                      style={{ backgroundColor: isEditing ? 'rgba(99, 102, 241, 0.04)' : '#fff', cursor: isEditing ? 'default' : 'pointer' }}
+                                      style={{ backgroundColor: isEditing ? 'rgba(99, 102, 241, 0.04)' : duplicateIds.has(child.id) ? 'rgba(239, 68, 68, 0.12)' : '#fff', cursor: isEditing ? 'default' : 'pointer' }}
                                       onClick={(e) => {
                                         if (!isEditing && !e.target.closest('button')) toggleInlineEdit(child);
                                       }}
