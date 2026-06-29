@@ -1047,10 +1047,13 @@ export default function MyGroupViewRequest({ userRoles = [], user }) {
                                     return child[colKey] || '—';
                                   };
 
+                                  const daysLateVal = parseInt(child.days_late, 10);
+                                  const isLate = !isNaN(daysLateVal) && daysLateVal !== 0 && daysLateVal !== 1;
+
                                   return (
                                     <tr 
                                       key={child.id} 
-                                      style={{ backgroundColor: isEditing ? 'rgba(99, 102, 241, 0.04)' : duplicateIds.has(child.id) ? 'rgba(239, 68, 68, 0.12)' : '#fff', cursor: isEditing ? 'default' : 'pointer' }}
+                                      style={{ backgroundColor: isEditing ? 'rgba(99, 102, 241, 0.04)' : duplicateIds.has(child.id) ? 'rgba(239, 68, 68, 0.12)' : '#fff', cursor: isEditing ? 'default' : 'pointer', ...(isLate ? { color: '#b8860b' } : {}) }}
                                       onClick={(e) => {
                                         if (!isEditing && !e.target.closest('button')) toggleInlineEdit(child);
                                       }}

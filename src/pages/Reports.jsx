@@ -948,6 +948,8 @@ export default function Reports({ userRoles = [], user }) {
                   const isEditing = !!inlineEdits[record.id];
                   const draft = inlineEdits[record.id] || record;
                   const canEditAll = !isEmployee;
+                  const daysLateVal = parseInt(record.days_late, 10);
+                  const isLate = !isNaN(daysLateVal) && daysLateVal !== 0 && daysLateVal !== 1;
 
                   return (
                     <tr 
@@ -958,7 +960,7 @@ export default function Reports({ userRoles = [], user }) {
                           handleRowSave(record.id);
                         }
                       }}
-                      style={{ cursor: isEditing ? 'default' : 'pointer', ...(isEditing ? { backgroundColor: 'rgba(99, 102, 241, 0.04)' } : duplicateIds.has(record.id) ? { backgroundColor: 'rgba(239, 68, 68, 0.12)' } : {}) }}
+                      style={{ cursor: isEditing ? 'default' : 'pointer', ...(isLate ? { color: '#b8860b' } : {}), ...(isEditing ? { backgroundColor: 'rgba(99, 102, 241, 0.04)' } : duplicateIds.has(record.id) ? { backgroundColor: 'rgba(239, 68, 68, 0.12)' } : {}) }}
                     >
                       <td className="row-action-delete" onClick={(e) => e.stopPropagation()}>
                         {canEditAll && (
