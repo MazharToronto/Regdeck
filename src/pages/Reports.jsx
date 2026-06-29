@@ -954,13 +954,14 @@ export default function Reports({ userRoles = [], user }) {
                   return (
                     <tr 
                       key={record.id} 
+                      className={isLate ? 'row-days-late' : ''}
                       onClick={() => { if (!isEditing) toggleInlineEdit(record); }} 
                       onBlur={(e) => {
                         if (isEditing && !e.currentTarget.contains(e.relatedTarget)) {
                           handleRowSave(record.id);
                         }
                       }}
-                      style={{ cursor: isEditing ? 'default' : 'pointer', ...(isLate ? { color: '#b8860b' } : {}), ...(isEditing ? { backgroundColor: 'rgba(99, 102, 241, 0.04)' } : duplicateIds.has(record.id) ? { backgroundColor: 'rgba(239, 68, 68, 0.12)' } : {}) }}
+                      style={{ cursor: isEditing ? 'default' : 'pointer', ...(isEditing ? { backgroundColor: 'rgba(99, 102, 241, 0.04)' } : duplicateIds.has(record.id) ? { backgroundColor: 'rgba(239, 68, 68, 0.12)' } : {}) }}
                     >
                       <td className="row-action-delete" onClick={(e) => e.stopPropagation()}>
                         {canEditAll && (

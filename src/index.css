@@ -654,6 +654,10 @@ textarea.form-input {
   background: #fafaff;
 }
 
+.data-grid tr.row-days-late td {
+  color: #b8860b;
+}
+
 /* ===== Status Badges ===== */
 .status-badge {
   padding: 0.2rem 0.65rem;

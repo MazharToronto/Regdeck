@@ -1053,7 +1053,8 @@ export default function MyGroupViewRequest({ userRoles = [], user }) {
                                   return (
                                     <tr 
                                       key={child.id} 
-                                      style={{ backgroundColor: isEditing ? 'rgba(99, 102, 241, 0.04)' : duplicateIds.has(child.id) ? 'rgba(239, 68, 68, 0.12)' : '#fff', cursor: isEditing ? 'default' : 'pointer', ...(isLate ? { color: '#b8860b' } : {}) }}
+                                      className={isLate ? 'row-days-late' : ''}
+                                      style={{ backgroundColor: isEditing ? 'rgba(99, 102, 241, 0.04)' : duplicateIds.has(child.id) ? 'rgba(239, 68, 68, 0.12)' : '#fff', cursor: isEditing ? 'default' : 'pointer' }}
                                       onClick={(e) => {
                                         if (!isEditing && !e.target.closest('button')) toggleInlineEdit(child);
                                       }}
