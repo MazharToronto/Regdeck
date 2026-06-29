@@ -1048,7 +1048,7 @@ export default function MyGroupViewRequest({ userRoles = [], user }) {
                                   };
 
                                   const daysLateVal = parseInt(child.days_late, 10);
-                                  const isLate = !isNaN(daysLateVal) && daysLateVal >= 2;
+                                  const isLate = !isNaN(daysLateVal) && daysLateVal !== 0 && daysLateVal !== 1;
 
                                   return (
                                     <tr 
