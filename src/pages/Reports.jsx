@@ -950,18 +950,28 @@ export default function Reports({ userRoles = [], user }) {
                   const canEditAll = !isEmployee;
                   const daysLateVal = parseInt(record.days_late, 10);
                   const isLate = !isNaN(daysLateVal) && daysLateVal !== 0 && daysLateVal !== 1;
+                  const isDuplicate = duplicateIds.has(record.id);
+
+                  let rowClass = '';
+                  if (isEditing) {
+                    rowClass = 'row-editing';
+                  } else if (isDuplicate) {
+                    rowClass = 'row-duplicate';
+                  } else if (isLate) {
+                    rowClass = 'row-days-late';
+                  }
 
                   return (
                     <tr 
                       key={record.id} 
-                      className={isLate ? 'row-days-late' : ''}
+                      className={rowClass}
                       onClick={() => { if (!isEditing) toggleInlineEdit(record); }} 
                       onBlur={(e) => {
                         if (isEditing && !e.currentTarget.contains(e.relatedTarget)) {
                           handleRowSave(record.id);
                         }
                       }}
-                      style={{ cursor: isEditing ? 'default' : 'pointer', ...(isEditing ? { backgroundColor: 'rgba(99, 102, 241, 0.04)' } : duplicateIds.has(record.id) ? { backgroundColor: 'rgba(239, 68, 68, 0.12)' } : {}) }}
+                      style={{ cursor: isEditing ? 'default' : 'pointer' }}
                     >
                       <td className="row-action-delete" onClick={(e) => e.stopPropagation()}>
                         {canEditAll && (

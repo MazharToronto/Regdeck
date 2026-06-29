@@ -654,8 +654,22 @@ textarea.form-input {
   background: #fafaff;
 }
 
+.data-grid tr.row-editing td {
+  background-color: rgba(99, 102, 241, 0.04);
+}
+
+.data-grid tr.row-duplicate td {
+  background-color: rgba(239, 68, 68, 0.12);
+}
+.data-grid tr.row-duplicate:hover td {
+  background-color: rgba(239, 68, 68, 0.18);
+}
+
 .data-grid tr.row-days-late td {
-  color: #b8860b;
+  background-color: rgba(254, 240, 138, 0.4); /* Light yellow background */
+}
+.data-grid tr.row-days-late:hover td {
+  background-color: rgba(254, 240, 138, 0.6);
 }
 
 /* ===== Status Badges ===== */

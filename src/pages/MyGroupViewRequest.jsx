@@ -1049,12 +1049,22 @@ export default function MyGroupViewRequest({ userRoles = [], user }) {
 
                                   const daysLateVal = parseInt(child.days_late, 10);
                                   const isLate = !isNaN(daysLateVal) && daysLateVal !== 0 && daysLateVal !== 1;
+                                  const isDuplicate = duplicateIds.has(child.id);
+
+                                  let rowClass = '';
+                                  if (isEditing) {
+                                    rowClass = 'row-editing';
+                                  } else if (isDuplicate) {
+                                    rowClass = 'row-duplicate';
+                                  } else if (isLate) {
+                                    rowClass = 'row-days-late';
+                                  }
 
                                   return (
                                     <tr 
                                       key={child.id} 
-                                      className={isLate ? 'row-days-late' : ''}
-                                      style={{ backgroundColor: isEditing ? 'rgba(99, 102, 241, 0.04)' : duplicateIds.has(child.id) ? 'rgba(239, 68, 68, 0.12)' : '#fff', cursor: isEditing ? 'default' : 'pointer' }}
+                                      className={rowClass}
+                                      style={{ cursor: isEditing ? 'default' : 'pointer' }}
                                       onClick={(e) => {
                                         if (!isEditing && !e.target.closest('button')) toggleInlineEdit(child);
                                       }}
