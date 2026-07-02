@@ -158,11 +158,12 @@ export default function Reports({ userRoles = [], user }) {
       language: '',
       region: '',
       assigned_to: '',
+      from_wo_date: '',
+      to_wo_date: '',
       from_due_date: firstDay,
       to_due_date: lastDay,
       work_order_number: '',
       file_number: '',
-      delivery_date: '',
       status: ''
     };
   });
@@ -228,9 +229,10 @@ export default function Reports({ userRoles = [], user }) {
     if (f.language) query = query.eq('language', f.language);
     if (f.region) query = query.eq('region', f.region);
     if (f.assigned_to && !isEmployee) query = query.eq('assigned_to', f.assigned_to);
+    if (f.from_wo_date) query = query.gte('wo_date', f.from_wo_date);
+    if (f.to_wo_date) query = query.lte('wo_date', f.to_wo_date);
     if (f.from_due_date) query = query.gte('due_date', f.from_due_date);
     if (f.to_due_date) query = query.lte('due_date', f.to_due_date);
-    if (f.delivery_date) query = query.eq('delivery_date', f.delivery_date);
     if (f.status) query = query.eq('status', f.status);
     if (f.work_order_number) query = query.ilike('work_order_number', `%${f.work_order_number}%`);
     if (f.file_number) query = query.ilike('file_number', `%${f.file_number}%`);
@@ -301,11 +303,12 @@ export default function Reports({ userRoles = [], user }) {
       language: '',
       region: '',
       assigned_to: '',
+      from_wo_date: '',
+      to_wo_date: '',
       from_due_date: firstDay,
       to_due_date: lastDay,
       work_order_number: '',
       file_number: '',
-      delivery_date: '',
       status: ''
     };
     setFilters(cleared);
@@ -509,9 +512,10 @@ export default function Reports({ userRoles = [], user }) {
       if (f.language) query = query.eq('language', f.language);
       if (f.region) query = query.eq('region', f.region);
       if (f.assigned_to && !isEmployee) query = query.eq('assigned_to', f.assigned_to);
+      if (f.from_wo_date) query = query.gte('wo_date', f.from_wo_date);
+      if (f.to_wo_date) query = query.lte('wo_date', f.to_wo_date);
       if (f.from_due_date) query = query.gte('due_date', f.from_due_date);
       if (f.to_due_date) query = query.lte('due_date', f.to_due_date);
-      if (f.delivery_date) query = query.eq('delivery_date', f.delivery_date);
       if (f.status) query = query.eq('status', f.status);
       if (f.work_order_number) query = query.ilike('work_order_number', `%${f.work_order_number}%`);
       if (f.file_number) query = query.ilike('file_number', `%${f.file_number}%`);
@@ -707,7 +711,7 @@ export default function Reports({ userRoles = [], user }) {
               ? <input type="date" className="form-input" style={{ padding: '0.25rem', fontSize: '0.8rem', minWidth: '130px' }} value={draft.delivery_date || ''} onChange={(e) => handleInlineChange(record.id, 'delivery_date', e.target.value)} />
               : <span>{formatDdMmm(record.delivery_date) || '—'}</span>
             }
-            {dateVal && (
+            {!isEmployee && dateVal && (
               <button
                 title={copiedDelDate === dateVal ? 'Copied!' : `Copy date: ${dateVal}`}
                 onClick={(e) => { e.stopPropagation(); setCopiedDelDate(dateVal); }}
@@ -718,7 +722,7 @@ export default function Reports({ userRoles = [], user }) {
                 {copiedDelDate === dateVal ? '✅' : '📋'}
               </button>
             )}
-            {copiedDelDate && copiedDelDate !== dateVal && (
+            {!isEmployee && copiedDelDate && copiedDelDate !== dateVal && (
               <button
                 title={`Paste date: ${copiedDelDate}`}
                 onClick={async (e) => {
@@ -808,16 +812,20 @@ export default function Reports({ userRoles = [], user }) {
             </div>
           )}
           <div className="filter-group">
+            <label className="filter-label">From WO</label>
+            <input type="date" name="from_wo_date" className="filter-select" value={filters.from_wo_date} onChange={handleFilterChange} />
+          </div>
+          <div className="filter-group">
+            <label className="filter-label">To WO</label>
+            <input type="date" name="to_wo_date" className="filter-select" value={filters.to_wo_date} onChange={handleFilterChange} />
+          </div>
+          <div className="filter-group">
             <label className="filter-label">From Due</label>
             <input type="date" name="from_due_date" className="filter-select" value={filters.from_due_date} onChange={handleFilterChange} />
           </div>
           <div className="filter-group">
             <label className="filter-label">To Due</label>
             <input type="date" name="to_due_date" className="filter-select" value={filters.to_due_date} onChange={handleFilterChange} />
-          </div>
-          <div className="filter-group">
-            <label className="filter-label">Del Date</label>
-            <input type="date" name="delivery_date" className="filter-select" value={filters.delivery_date} onChange={handleFilterChange} />
           </div>
           <div className="filter-group">
             <label className="filter-label">Status</label>
