@@ -108,14 +108,14 @@ export default function EmployeeDashboard({ user }) {
         secondsValue: seconds
       };
 
-      const isActiveStatus = status === 'in progress' || status === 'pending';
+      const isActiveStatus = status === 'in process' || status === 'pending';
 
-      // 1. Active: records with status "In Progress" or "Pending"
+      // 1. Active: records with status "In Process" or "Pending"
       if (isActiveStatus) {
         active.push(mappedRecord);
       }
 
-      // 2. Needs Attention: due within 2 days AND status is "In Progress" or "Pending"
+      // 2. Needs Attention: due within 2 days AND status is "In Process" or "Pending"
       if (wo.due_date && isActiveStatus) {
         const dueDateObj = new Date(wo.due_date);
         dueDateObj.setHours(0, 0, 0, 0);
@@ -124,7 +124,7 @@ export default function EmployeeDashboard({ user }) {
         }
       }
 
-      // 3. Work Due: past due date AND status is "In Progress" or "Pending"
+      // 3. Work Due: past due date AND status is "In Process" or "Pending"
       if (wo.due_date && isActiveStatus) {
         const dueDateObj = new Date(wo.due_date);
         dueDateObj.setHours(0, 0, 0, 0);
@@ -240,7 +240,7 @@ export default function EmployeeDashboard({ user }) {
         alignItems: 'start'
       }}>
         {renderKanbanCard(
-          "Active",
+          "Work in Process and Pending",
           reportData.active,
           <Clock size={18} />,
           '#3b82f6' // Blue
@@ -254,7 +254,7 @@ export default function EmployeeDashboard({ user }) {
         )}
         
         {renderKanbanCard(
-          "Work Due",
+          "Work Past Due Date",
           reportData.workDue,
           <AlertTriangle size={18} />,
           '#ef4444' // Red
