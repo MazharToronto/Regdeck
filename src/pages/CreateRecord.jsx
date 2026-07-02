@@ -212,6 +212,8 @@ export default function CreateRecord({ user }) {
       templateSheet.getColumn(1).numFmt = 'dd-mmm-yy';
       templateSheet.getColumn(5).numFmt = 'dd-mmm-yyyy';
       templateSheet.getColumn(9).numFmt = 'dd-mmm-yy';
+      // Set custom time format hh:mm for Audio Length (Col J)
+      templateSheet.getColumn(10).numFmt = 'hh:mm';
 
       // Create a hidden Data sheet for all dropdown sources
       const dataSheet = workbook.addWorksheet('Data', { state: 'veryHidden' });
