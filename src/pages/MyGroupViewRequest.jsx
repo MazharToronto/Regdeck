@@ -1070,7 +1070,7 @@ export default function MyGroupViewRequest({ userRoles = [], user }) {
                                   };
 
                                   const daysLateVal = parseInt(child.days_late, 10);
-                                  const isLate = !isNaN(daysLateVal) && daysLateVal !== 0 && daysLateVal !== 1;
+                                  const isLate = !isNaN(daysLateVal) && daysLateVal !== 0;
                                   const isDuplicate = duplicateIds.has(child.id);
 
                                   let rowClass = '';
