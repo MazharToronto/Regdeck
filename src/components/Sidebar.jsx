@@ -91,10 +91,6 @@ export default function Sidebar({ canManageUsers, canCreate, isManager, isAdmin,
               <Users size={18} />
               <span>Manage Users</span>
             </NavLink>
-            <NavLink to="/admin/create" className={({isActive}) => `sidebar-link ${isActive ? 'active' : ''}`}>
-              <UserPlus size={18} />
-              <span>Add User</span>
-            </NavLink>
             {isAdmin && (
               <NavLink to="/admin/rates" className={({isActive}) => `sidebar-link ${isActive ? 'active' : ''}`}>
                 <DollarSign size={18} />
