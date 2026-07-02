@@ -10,6 +10,7 @@ export default function CreateRecord({ user }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [successCount, setSuccessCount] = useState(0);
+  const [skippedCount, setSkippedCount] = useState(0);
   const [file, setFile] = useState(null);
   const [language, setLanguage] = useState('EN');
 
@@ -19,6 +20,7 @@ export default function CreateRecord({ user }) {
       setFile(selected);
       setError(null);
       setSuccessCount(0);
+      setSkippedCount(0);
     } else {
       setFile(null);
       setError('Please select a valid .xlsx file');
@@ -390,27 +392,37 @@ export default function CreateRecord({ user }) {
           );
 
           const seenInUpload = new Set();
+          const recordsToInsertFiltered = [];
+          let skipped = 0;
+
           for (const rec of recordsToInsert) {
             const wo = (rec.work_order_number || '').trim().toLowerCase();
             const fn = (rec.file_number || '').trim().toLowerCase();
             const hd = (rec.hearing_date || '').trim();
             const key = `${wo}|${fn}|${hd}`;
 
-            if (existingKeys.has(key)) {
-              throw new Error(`The work order combination already exists: Work Order #: ${rec.work_order_number}, File #: ${rec.file_number || '—'}, Hearing Date: ${rec.hearing_date || '—'}`);
-            }
-
-            if (seenInUpload.has(key)) {
-              throw new Error(`The work order combination appears multiple times in the uploaded file: Work Order #: ${rec.work_order_number}, File #: ${rec.file_number || '—'}, Hearing Date: ${rec.hearing_date || '—'}`);
+            if (existingKeys.has(key) || seenInUpload.has(key)) {
+              skipped++;
+              continue;
             }
             seenInUpload.add(key);
+            recordsToInsertFiltered.push(rec);
           }
 
-          const { error: insertError } = await supabase.from('work_orders').insert(recordsToInsert);
+          if (recordsToInsertFiltered.length === 0) {
+            if (skipped > 0) {
+              throw new Error(`All ${skipped} record(s) in the file already exist in the system.`);
+            } else {
+              throw new Error("No valid records found to insert.");
+            }
+          }
+
+          const { error: insertError } = await supabase.from('work_orders').insert(recordsToInsertFiltered);
 
           if (insertError) throw insertError;
 
-          setSuccessCount(recordsToInsert.length);
+          setSuccessCount(recordsToInsertFiltered.length);
+          setSkippedCount(skipped);
           setFile(null); // Reset input after success
         } catch (err) {
           setError(err.message);
@@ -447,7 +459,10 @@ export default function CreateRecord({ user }) {
         {successCount > 0 && (
           <div className="alert alert-success" style={{ marginBottom: '2rem', textAlign: 'left', display: 'flex', alignItems: 'center' }}>
             <CheckCircle size={20} style={{ marginRight: '8px', flexShrink: 0 }} />
-            <span>Successfully inserted {successCount} work order record(s).</span>
+            <span>
+              Successfully inserted {successCount} work order record(s).
+              {skippedCount > 0 && ` Skipped ${skippedCount} duplicate entry/entries.`}
+            </span>
           </div>
         )}
 
