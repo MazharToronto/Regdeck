@@ -146,17 +146,25 @@ export default function Reports({ userRoles = [], user }) {
   const [requestTypeOptions, setRequestTypeOptions] = useState([]);
   const [statusOptions, setStatusOptions] = useState([]);
 
-  // Filter values
-  const [filters, setFilters] = useState({
-    language: '',
-    region: '',
-    assigned_to: '',
-    from_due_date: '',
-    to_due_date: '',
-    work_order_number: '',
-    file_number: '',
-    delivery_date: '',
-    status: ''
+  // Filter values — default From/To Due to current month range
+  const [filters, setFilters] = useState(() => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = now.getMonth(); // 0-indexed
+    const firstDay = `${year}-${String(month + 1).padStart(2, '0')}-01`;
+    const lastDate = new Date(year, month + 1, 0).getDate(); // last day of month
+    const lastDay = `${year}-${String(month + 1).padStart(2, '0')}-${String(lastDate).padStart(2, '0')}`;
+    return {
+      language: '',
+      region: '',
+      assigned_to: '',
+      from_due_date: firstDay,
+      to_due_date: lastDay,
+      work_order_number: '',
+      file_number: '',
+      delivery_date: '',
+      status: ''
+    };
   });
 
   // Load filter options from reference tables + distinct values
@@ -283,12 +291,18 @@ export default function Reports({ userRoles = [], user }) {
   };
 
   const handleReset = () => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = now.getMonth();
+    const firstDay = `${year}-${String(month + 1).padStart(2, '0')}-01`;
+    const lastDate = new Date(year, month + 1, 0).getDate();
+    const lastDay = `${year}-${String(month + 1).padStart(2, '0')}-${String(lastDate).padStart(2, '0')}`;
     const cleared = {
       language: '',
       region: '',
       assigned_to: '',
-      from_due_date: '',
-      to_due_date: '',
+      from_due_date: firstDay,
+      to_due_date: lastDay,
       work_order_number: '',
       file_number: '',
       delivery_date: '',
