@@ -9,7 +9,7 @@ const FB_REGIONS = ['Central', 'Eastern', 'Rexdale', 'Western'];
 const FB_DIVISIONS = ['ID', 'RPD', 'RAD', 'IAD'];
 const FB_REQUEST_TYPES = ['Full', 'Bench'];
 const FB_TAT = [10, 5, 4, 3, 2, 1];
-const FB_STATUSES = ['Pending', 'In progress', 'Done'];
+const FB_STATUSES = ['Pending', 'In Process', 'Done'];
 
 export default function EditWorkOrderModal({ record, onClose, onSaved, userRoles = [] }) {
   const [loading, setLoading] = useState(false);

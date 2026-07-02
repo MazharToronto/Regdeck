@@ -33,7 +33,7 @@ const getStatusClass = (status) => {
   if (!status) return '';
   const s = status.toLowerCase();
   if (s === 'done') return 'dash-status-done';
-  if (s === 'in progress' || s === 'in process') return 'dash-status-inprogress';
+  if (s === 'in process') return 'dash-status-inprogress';
   if (s === 'pending') return 'dash-status-pending';
   return '';
 };

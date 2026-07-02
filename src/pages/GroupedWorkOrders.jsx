@@ -288,7 +288,7 @@ export default function GroupedWorkOrders() {
                                     </div>
                                   </td>
                                   <td style={{ padding: '0.75rem' }}>
-                                    <span className={`status-badge ${sub.status === 'Done' ? 'paid' : sub.status === 'In progress' ? 'pending' : ''}`}>
+                                    <span className={`status-badge ${sub.status === 'Done' ? 'paid' : sub.status === 'In Process' ? 'pending' : ''}`}>
                                       {sub.status || '—'}
                                     </span>
                                   </td>
