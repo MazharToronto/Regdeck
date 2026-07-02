@@ -369,6 +369,43 @@ export default function CreateRecord({ user }) {
             throw new Error("No valid records found to insert. Ensure headers match exactly (e.g., 'Work Order Date', 'WorkOrder #').");
           }
 
+          // Fetch potentially duplicate work order numbers from DB
+          const uploadWoNumbers = Array.from(new Set(recordsToInsert.map(r => r.work_order_number).filter(Boolean)));
+          const { data: existingRecords, error: checkError } = await supabase
+            .from('work_orders')
+            .select('work_order_number, file_number, hearing_date')
+            .in('work_order_number', uploadWoNumbers);
+
+          if (checkError) {
+            throw new Error("Failed to check for existing records: " + checkError.message);
+          }
+
+          const existingKeys = new Set(
+            (existingRecords || []).map(r => {
+              const wo = (r.work_order_number || '').trim().toLowerCase();
+              const fn = (r.file_number || '').trim().toLowerCase();
+              const hd = (r.hearing_date || '').trim();
+              return `${wo}|${fn}|${hd}`;
+            })
+          );
+
+          const seenInUpload = new Set();
+          for (const rec of recordsToInsert) {
+            const wo = (rec.work_order_number || '').trim().toLowerCase();
+            const fn = (rec.file_number || '').trim().toLowerCase();
+            const hd = (rec.hearing_date || '').trim();
+            const key = `${wo}|${fn}|${hd}`;
+
+            if (existingKeys.has(key)) {
+              throw new Error(`The work order combination already exists: Work Order #: ${rec.work_order_number}, File #: ${rec.file_number || '—'}, Hearing Date: ${rec.hearing_date || '—'}`);
+            }
+
+            if (seenInUpload.has(key)) {
+              throw new Error(`The work order combination appears multiple times in the uploaded file: Work Order #: ${rec.work_order_number}, File #: ${rec.file_number || '—'}, Hearing Date: ${rec.hearing_date || '—'}`);
+            }
+            seenInUpload.add(key);
+          }
+
           const { error: insertError } = await supabase.from('work_orders').insert(recordsToInsert);
 
           if (insertError) throw insertError;
