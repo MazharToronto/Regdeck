@@ -289,8 +289,8 @@ export default function CreativeGroupedView({ userRoles = [], user }) {
             <input type="date" name="to_due_date" className="filter-select" value={filters.to_due_date} onChange={handleFilterChange} />
           </div>
           <div className="filter-group">
-            <label className="filter-label">WO #</label>
-            <input type="text" name="work_order_number" className="filter-select" placeholder="Search WO#" value={filters.work_order_number} onChange={handleFilterChange} />
+            <label className="filter-label">Work Order #</label>
+            <input type="text" name="work_order_number" className="filter-select" placeholder="Search Work Order#" value={filters.work_order_number} onChange={handleFilterChange} />
           </div>
         </div>
         <div className="filter-actions">
