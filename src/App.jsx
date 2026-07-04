@@ -9,9 +9,7 @@ import Reports from './pages/Reports';
 import Home from './pages/Home';
 import AdminScreen from './pages/AdminScreen';
 import AllUsersScreen from './pages/AllUsersScreen';
-import AudioLengthCalculator from './pages/AudioLengthCalculator';
 import ProfileSettings from './pages/ProfileSettings';
-import GroupedWorkOrders from './pages/GroupedWorkOrders';
 import CreativeGroupedView from './pages/CreativeGroupedView';
 import Dashboard from './pages/Dashboard';
 import MyGroupViewRequest from './pages/MyGroupViewRequest';
@@ -93,8 +91,7 @@ function App() {
               <Route path="/ee-dashboard" element={<EmployeeDashboard user={session?.user} />} />
             )}
             <Route path="/records" element={<Reports userRoles={userRoles} user={session?.user} />} />
-            <Route path="/audio-calculator" element={<AudioLengthCalculator />} />
-            <Route path="/grouped-view" element={<GroupedWorkOrders />} />
+
             <Route path="/board-view" element={<CreativeGroupedView userRoles={userRoles} user={session?.user} />} />
             <Route path="/group-view-request" element={<MyGroupViewRequest userRoles={userRoles} user={session?.user} />} />
             <Route path="/profile" element={<ProfileSettings user={session?.user} />} />

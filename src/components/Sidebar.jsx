@@ -52,11 +52,6 @@ export default function Sidebar({ canManageUsers, canCreate, isManager, isAdmin,
           <span>My Requests</span>
         </NavLink>
 
-        <NavLink to="/grouped-view" className={({isActive}) => `sidebar-link ${isActive ? 'active' : ''}`}>
-          <Layers size={18} />
-          <span>Grouped View</span>
-        </NavLink>
-
         <NavLink to="/board-view" className={({isActive}) => `sidebar-link ${isActive ? 'active' : ''}`}>
           <LayoutGrid size={18} />
           <span>Board View</span>
@@ -65,11 +60,6 @@ export default function Sidebar({ canManageUsers, canCreate, isManager, isAdmin,
         <NavLink to="/group-view-request" className={({isActive}) => `sidebar-link ${isActive ? 'active' : ''}`}>
           <List size={18} />
           <span>My Group View</span>
-        </NavLink>
-
-        <NavLink to="/audio-calculator" className={({isActive}) => `sidebar-link ${isActive ? 'active' : ''}`}>
-          <Headphones size={18} />
-          <span>Audio Length Calc</span>
         </NavLink>
 
         {canCreate && (
