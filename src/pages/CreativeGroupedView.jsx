@@ -25,7 +25,8 @@ export default function CreativeGroupedView({ userRoles = [], user }) {
       from_wo_date: '',
       to_wo_date: '',
       from_due_date: firstDay,
-      to_due_date: lastDay
+      to_due_date: lastDay,
+      work_order_number: ''
     };
   });
 
@@ -78,6 +79,7 @@ export default function CreativeGroupedView({ userRoles = [], user }) {
       if (f.to_wo_date) query = query.lte('wo_date', f.to_wo_date);
       if (f.from_due_date) query = query.gte('due_date', f.from_due_date);
       if (f.to_due_date) query = query.lte('due_date', f.to_due_date);
+      if (f.work_order_number) query = query.ilike('work_order_number', `%${f.work_order_number}%`);
 
       const { data, error } = await query;
 
@@ -126,7 +128,8 @@ export default function CreativeGroupedView({ userRoles = [], user }) {
       from_wo_date: '',
       to_wo_date: '',
       from_due_date: firstDay,
-      to_due_date: lastDay
+      to_due_date: lastDay,
+      work_order_number: ''
     };
     setFilters(cleared);
     fetchRecords(cleared);
@@ -284,6 +287,10 @@ export default function CreativeGroupedView({ userRoles = [], user }) {
           <div className="filter-group">
             <label className="filter-label">To Due</label>
             <input type="date" name="to_due_date" className="filter-select" value={filters.to_due_date} onChange={handleFilterChange} />
+          </div>
+          <div className="filter-group">
+            <label className="filter-label">WO #</label>
+            <input type="text" name="work_order_number" className="filter-select" placeholder="Search WO#" value={filters.work_order_number} onChange={handleFilterChange} />
           </div>
         </div>
         <div className="filter-actions">
