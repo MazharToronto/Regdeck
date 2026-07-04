@@ -57,11 +57,6 @@ export default function Sidebar({ canManageUsers, canCreate, isManager, isAdmin,
           <span>Board View</span>
         </NavLink>
 
-        <NavLink to="/group-view-request" className={({isActive}) => `sidebar-link ${isActive ? 'active' : ''}`}>
-          <List size={18} />
-          <span>My Group View</span>
-        </NavLink>
-
         {canCreate && (
           <NavLink to="/create" className={({isActive}) => `sidebar-link ${isActive ? 'active' : ''}`}>
             <PlusCircle size={18} />

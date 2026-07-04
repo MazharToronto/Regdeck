@@ -12,7 +12,6 @@ import AllUsersScreen from './pages/AllUsersScreen';
 import ProfileSettings from './pages/ProfileSettings';
 import CreativeGroupedView from './pages/CreativeGroupedView';
 import Dashboard from './pages/Dashboard';
-import MyGroupViewRequest from './pages/MyGroupViewRequest';
 import InvoiceGeneration from './pages/InvoiceGeneration';
 import InvoiceDashboard from './pages/InvoiceDashboard';
 import EmployeeDashboard from './pages/EmployeeDashboard';
@@ -93,7 +92,6 @@ function App() {
             <Route path="/records" element={<Reports userRoles={userRoles} user={session?.user} />} />
 
             <Route path="/board-view" element={<CreativeGroupedView userRoles={userRoles} user={session?.user} />} />
-            <Route path="/group-view-request" element={<MyGroupViewRequest userRoles={userRoles} user={session?.user} />} />
             <Route path="/profile" element={<ProfileSettings user={session?.user} />} />
             {canManageUsers && (
               <>
