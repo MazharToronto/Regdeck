@@ -6,7 +6,6 @@ import TopBar from './components/TopBar';
 import Login from './pages/Login';
 import CreateRecord from './pages/CreateRecord';
 import Reports from './pages/Reports';
-import Home from './pages/Home';
 import AdminScreen from './pages/AdminScreen';
 import AllUsersScreen from './pages/AllUsersScreen';
 import ProfileSettings from './pages/ProfileSettings';
@@ -65,7 +64,7 @@ function App() {
   const canCreate = isAdmin || isManager;
   const canManageUsers = isAdmin || isManager;
   const isEmployee = !isAdmin && !isManager;
-  const defaultRoute = isEmployee ? '/records' : '/create';
+  const defaultRoute = '/records';
 
   return (
     <div className={`app-shell ${!isSidebarOpen ? 'sidebar-collapsed' : ''}`}>
@@ -82,7 +81,6 @@ function App() {
         <main className="main-content">
           <Routes>
             <Route path="/" element={<Navigate to={defaultRoute} />} />
-            <Route path="/home" element={<Home canCreate={canCreate} />} />
             {canCreate && (
               <Route path="/create" element={<CreateRecord user={session?.user} />} />
             )}

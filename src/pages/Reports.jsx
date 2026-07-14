@@ -31,6 +31,45 @@ const COLUMN_CONFIG = [
   { key: 'additional_comments', label: 'Additional Comments', defaultVisible: false }
 ];
 
+// Pill class helpers for the Navy Authority design system
+const getRegionPillClass = (region) => {
+  const map = { 'Eastern': 'reg-eastern', 'Central': 'reg-central', 'Western': 'reg-western', 'Rexdale': 'reg-rexdale' };
+  return map[region] || '';
+};
+const getDivisionPillClass = (div) => {
+  const map = { 'RAD': 'div-rad', 'RPD': 'div-rpd', 'ID': 'div-id', 'IAD': 'div-iad' };
+  return map[div] || '';
+};
+const getTypePillClass = (type) => {
+  const map = { 'Full': 'type-full', 'Bench': 'type-bench' };
+  return map[type] || '';
+};
+const getStatusPillClass = (status) => {
+  if (status === 'Done') return 'st-done';
+  if (status === 'In Process') return 'st-prog';
+  return 'st-pend';
+};
+const getTatPillClass = (tat) => {
+  const v = parseInt(tat, 10);
+  return (v >= 5) ? 'tat-neutral' : 'tat-tight';
+};
+const getEmployeePillClass = (name) => {
+  if (!name) return 'emp-0';
+  const knownMap = {
+    'Sylvia': 'e-sylvia', 'Eugene': 'e-eugene', 'Virginie': 'e-virginie',
+    'Christian': 'e-christian', 'Laurel': 'e-laurel', 'Jean': 'e-jean',
+    'Adib': 'e-adib', 'Nathalie': 'e-nathalie', 'Daurha': 'e-daurha',
+    'Laurie': 'e-laurie', 'Jeanne': 'e-jeanne', 'Ahalm': 'e-ahalm'
+  };
+  // Check first name match
+  const firstName = name.split(' ')[0];
+  if (knownMap[firstName]) return knownMap[firstName];
+  // Hash-based fallback
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) hash = ((hash << 5) - hash) + name.charCodeAt(i);
+  return `emp-${Math.abs(hash) % 12}`;
+};
+
 export default function Reports({ userRoles = [], user }) {
   const isEmployee = !userRoles.includes('admin') && !userRoles.includes('manager');
   const userName = user?.user_metadata?.full_name || '';
@@ -415,6 +454,7 @@ export default function Reports({ userRoles = [], user }) {
     const charSpaceParsed = parseInt(cleanCharSpace, 10);
 
     const updatePayload = {
+      wo_date: draft.wo_date || null,
       language: draft.language,
       work_order_number: draft.work_order_number,
       region: draft.region,
@@ -686,30 +726,31 @@ export default function Reports({ userRoles = [], user }) {
   };
 
   const renderCell = (colKey, record, draft, isEditing, canEditAll) => {
+    const inlineStyle = { padding: '6px 10px', fontSize: '12.5px', minWidth: '80px' };
     switch (colKey) {
-      case 'language': return (isEditing && canEditAll ? <select className="form-select" style={{ padding: '0.25rem', fontSize: '0.8rem', minWidth: '100px' }} value={draft.language} onChange={(e) => handleInlineChange(record.id, 'language', e.target.value)}>{languageOptions.map(l => <option key={l.value} value={l.value}>{l.label}</option>)}</select> : record.language || '—');
-      case 'wo_date': return formatDdMmm(record.wo_date);
-      case 'work_order_number': return (isEditing && canEditAll ? <input type="text" className="form-input" style={{ padding: '0.25rem', fontSize: '0.8rem', minWidth: '120px' }} value={draft.work_order_number} onChange={(e) => handleInlineChange(record.id, 'work_order_number', e.target.value)} /> : record.work_order_number);
-      case 'region': return (isEditing && canEditAll ? <select className="form-select" style={{ padding: '0.25rem', fontSize: '0.8rem', minWidth: '100px' }} value={draft.region} onChange={(e) => handleInlineChange(record.id, 'region', e.target.value)}>{regionOptions.map(r => <option key={r} value={r}>{r}</option>)}</select> : record.region);
-      case 'assigned_to': return (isEditing && canEditAll ? <select className="form-select" style={{ padding: '0.25rem', fontSize: '0.8rem', minWidth: '110px' }} value={draft.assigned_to} onChange={(e) => handleInlineChange(record.id, 'assigned_to', e.target.value)}>{userOptions.map(u => <option key={u} value={u}>{u}</option>)}</select> : record.assigned_to);
-      case 'file_number': return (isEditing && canEditAll ? <input type="text" className="form-input" style={{ padding: '0.25rem', fontSize: '0.8rem', minWidth: '100px' }} value={draft.file_number || ''} onChange={(e) => handleInlineChange(record.id, 'file_number', e.target.value)} /> : record.file_number || '—');
-      case 'hearing_date': return (isEditing && canEditAll ? <input type="date" className="form-input" style={{ padding: '0.25rem', fontSize: '0.8rem', minWidth: '130px' }} value={draft.hearing_date || ''} onChange={(e) => handleInlineChange(record.id, 'hearing_date', e.target.value)} /> : formatDdMmmYyyy(record.hearing_date));
-      case 'division': return (isEditing && canEditAll ? <select className="form-select" style={{ padding: '0.25rem', fontSize: '0.8rem', minWidth: '80px' }} value={draft.division} onChange={(e) => handleInlineChange(record.id, 'division', e.target.value)}>{divisionOptions.map(d => <option key={d} value={d}>{d}</option>)}</select> : record.division);
-      case 'request_type': return (isEditing && canEditAll ? <select className="form-select" style={{ padding: '0.25rem', fontSize: '0.8rem', minWidth: '90px' }} value={draft.request_type} onChange={(e) => handleInlineChange(record.id, 'request_type', e.target.value)}>{requestTypeOptions.map(rt => <option key={rt} value={rt}>{rt}</option>)}</select> : record.request_type);
-      case 'tat': return (isEditing && canEditAll ? <select className="form-select" style={{ padding: '0.25rem', fontSize: '0.8rem', minWidth: '60px' }} value={draft.tat} onChange={(e) => handleInlineChange(record.id, 'tat', e.target.value)}>{tatValues.map(t => <option key={t} value={t}>{t}</option>)}</select> : record.tat);
-      case 'due_date': return (isEditing && canEditAll ? <input type="date" className="form-input" style={{ padding: '0.25rem', fontSize: '0.8rem', minWidth: '130px' }} value={draft.due_date || ''} onChange={(e) => handleInlineChange(record.id, 'due_date', e.target.value)} /> : formatDdMmm(record.due_date));
-      case 'audio_length': return (isEditing && canEditAll ? <input type="text" className="form-input" style={{ padding: '0.25rem', fontSize: '0.8rem', minWidth: '80px' }} placeholder="0:15" value={draft.audio_length || ''} onChange={(e) => handleInlineChange(record.id, 'audio_length', e.target.value)} /> : record.audio_length || '—');
-      case 'word_count': return (isEditing ? <input type="text" className="form-input" style={{ padding: '0.25rem', fontSize: '0.8rem', minWidth: '80px' }} value={draft.word_count || ''} onChange={(e) => handleInlineChange(record.id, 'word_count', e.target.value)} /> : record.word_count != null ? Number(record.word_count).toLocaleString() : '');
-      case 'character_wz_space': return (isEditing ? <input type="text" className="form-input" style={{ padding: '0.25rem', fontSize: '0.8rem', minWidth: '100px' }} value={draft.character_wz_space || ''} onChange={(e) => handleInlineChange(record.id, 'character_wz_space', e.target.value)} /> : record.character_wz_space != null ? Number(record.character_wz_space).toLocaleString() : '');
-      case 'line_count': return Number(draft.line_count != null ? draft.line_count : (record.line_count || 0)).toLocaleString();
-      case 'status': return (isEditing ? <select className="form-select" style={{ padding: '0.25rem', fontSize: '0.8rem', minWidth: '120px' }} value={draft.status} onChange={(e) => handleInlineChange(record.id, 'status', e.target.value)}>{statusOptions.map(s => <option key={s} value={s}>{s}</option>)}</select> : <span className={`status-badge ${record.status === 'Done' ? 'paid' : record.status === 'In Process' ? 'pending' : ''}`}>{record.status || '—'}</span>);
+      case 'language': return (isEditing && canEditAll ? <select className="form-select" style={inlineStyle} value={draft.language} onChange={(e) => handleInlineChange(record.id, 'language', e.target.value)}>{languageOptions.map(l => <option key={l.value} value={l.value}>{l.label}</option>)}</select> : record.language || '—');
+      case 'wo_date': return (isEditing && canEditAll ? <input type="date" className="form-input" style={{...inlineStyle, minWidth: '130px'}} value={draft.wo_date || ''} onChange={(e) => handleInlineChange(record.id, 'wo_date', e.target.value)} /> : <span className="text-faint-num">{formatDdMmm(record.wo_date)}</span>);
+      case 'work_order_number': return (isEditing && canEditAll ? <input type="text" className="form-input" style={{...inlineStyle, minWidth: '120px'}} value={draft.work_order_number} onChange={(e) => handleInlineChange(record.id, 'work_order_number', e.target.value)} /> : <span className="text-faint-num">{record.work_order_number}</span>);
+      case 'region': return (isEditing && canEditAll ? <select className="form-select" style={inlineStyle} value={draft.region} onChange={(e) => handleInlineChange(record.id, 'region', e.target.value)}>{regionOptions.map(r => <option key={r} value={r}>{r}</option>)}</select> : <span className={`pill ${getRegionPillClass(record.region)}`}>{record.region}</span>);
+      case 'assigned_to': return (isEditing && canEditAll ? <select className="form-select" style={{...inlineStyle, minWidth: '110px'}} value={draft.assigned_to} onChange={(e) => handleInlineChange(record.id, 'assigned_to', e.target.value)}>{userOptions.map(u => <option key={u} value={u}>{u}</option>)}</select> : record.assigned_to ? <span className={`pill ${getEmployeePillClass(record.assigned_to)}`}>{record.assigned_to}</span> : '—');
+      case 'file_number': return (isEditing && canEditAll ? <input type="text" className="form-input" style={inlineStyle} value={draft.file_number || ''} onChange={(e) => handleInlineChange(record.id, 'file_number', e.target.value)} /> : <span className="tabular-num">{record.file_number || '—'}</span>);
+      case 'hearing_date': return (isEditing && canEditAll ? <input type="date" className="form-input" style={{...inlineStyle, minWidth: '130px'}} value={draft.hearing_date || ''} onChange={(e) => handleInlineChange(record.id, 'hearing_date', e.target.value)} /> : <span className="text-faint-num">{formatDdMmmYyyy(record.hearing_date)}</span>);
+      case 'division': return (isEditing && canEditAll ? <select className="form-select" style={inlineStyle} value={draft.division} onChange={(e) => handleInlineChange(record.id, 'division', e.target.value)}>{divisionOptions.map(d => <option key={d} value={d}>{d}</option>)}</select> : <span className={`pill ${getDivisionPillClass(record.division)}`}>{record.division}</span>);
+      case 'request_type': return (isEditing && canEditAll ? <select className="form-select" style={inlineStyle} value={draft.request_type} onChange={(e) => handleInlineChange(record.id, 'request_type', e.target.value)}>{requestTypeOptions.map(rt => <option key={rt} value={rt}>{rt}</option>)}</select> : <span className={`pill ${getTypePillClass(record.request_type)}`}>{record.request_type}</span>);
+      case 'tat': return (isEditing && canEditAll ? <select className="form-select" style={{...inlineStyle, minWidth: '60px'}} value={draft.tat} onChange={(e) => handleInlineChange(record.id, 'tat', e.target.value)}>{tatValues.map(t => <option key={t} value={t}>{t}</option>)}</select> : <span className={`pill pill-tat ${getTatPillClass(record.tat)}`}>{record.tat}</span>);
+      case 'due_date': return (isEditing && canEditAll ? <input type="date" className="form-input" style={{...inlineStyle, minWidth: '130px'}} value={draft.due_date || ''} onChange={(e) => handleInlineChange(record.id, 'due_date', e.target.value)} /> : <span className="text-faint-num">{formatDdMmm(record.due_date)}</span>);
+      case 'audio_length': return (isEditing && canEditAll ? <input type="text" className="form-input" style={inlineStyle} placeholder="0:15" value={draft.audio_length || ''} onChange={(e) => handleInlineChange(record.id, 'audio_length', e.target.value)} /> : <span className="tabular-num">{record.audio_length || '—'}</span>);
+      case 'word_count': return (isEditing ? <input type="text" className="form-input" style={inlineStyle} value={draft.word_count || ''} onChange={(e) => handleInlineChange(record.id, 'word_count', e.target.value)} /> : <span className="tabular-num">{record.word_count != null ? Number(record.word_count).toLocaleString() : ''}</span>);
+      case 'character_wz_space': return (isEditing ? <input type="text" className="form-input" style={{...inlineStyle, minWidth: '100px'}} value={draft.character_wz_space || ''} onChange={(e) => handleInlineChange(record.id, 'character_wz_space', e.target.value)} /> : <span className="tabular-num">{record.character_wz_space != null ? Number(record.character_wz_space).toLocaleString() : ''}</span>);
+      case 'line_count': return <span className="tabular-num">{Number(draft.line_count != null ? draft.line_count : (record.line_count || 0)).toLocaleString()}</span>;
+      case 'status': return (isEditing ? <select className="form-select" style={{...inlineStyle, minWidth: '120px'}} value={draft.status} onChange={(e) => handleInlineChange(record.id, 'status', e.target.value)}>{statusOptions.map(s => <option key={s} value={s}>{s}</option>)}</select> : <span className={`pill ${getStatusPillClass(record.status)}`}>{record.status || '—'}</span>);
       case 'delivery_date': {
         const dateVal = draft.delivery_date || record.delivery_date || '';
         return (
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
             {isEditing && canEditAll
-              ? <input type="date" className="form-input" style={{ padding: '0.25rem', fontSize: '0.8rem', minWidth: '130px' }} value={draft.delivery_date || ''} onChange={(e) => handleInlineChange(record.id, 'delivery_date', e.target.value)} />
-              : <span>{formatDdMmm(record.delivery_date) || '—'}</span>
+              ? <input type="date" className="form-input" style={{...inlineStyle, minWidth: '130px'}} value={draft.delivery_date || ''} onChange={(e) => handleInlineChange(record.id, 'delivery_date', e.target.value)} />
+              : <span className="text-faint-num">{formatDdMmm(record.delivery_date) || '—'}</span>
             }
             {!isEmployee && dateVal && (
               <button
@@ -734,7 +775,6 @@ export default function Reports({ userRoles = [], user }) {
                   const updated = { ...base, delivery_date: copiedDelDate };
                   updated.days_late = calculateBusinessDays(updated.due_date, copiedDelDate);
                   
-                  // Recalculate financial amounts based on updated delivery date
                   const wordCount = parseInt(String(updated.word_count || '0').replace(/,/g, ''), 10) || 0;
                   const daysLate = parseInt(updated.days_late, 10) || 0;
                   const matchingRate = referenceRates.find(r => r.language === updated.language && String(r.tat) === String(updated.tat));
@@ -745,10 +785,7 @@ export default function Reports({ userRoles = [], user }) {
                   updated.late_deduction_amount = lateDeduction;
                   updated.total_amount = totalAmount;
 
-                  // Update state
                   setInlineEdits(prev => ({ ...prev, [target.id]: updated }));
-                  
-                  // Save to DB immediately
                   await handleRowSave(target.id, updated);
                 }}
                 style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px', lineHeight: 1, fontSize: '0.85rem', opacity: 0.4, transition: 'opacity 0.15s', borderRadius: '4px' }}
@@ -761,10 +798,10 @@ export default function Reports({ userRoles = [], user }) {
           </div>
         );
       }
-      case 'days_late': return draft.days_late != null ? draft.days_late : (record.days_late || 0);
-      case 'employee_comments': return (isEditing ? <input type="text" className="form-input" style={{ padding: '0.25rem', fontSize: '0.8rem', minWidth: '150px' }} value={draft.employee_comments || ''} onChange={(e) => handleInlineChange(record.id, 'employee_comments', e.target.value)} /> : <div style={{ minWidth: '150px', maxWidth: '250px', whiteSpace: 'normal', wordBreak: 'break-word' }}>{record.employee_comments || '—'}</div>);
-      case 'regdeck_admin_comments': return (isEditing && canEditAll ? <input type="text" className="form-input" style={{ padding: '0.25rem', fontSize: '0.8rem', minWidth: '150px' }} value={draft.regdeck_admin_comments || ''} onChange={(e) => handleInlineChange(record.id, 'regdeck_admin_comments', e.target.value)} /> : <div style={{ minWidth: '150px', maxWidth: '250px', whiteSpace: 'normal', wordBreak: 'break-word' }}>{record.regdeck_admin_comments || '—'}</div>);
-      case 'additional_comments': return (isEditing ? <input type="text" className="form-input" style={{ padding: '0.25rem', fontSize: '0.8rem', minWidth: '150px' }} value={draft.additional_comments || ''} onChange={(e) => handleInlineChange(record.id, 'additional_comments', e.target.value)} /> : <div style={{ minWidth: '150px', maxWidth: '250px', whiteSpace: 'normal', wordBreak: 'break-word' }}>{record.additional_comments || '—'}</div>);
+      case 'days_late': return <span className="tabular-num">{draft.days_late != null ? draft.days_late : (record.days_late || 0)}</span>;
+      case 'employee_comments': return (isEditing ? <input type="text" className="form-input" style={{...inlineStyle, minWidth: '150px'}} value={draft.employee_comments || ''} onChange={(e) => handleInlineChange(record.id, 'employee_comments', e.target.value)} /> : <div style={{ minWidth: '150px', maxWidth: '250px', whiteSpace: 'normal', wordBreak: 'break-word', fontSize: '12px', color: 'var(--text-muted)' }}>{record.employee_comments || '—'}</div>);
+      case 'regdeck_admin_comments': return (isEditing && canEditAll ? <input type="text" className="form-input" style={{...inlineStyle, minWidth: '150px'}} value={draft.regdeck_admin_comments || ''} onChange={(e) => handleInlineChange(record.id, 'regdeck_admin_comments', e.target.value)} /> : <div style={{ minWidth: '150px', maxWidth: '250px', whiteSpace: 'normal', wordBreak: 'break-word', fontSize: '12px', color: 'var(--text-muted)' }}>{record.regdeck_admin_comments || '—'}</div>);
+      case 'additional_comments': return (isEditing ? <input type="text" className="form-input" style={{...inlineStyle, minWidth: '150px'}} value={draft.additional_comments || ''} onChange={(e) => handleInlineChange(record.id, 'additional_comments', e.target.value)} /> : <div style={{ minWidth: '150px', maxWidth: '250px', whiteSpace: 'normal', wordBreak: 'break-word', fontSize: '12px', color: 'var(--text-muted)' }}>{record.additional_comments || '—'}</div>);
       default: return null;
     }
   };
@@ -865,7 +902,7 @@ export default function Reports({ userRoles = [], user }) {
           <button 
             className="btn-primary" 
             onClick={handleExportExcel}
-            style={{ width: 'auto', marginTop: 0, display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.6rem 1rem', background: '#10b981', borderColor: '#10b981' }}
+            style={{ width: 'auto', marginTop: 0, padding: '0.6rem 1rem' }}
             title="Export Visible Columns to Excel"
           >
             <Download size={16} />

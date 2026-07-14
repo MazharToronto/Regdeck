@@ -22,12 +22,12 @@ export default function Sidebar({ canManageUsers, canCreate, isManager, isAdmin,
               <line x1="16" y1="17" x2="8" y2="17"></line>
             </svg>
           </div>
-          {isOpen && <span className="sidebar-brand-text">InvoiceGen</span>}
+          {isOpen && <span className="sidebar-brand-text">RegDeck</span>}
         </div>
         <button 
           className="sidebar-toggle-btn" 
           onClick={onToggle} 
-          style={{ background: 'rgba(99,102,241,0.1)', border: 'none', cursor: 'pointer', color: '#6366f1', borderRadius: '6px', padding: '0.25rem', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
+          style={{ background: 'var(--accent-tint)', border: 'none', cursor: 'pointer', color: 'var(--accent)', borderRadius: '6px', padding: '0.25rem', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
           title={isOpen ? "Collapse Sidebar" : "Expand Sidebar"}
         >
           {isOpen ? <ChevronLeft size={18} /> : <Menu size={18} />}
@@ -35,11 +35,6 @@ export default function Sidebar({ canManageUsers, canCreate, isManager, isAdmin,
       </div>
 
       <div className="sidebar-nav">
-        <NavLink to="/home" className={({isActive}) => `sidebar-link ${isActive ? 'active' : ''}`}>
-          <Home size={18} />
-          <span>Home</span>
-        </NavLink>
-
         {!canManageUsers && (
           <NavLink to="/ee-dashboard" className={({isActive}) => `sidebar-link ${isActive ? 'active' : ''}`}>
             <LayoutGrid size={18} />

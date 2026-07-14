@@ -37,28 +37,26 @@ const getStatusClass = (status) => {
   if (s === 'pending') return 'dash-status-pending';
   return '';
 };
-// Helper for monthly region badge color
-const getRegionStyle = (region) => {
-  const r = (region || '').toLowerCase();
-  if (r === 'eastern') return { backgroundColor: '#bae6fd', color: '#0369a1' };
-  if (r === 'central') return { backgroundColor: '#fecaca', color: '#b91c1c' };
-  if (r === 'western') return { backgroundColor: '#bbf7d0', color: '#15803d' };
-  if (r === 'rexdale') return { backgroundColor: '#e9d5ff', color: '#7e22ce' };
-  return { backgroundColor: '#e2e8f0', color: '#475569' };
+// Helper for monthly region badge — now returns a CSS class name
+const getRegionPillClass = (region) => {
+  const map = { 'Eastern': 'reg-eastern', 'Central': 'reg-central', 'Western': 'reg-western', 'Rexdale': 'reg-rexdale' };
+  return map[region] || '';
 };
 
-// Hash function for assignee background color pill
-const getAssigneeStyle = (name) => {
-  if (!name) return { backgroundColor: '#e2e8f0', color: '#475569' };
-  let hash = 0;
-  for (let i = 0; i < name.length; i++) {
-    hash = name.charCodeAt(i) + ((hash << 5) - hash);
-  }
-  const hue = Math.abs(hash % 360);
-  return {
-    backgroundColor: `hsl(${hue}, 70%, 90%)`,
-    color: `hsl(${hue}, 70%, 30%)`
+// Employee pill class
+const getEmployeePillClass = (name) => {
+  if (!name) return 'emp-0';
+  const knownMap = {
+    'Sylvia': 'e-sylvia', 'Eugene': 'e-eugene', 'Virginie': 'e-virginie',
+    'Christian': 'e-christian', 'Laurel': 'e-laurel', 'Jean': 'e-jean',
+    'Adib': 'e-adib', 'Nathalie': 'e-nathalie', 'Daurha': 'e-daurha',
+    'Laurie': 'e-laurie', 'Jeanne': 'e-jeanne', 'Ahalm': 'e-ahalm'
   };
+  const firstName = name.split(' ')[0];
+  if (knownMap[firstName]) return knownMap[firstName];
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) hash = ((hash << 5) - hash) + name.charCodeAt(i);
+  return `emp-${Math.abs(hash) % 12}`;
 };
 
 // Parse any audio length string (H:MM:SS, M:SS, or bare minutes) → total seconds
@@ -809,7 +807,7 @@ export default function Dashboard() {
                           {monthlyReport2Data.map((row, idx) => (
                             <tr key={idx} style={{ borderBottom: idx === monthlyReport2Data.length - 1 ? 'none' : '1px solid #f1f5f9' }}>
                               <td style={{ padding: '0.85rem 1rem', fontSize: '0.85rem', fontWeight: '600', color: '#334155' }}>
-                                <span style={{ display: 'inline-block', padding: '2px 8px', borderRadius: '8px', fontSize: '0.8rem', fontWeight: '600', ...getAssigneeStyle(row.assigned_to) }}>
+                                <span className={`pill ${getEmployeePillClass(row.assigned_to)}`}>
                                   {row.assigned_to}
                                 </span>
                               </td>

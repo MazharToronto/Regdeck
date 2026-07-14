@@ -1,6 +1,30 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../supabaseClient';
-import { ChevronDown, ChevronUp, FileText, CheckCircle, Clock, Filter, RotateCcw } from 'lucide-react';
+import { ChevronDown, ChevronUp, FileText, CheckCircle, Clock, AlertCircle, Filter, RotateCcw } from 'lucide-react';
+
+// Pill class helpers
+const getRegionPillClass = (region) => {
+  const map = { 'Eastern': 'reg-eastern', 'Central': 'reg-central', 'Western': 'reg-western', 'Rexdale': 'reg-rexdale' };
+  return map[region] || '';
+};
+const getDivisionPillClass = (div) => {
+  const map = { 'RAD': 'div-rad', 'RPD': 'div-rpd', 'ID': 'div-id', 'IAD': 'div-iad' };
+  return map[div] || '';
+};
+const getEmployeePillClass = (name) => {
+  if (!name) return 'emp-0';
+  const knownMap = {
+    'Sylvia': 'e-sylvia', 'Eugene': 'e-eugene', 'Virginie': 'e-virginie',
+    'Christian': 'e-christian', 'Laurel': 'e-laurel', 'Jean': 'e-jean',
+    'Adib': 'e-adib', 'Nathalie': 'e-nathalie', 'Daurha': 'e-daurha',
+    'Laurie': 'e-laurie', 'Jeanne': 'e-jeanne', 'Ahalm': 'e-ahalm'
+  };
+  const firstName = name.split(' ')[0];
+  if (knownMap[firstName]) return knownMap[firstName];
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) hash = ((hash << 5) - hash) + name.charCodeAt(i);
+  return `emp-${Math.abs(hash) % 12}`;
+};
 
 export default function CreativeGroupedView({ userRoles = [], user }) {
   const [records, setRecords] = useState([]);
@@ -16,9 +40,9 @@ export default function CreativeGroupedView({ userRoles = [], user }) {
   const [filters, setFilters] = useState(() => {
     const now = new Date();
     const year = now.getFullYear();
-    const month = now.getMonth(); // 0-indexed
+    const month = now.getMonth();
     const firstDay = `${year}-${String(month + 1).padStart(2, '0')}-01`;
-    const lastDate = new Date(year, month + 1, 0).getDate(); // last day of month
+    const lastDate = new Date(year, month + 1, 0).getDate();
     const lastDay = `${year}-${String(month + 1).padStart(2, '0')}-${String(lastDate).padStart(2, '0')}`;
     return {
       assigned_to: '',
@@ -193,6 +217,9 @@ export default function CreativeGroupedView({ userRoles = [], user }) {
           status: record.status,
           request_type: record.request_type,
           due_date: record.due_date,
+          region: record.region,
+          division: record.division,
+          assigned_to: record.assigned_to,
           audio_lengths: [],
           subRecords: [],
           count: 0
@@ -209,7 +236,6 @@ export default function CreativeGroupedView({ userRoles = [], user }) {
     }));
     
     finalGroups.sort((a, b) => {
-      // Sort by due date first, then by work order number
       if (a.due_date !== b.due_date) {
         if (!a.due_date) return 1;
         if (!b.due_date) return -1;
@@ -229,40 +255,41 @@ export default function CreativeGroupedView({ userRoles = [], user }) {
     return sumAudioLengths(allLengths);
   }, [groupedData]);
 
+  // Counts
+  const doneCount = useMemo(() => groupedData.filter(c => c.status === 'Done').length, [groupedData]);
+  const inProgressCount = useMemo(() => groupedData.filter(c => c.status === 'In Process').length, [groupedData]);
+  const pendingCount = useMemo(() => groupedData.filter(c => c.status !== 'Done' && c.status !== 'In Process').length, [groupedData]);
+
+  // Get status card class
+  const getStatusCardClass = (status) => {
+    if (status === 'Done') return 'st-is-done';
+    if (status === 'In Process') return 'st-is-prog';
+    return 'st-is-pend';
+  };
+
+  const getStatusBadgeClass = (status) => {
+    if (status === 'Done') return 'st-badge-done';
+    if (status === 'In Process') return 'st-badge-prog';
+    return 'st-badge-pend';
+  };
+
+  const StatusIcon = ({ status, size = 10 }) => {
+    if (status === 'Done') return <CheckCircle size={size} />;
+    if (status === 'In Process') return <Clock size={size} />;
+    return <AlertCircle size={size} />;
+  };
+
   return (
     <div className="page-container" style={{ paddingBottom: '3rem' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-        <h1 className="page-title" style={{ margin: 0 }}>Work Order Board</h1>
-      </div>
-
-      <style dangerouslySetInnerHTML={{__html: `
-        .work-order-card {
-          background: #fff;
-          border-radius: 16px;
-          box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
-          border: 1px solid #f1f5f9;
-          overflow: hidden;
-          transition: all 0.2s ease;
-          display: flex;
-          flex-direction: column;
-        }
-        .work-order-card:hover {
-          transform: translateY(-3px);
-          box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
-          border-color: #e2e8f0;
-        }
-        .work-order-card.status-done { border-top: 4px solid #10b981; }
-        .work-order-card.status-in-progress { border-top: 4px solid #f59e0b; }
-        .work-order-card.status-default { border-top: 4px solid #6366f1; }
-      `}} />
+      <h1 className="page-title">Work Order Board</h1>
 
       {/* ===== Filter Bar ===== */}
-      <div className="filter-bar" style={{ marginBottom: '2rem' }}>
+      <div className="filter-bar">
         <div className="filter-bar-header">
-          <Filter size={16} />
+          <Filter size={14} />
           <span>Filters</span>
         </div>
-        <div className="filter-fields" style={{ gap: '1.5rem' }}>
+        <div className="filter-fields">
           {!isEmployee && (
             <div className="filter-group">
               <label className="filter-label">Assigned To</label>
@@ -290,165 +317,125 @@ export default function CreativeGroupedView({ userRoles = [], user }) {
           </div>
           <div className="filter-group">
             <label className="filter-label">Work Order #</label>
-            <input type="text" name="work_order_number" className="filter-select" placeholder="Search Work Order#" value={filters.work_order_number} onChange={handleFilterChange} />
+            <input type="text" name="work_order_number" className="filter-select" placeholder="Search WO#" value={filters.work_order_number} onChange={handleFilterChange} />
           </div>
         </div>
         <div className="filter-actions">
           <button className="btn-filter-apply" onClick={handleApply}>Apply</button>
           <button className="btn-filter-reset" onClick={handleReset}>
-            <RotateCcw size={14} />
+            <RotateCcw size={13} />
             Reset
           </button>
         </div>
       </div>
 
-      {/* Total Audio Length Display */}
+      {/* ===== Stats Row ===== */}
       {groupedData.length > 0 && (
-        <div style={{
-          display: 'inline-flex',
-          alignItems: 'center',
-          gap: '0.75rem',
-          background: 'linear-gradient(135deg, #f0fdf4, #ecfdf5)',
-          border: '1px solid #bbf7d0',
-          padding: '0.55rem 1.1rem',
-          borderRadius: '12px',
-          marginBottom: '2rem',
-          boxShadow: '0 2px 8px rgba(16, 185, 129, 0.04)'
-        }}>
-          <span style={{ fontSize: '0.8rem', fontWeight: '600', color: '#15803d', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-            Total Audio Length
-          </span>
-          <span style={{ 
-            fontSize: '1.1rem', 
-            fontWeight: '700', 
-            color: '#166534', 
-            fontFamily: 'monospace',
-            background: '#fff',
-            padding: '0.2rem 0.55rem',
-            borderRadius: '6px',
-            border: '1px solid #dcfce7'
-          }}>
-            {totalAudioSum}
-          </span>
+        <div className="board-stats">
+          <div className="stat">
+            <span className="stat-lbl">Work Orders</span>
+            <span className="stat-val">{groupedData.length}</span>
+          </div>
+          <div className="stat">
+            <span className="stat-lbl">Total Audio</span>
+            <span className="stat-val">{totalAudioSum}</span>
+          </div>
+          <div className="stat">
+            <span className="stat-lbl">Done</span>
+            <span className="stat-val">{doneCount}</span>
+          </div>
+          <div className="stat">
+            <span className="stat-lbl">In Progress</span>
+            <span className="stat-val">{inProgressCount}</span>
+          </div>
+          <div className="stat">
+            <span className="stat-lbl">Pending</span>
+            <span className="stat-val">{pendingCount}</span>
+          </div>
         </div>
       )}
 
-      {/* Board Content */}
+      {/* ===== Board Content ===== */}
       {loading ? (
-        <div style={{ textAlign: 'center', padding: '3rem', color: '#64748b' }}>Loading board...</div>
+        <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>Loading board...</div>
       ) : error ? (
         <div className="alert alert-error">{error}</div>
       ) : groupedData.length === 0 ? (
         <div style={{ 
-          background: '#fff', 
-          borderRadius: '16px', 
+          background: 'var(--surface)', 
+          borderRadius: 'var(--r-lg)', 
           padding: '4rem 2rem', 
           textAlign: 'center', 
-          border: '1px dashed #cbd5e1',
-          boxShadow: '0 4px 20px rgba(0, 0, 0, 0.02)',
+          border: '.5px dashed var(--border)',
           marginTop: '1.5rem'
         }}>
-          <h3 style={{ fontSize: '1.25rem', fontWeight: '600', color: '#1e293b', marginBottom: '0.5rem' }}>
+          <h3 style={{ fontSize: '19px', fontWeight: '700', color: 'var(--text)', marginBottom: '0.5rem', letterSpacing: '-0.015em' }}>
             No records found
           </h3>
-          <p style={{ color: '#64748b', maxWidth: '400px', margin: '0 auto', fontSize: '0.95rem' }}>
+          <p style={{ color: 'var(--text-muted)', maxWidth: '400px', margin: '0 auto', fontSize: '13px' }}>
             No active work orders match your current filter criteria.
           </p>
         </div>
       ) : (
-        <div style={{ 
-          display: 'grid', 
-          gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', 
-          gap: '1.5rem',
-          alignItems: 'start'
-        }}>
+        <div className="board-grid">
           {groupedData.map(card => {
-            const isExpanded = expandedCards[card.id] !== false; // True by default
+            const isExpanded = expandedCards[card.id] !== false;
             const hasFiles = card.subRecords && card.subRecords.length > 0;
-            const statusClass = card.status === 'Done' ? 'status-done' : card.status === 'In Process' ? 'status-in-progress' : 'status-default';
-            const StatusIcon = card.status === 'Done' ? CheckCircle : Clock;
             
             return (
-              <div key={card.id} className={`work-order-card ${statusClass}`}>
+              <div key={card.id} className={`wo-card ${getStatusCardClass(card.status)}`}>
                 {/* Card Header */}
-                <div style={{ padding: '1.25rem', borderBottom: '1px solid #f1f5f9' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.75rem' }}>
-                    <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: '700', color: '#1e293b' }}>
-                      {card.work_order_number || 'Unnamed WO'}
-                    </h3>
-                    <span className={`status-badge ${card.status === 'Done' ? 'paid' : card.status === 'In Process' ? 'pending' : ''}`} style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', padding: '0.25rem 0.6rem' }}>
-                      <StatusIcon size={12} />
-                      {card.status || 'No Status'}
-                    </span>
-                  </div>
-                  
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
-                      <span style={{ fontSize: '0.75rem', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: '600' }}>Type</span>
-                      <span style={{ fontSize: '0.9rem', color: '#475569', fontWeight: '500' }}>{card.request_type || '—'}</span>
-                    </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem', alignItems: 'center' }}>
-                      <span style={{ fontSize: '0.75rem', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: '600' }}>Due</span>
-                      <span style={{ fontSize: '0.9rem', color: '#475569', fontWeight: '500' }}>{formatDdMmm(card.due_date)}</span>
-                    </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem', alignItems: 'flex-end' }}>
-                      <span style={{ fontSize: '0.75rem', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: '600' }}>Total Audio</span>
-                      <span style={{ fontSize: '1.1rem', color: '#6366f1', fontWeight: '700', fontFamily: 'monospace' }}>{card.audio_length || '—'}</span>
-                    </div>
-                  </div>
+                <div className="wo-head">
+                  <span className="wo-num">{card.work_order_number || 'Unnamed WO'}</span>
+                  <span className={`wo-badge ${getStatusBadgeClass(card.status)}`}>
+                    <StatusIcon status={card.status} />
+                    {card.status || 'Pending'}
+                  </span>
                 </div>
                 
-                {/* Card Footer / Toggle */}
-                {hasFiles && (
-                  <div 
-                    onClick={() => toggleExpandCard(card.id)}
-                    style={{ 
-                      padding: '0.75rem 1.25rem', 
-                      background: isExpanded ? '#f8fafc' : '#fff',
-                      cursor: 'pointer',
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                      transition: 'background 0.2s ease'
-                    }}
-                  >
-                    <span style={{ fontSize: '0.85rem', color: '#64748b', fontWeight: '600' }}>
-                      {card.subRecords.length} {card.subRecords.length === 1 ? 'File' : 'Files'}
-                    </span>
-                    <div style={{ color: '#94a3b8', display: 'flex', alignItems: 'center' }}>
-                      {isExpanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
-                    </div>
+                {/* Card Metadata */}
+                <div className="wo-meta">
+                  <div>
+                    <div className="wo-meta-lbl">Type</div>
+                    <div className="wo-meta-val">{card.request_type || '—'}</div>
                   </div>
-                )}
+                  <div>
+                    <div className="wo-meta-lbl">Due</div>
+                    <div className="wo-meta-val">{formatDdMmm(card.due_date)}</div>
+                  </div>
+                  <div className="wo-meta-audio">
+                    <div className="wo-meta-lbl">Total Audio</div>
+                    <div className="wo-meta-val">{card.audio_length || '—'}</div>
+                  </div>
+                </div>
+
+                {/* Tag pills row */}
+                <div className="wo-tags">
+                  {card.region && <span className={`pill ${getRegionPillClass(card.region)}`}>{card.region}</span>}
+                  {card.division && <span className={`pill ${getDivisionPillClass(card.division)}`}>{card.division}</span>}
+                  {card.assigned_to && <span className={`pill ${getEmployeePillClass(card.assigned_to)}`}>{card.assigned_to}</span>}
+                </div>
                 
-                {/* Expanded Files List */}
-                {isExpanded && hasFiles && (
-                  <div style={{ background: '#f8fafc', padding: '0 1.25rem 1.25rem 1.25rem' }}>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                      {card.subRecords.map((sub, idx) => {
-                        const fileId = sub.id || `${card.id}-${idx}`;
-                        return (
-                          <div key={fileId} style={{ 
-                            display: 'flex', 
-                            justifyContent: 'space-between', 
-                            alignItems: 'center',
-                            padding: '0.6rem 0.8rem',
-                            background: '#fff',
-                            borderRadius: '8px',
-                            border: '1px solid #e2e8f0',
-                            boxShadow: '0 1px 2px rgba(0,0,0,0.02)'
-                          }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#334155', fontSize: '0.85rem', fontWeight: '500' }}>
-                              <FileText size={14} color="#94a3b8" />
-                              {sub.file_number || '—'}
-                            </div>
-                            <span style={{ fontSize: '0.85rem', color: '#64748b', fontFamily: 'monospace', fontWeight: '600' }}>
-                              {sub.audio_length || '—'}
-                            </span>
-                          </div>
-                        );
-                      })}
+                {/* Files Section */}
+                {hasFiles && (
+                  <div className="wo-files">
+                    <div className="wo-files-head" onClick={() => toggleExpandCard(card.id)}>
+                      <span>{card.subRecords.length} {card.subRecords.length === 1 ? 'File' : 'Files'}</span>
+                      {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
                     </div>
+                    
+                    {isExpanded && card.subRecords.map((sub, idx) => {
+                      const fileId = sub.id || `${card.id}-${idx}`;
+                      return (
+                        <div key={fileId} className="wo-file">
+                          <div className="wo-file-name">
+                            <FileText size={13} />
+                            <span>{sub.file_number || '—'}</span>
+                          </div>
+                          <span className="wo-file-len">{sub.audio_length || '—'}</span>
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
               </div>
