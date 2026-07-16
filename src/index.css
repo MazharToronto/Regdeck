@@ -506,6 +506,9 @@ textarea.form-input { resize: vertical; min-height: 60px; }
 .data-grid { width: 100%; border-collapse: collapse; font-size: 13px; }
 
 .data-grid th {
+  position: sticky;
+  top: 0;
+  z-index: 10;
   text-align: left;
   padding: 11px 16px;
   font-size: 12.5px;

@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
+import { useLocation } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 import EditWorkOrderModal from '../components/EditWorkOrderModal';
 import DeleteConfirmationModal from '../components/DeleteConfirmationModal';
@@ -70,7 +71,80 @@ const getEmployeePillClass = (name) => {
   return `emp-${Math.abs(hash) % 12}`;
 };
 
+const parseReportUrlParams = (search) => {
+  const params = new URLSearchParams(search);
+  const reportParam = params.get('report');
+  const dateParam = params.get('date');
+  const langParam = params.get('lang') || '';
+  const woParam = params.get('wo') || '';
+
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = now.getMonth(); // 0-indexed
+  const firstDay = `${year}-${String(month + 1).padStart(2, '0')}-01`;
+  const lastDate = new Date(year, month + 1, 0).getDate(); // last day of month
+  const lastDay = `${year}-${String(month + 1).padStart(2, '0')}-${String(lastDate).padStart(2, '0')}`;
+
+  const baseFilters = {
+    language: langParam,
+    region: '',
+    assigned_to: '',
+    from_wo_date: '',
+    to_wo_date: '',
+    from_due_date: firstDay,
+    to_due_date: lastDay,
+    work_order_number: woParam,
+    file_number: '',
+    status: '',
+    report: reportParam || '',
+    reportDate: dateParam || ''
+  };
+
+  if (reportParam && dateParam) {
+    if (reportParam === '1') {
+      const d = new Date(dateParam);
+      d.setDate(d.getDate() + 1);
+      const dayAfter = d.toISOString().split('T')[0];
+      return {
+        ...baseFilters,
+        from_due_date: dayAfter,
+        to_due_date: '',
+        status: 'Done'
+      };
+    } else if (reportParam === '2') {
+      return {
+        ...baseFilters,
+        from_due_date: dateParam,
+        to_due_date: dateParam
+      };
+    } else if (reportParam === '3') {
+      return {
+        ...baseFilters,
+        from_due_date: '',
+        to_due_date: ''
+      };
+    } else if (reportParam === '4' || reportParam === '5') {
+      return {
+        ...baseFilters,
+        from_wo_date: dateParam,
+        to_wo_date: dateParam,
+        from_due_date: '',
+        to_due_date: ''
+      };
+    }
+  } else if (woParam) {
+    return {
+      ...baseFilters,
+      from_due_date: '',
+      to_due_date: ''
+    };
+  }
+
+  return baseFilters;
+};
+
 export default function Reports({ userRoles = [], user }) {
+  const location = useLocation();
   const isEmployee = !userRoles.includes('admin') && !userRoles.includes('manager');
   const userName = user?.user_metadata?.full_name || '';
   const [records, setRecords] = useState([]);
@@ -185,27 +259,58 @@ export default function Reports({ userRoles = [], user }) {
   const [requestTypeOptions, setRequestTypeOptions] = useState([]);
   const [statusOptions, setStatusOptions] = useState([]);
 
-  // Filter values — default From/To Due to current month range
+  // Filter values — default From/To Due to current month range, unless report/wo is in URL
   const [filters, setFilters] = useState(() => {
-    const now = new Date();
-    const year = now.getFullYear();
-    const month = now.getMonth(); // 0-indexed
-    const firstDay = `${year}-${String(month + 1).padStart(2, '0')}-01`;
-    const lastDate = new Date(year, month + 1, 0).getDate(); // last day of month
-    const lastDay = `${year}-${String(month + 1).padStart(2, '0')}-${String(lastDate).padStart(2, '0')}`;
-    return {
-      language: '',
-      region: '',
-      assigned_to: '',
-      from_wo_date: '',
-      to_wo_date: '',
-      from_due_date: firstDay,
-      to_due_date: lastDay,
-      work_order_number: '',
-      file_number: '',
-      status: ''
-    };
+    return parseReportUrlParams(window.location.search);
   });
+
+  // Watch URL query parameter changes
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const reportParam = params.get('report');
+    const woVal = params.get('wo');
+    
+    if (reportParam || woVal) {
+      const updatedFilters = parseReportUrlParams(location.search);
+      setFilters(updatedFilters);
+      fetchRecords(updatedFilters, 1, rowsPerPage, sortConfig, debouncedSearchTerm);
+      if (currentPage !== 1) {
+        setCurrentPage(1);
+      }
+    } else {
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = now.getMonth();
+      const firstDay = `${year}-${String(month + 1).padStart(2, '0')}-01`;
+      const lastDate = new Date(year, month + 1, 0).getDate();
+      const lastDay = `${year}-${String(month + 1).padStart(2, '0')}-${String(lastDate).padStart(2, '0')}`;
+      
+      setFilters(prev => {
+        if (prev.report || prev.work_order_number) {
+          const cleared = {
+            language: '',
+            region: '',
+            assigned_to: '',
+            from_wo_date: '',
+            to_wo_date: '',
+            from_due_date: firstDay,
+            to_due_date: lastDay,
+            work_order_number: '',
+            file_number: '',
+            status: '',
+            report: '',
+            reportDate: ''
+          };
+          fetchRecords(cleared, 1, rowsPerPage, sortConfig, debouncedSearchTerm);
+          if (currentPage !== 1) {
+            setCurrentPage(1);
+          }
+          return cleared;
+        }
+        return prev;
+      });
+    }
+  }, [location.search]);
 
   // Load filter options from reference tables + distinct values
   useEffect(() => {
@@ -261,20 +366,47 @@ export default function Reports({ userRoles = [], user }) {
     let query = supabase
       .from('work_orders')
       .select('*', { count: 'exact' })
-      .order(targetSortConfig.key, { ascending: targetSortConfig.direction === 'asc' })
-      .range(start, end);
+      .order(targetSortConfig.key, { ascending: targetSortConfig.direction === 'asc' });
+
+    if (targetSortConfig.key === 'due_date') {
+      query = query.order('work_order_number', { ascending: true });
+    }
+
+    query = query.range(start, end);
 
     // Apply filters if provided
-    if (f.language) query = query.eq('language', f.language);
-    if (f.region) query = query.eq('region', f.region);
-    if (f.assigned_to && !isEmployee) query = query.eq('assigned_to', f.assigned_to);
-    if (f.from_wo_date) query = query.gte('wo_date', f.from_wo_date);
-    if (f.to_wo_date) query = query.lte('wo_date', f.to_wo_date);
-    if (f.from_due_date) query = query.gte('due_date', f.from_due_date);
-    if (f.to_due_date) query = query.lte('due_date', f.to_due_date);
-    if (f.status) query = query.eq('status', f.status);
-    if (f.work_order_number) query = query.ilike('work_order_number', `%${f.work_order_number}%`);
-    if (f.file_number) query = query.ilike('file_number', `%${f.file_number}%`);
+    if (f.report && f.reportDate) {
+      if (f.report === '1') {
+        query = query
+          .eq('language', f.language)
+          .eq('status', 'Done')
+          .is('delivery_date', null)
+          .gt('due_date', f.reportDate);
+      } else if (f.report === '2') {
+        query = query
+          .eq('language', f.language)
+          .eq('due_date', f.reportDate);
+      } else if (f.report === '3') {
+        query = query
+          .eq('language', f.language)
+          .eq('delivery_date', f.reportDate);
+      } else if (f.report === '4' || f.report === '5') {
+        query = query
+          .eq('language', f.language)
+          .eq('wo_date', f.reportDate);
+      }
+    } else {
+      if (f.language) query = query.eq('language', f.language);
+      if (f.region) query = query.eq('region', f.region);
+      if (f.assigned_to && !isEmployee) query = query.eq('assigned_to', f.assigned_to);
+      if (f.from_wo_date) query = query.gte('wo_date', f.from_wo_date);
+      if (f.to_wo_date) query = query.lte('wo_date', f.to_wo_date);
+      if (f.from_due_date) query = query.gte('due_date', f.from_due_date);
+      if (f.to_due_date) query = query.lte('due_date', f.to_due_date);
+      if (f.status) query = query.eq('status', f.status);
+      if (f.work_order_number) query = query.ilike('work_order_number', `%${f.work_order_number}%`);
+      if (f.file_number) query = query.ilike('file_number', `%${f.file_number}%`);
+    }
 
     // Employee role: only show records assigned to them
     if (isEmployee && userName) {
@@ -320,12 +452,19 @@ export default function Reports({ userRoles = [], user }) {
   }, [currentPage, rowsPerPage, sortConfig, debouncedSearchTerm]);
 
   const handleFilterChange = (e) => {
-    setFilters(prev => ({ ...prev, [e.target.name]: e.target.value }));
+    setFilters(prev => ({ 
+      ...prev, 
+      [e.target.name]: e.target.value,
+      report: '',
+      reportDate: ''
+    }));
   };
 
   const handleApply = () => {
+    const cleanFilters = { ...filters, report: '', reportDate: '' };
+    setFilters(cleanFilters);
     if (currentPage === 1) {
-      fetchRecords(filters, 1, rowsPerPage, sortConfig, debouncedSearchTerm);
+      fetchRecords(cleanFilters, 1, rowsPerPage, sortConfig, debouncedSearchTerm);
     } else {
       setCurrentPage(1);
     }
@@ -348,7 +487,9 @@ export default function Reports({ userRoles = [], user }) {
       to_due_date: lastDay,
       work_order_number: '',
       file_number: '',
-      status: ''
+      status: '',
+      report: '',
+      reportDate: ''
     };
     setFilters(cleared);
     setSearchTerm('');
@@ -662,7 +803,40 @@ export default function Reports({ userRoles = [], user }) {
   const safeCurrentPage = Math.min(currentPage, totalPages);
   const startIndex = (safeCurrentPage - 1) * rowsPerPage;
   const endIndex = Math.min(startIndex + records.length, totalRecords);
-  const paginatedRecords = records;
+  // Stable sorting of records to guarantee exact UI display matching due date and secondary work order number order
+  const paginatedRecords = useMemo(() => {
+    return [...records].sort((a, b) => {
+      const key = sortConfig.key;
+      const dir = sortConfig.direction === 'asc' ? 1 : -1;
+
+      // Primary Sort
+      let comparison = 0;
+      const valA = a[key];
+      const valB = b[key];
+
+      if (valA != null && valB != null) {
+        if (valA < valB) comparison = -1;
+        else if (valA > valB) comparison = 1;
+      } else if (valA != null) {
+        comparison = -1; // nulls last
+      } else if (valB != null) {
+        comparison = 1;
+      }
+
+      if (comparison !== 0) {
+        return comparison * dir;
+      }
+
+      // Secondary sorting by work order number (ascending) when sorting by due date
+      if (key === 'due_date') {
+        const woA = a.work_order_number || '';
+        const woB = b.work_order_number || '';
+        return woA.localeCompare(woB);
+      }
+
+      return 0;
+    });
+  }, [records, sortConfig]);
 
   // Duplicate detection: work_order_number + file_number + hearing_date
   const duplicateIds = useMemo(() => {
@@ -977,7 +1151,7 @@ export default function Reports({ userRoles = [], user }) {
             <p className="text-muted">No records found. Create one to get started.</p>
           </div>
         ) : (
-          <div style={{ overflowX: 'auto' }}>
+          <div className="table-scroll-container" style={{ overflow: 'auto', maxHeight: 'calc(100vh - 280px)', borderRadius: 'var(--r-md)', border: '.5px solid var(--border)' }}>
             <table className="data-grid">
               <thead>
                 <tr>

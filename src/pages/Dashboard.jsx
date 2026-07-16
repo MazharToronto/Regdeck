@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 import { BarChart3, CalendarCheck, Truck, Inbox, Clock, Sparkles, ClipboardList } from 'lucide-react';
 
@@ -82,9 +83,17 @@ const formatSeconds = (totalSeconds) => {
 };
 
 export default function Dashboard() {
+  const navigate = useNavigate();
   const [reportMode, setReportMode] = useState('daily');
-  const [language, setLanguage] = useState('');
-  const [selectedDate, setSelectedDate] = useState('');
+  const [language, setLanguage] = useState('EN');
+  const [selectedDate, setSelectedDate] = useState(() => {
+    const now = new Date();
+    const estDate = new Date(now.toLocaleString('en-US', { timeZone: 'America/New_York' }));
+    const yyyy = estDate.getFullYear();
+    const mm = String(estDate.getMonth() + 1).padStart(2, '0');
+    const dd = String(estDate.getDate()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}`;
+  });
   const [report1Data, setReport1Data] = useState([]);
   const [report2Data, setReport2Data] = useState([]);
   const [report3Data, setReport3Data] = useState([]);
@@ -106,7 +115,7 @@ export default function Dashboard() {
   const currentYear = new Date().getFullYear();
   const currentMonth = new Date().getMonth() + 1; // 1-12
 
-  const [monthlyLanguage, setMonthlyLanguage] = useState('');
+  const [monthlyLanguage, setMonthlyLanguage] = useState('EN');
   const [monthlyMonth, setMonthlyMonth] = useState(currentMonth);
   const [monthlyYear, setMonthlyYear] = useState(currentYear);
   const [monthlyReport1Data, setMonthlyReport1Data] = useState([]);
@@ -253,7 +262,7 @@ export default function Dashboard() {
       try {
         const { data, error: fetchError } = await supabase
           .from('work_orders')
-          .select('work_order_number, tat, assigned_to, audio_length')
+          .select('work_order_number, tat, assigned_to, audio_length, request_type')
           .eq('language', language)
           .eq('wo_date', selectedDate)
           .order('work_order_number', { ascending: true });
@@ -271,6 +280,7 @@ export default function Dashboard() {
                 work_order_number: row.work_order_number,
                 tat: row.tat,
                 assigned_to: row.assigned_to,
+                request_type: row.request_type,
                 totalSeconds: 0,
               };
             }
@@ -749,7 +759,7 @@ export default function Dashboard() {
                           {monthlyReport1Data.map((row, idx) => (
                             <tr key={idx} style={{ borderBottom: idx === monthlyReport1Data.length - 1 ? 'none' : '1px solid #f1f5f9' }}>
                               <td style={{ padding: '0.85rem 1rem', fontSize: '0.85rem', fontWeight: '600', color: '#334155' }}>
-                                <span style={{ display: 'inline-block', padding: '2px 8px', borderRadius: '8px', fontSize: '0.8rem', fontWeight: '600', ...getRegionStyle(row.region) }}>
+                                <span className={`pill ${getRegionPillClass(row.region)}`} style={{ display: 'inline-block', padding: '2px 8px', borderRadius: '8px', fontSize: '0.8rem', fontWeight: '600' }}>
                                   {row.region}
                                 </span>
                               </td>
@@ -1068,7 +1078,9 @@ export default function Dashboard() {
           <div className="work-order-card" style={{ background: '#fff', borderRadius: '16px', boxShadow: '0 4px 20px rgba(0, 0, 0, 0.04)', border: '1px solid #f1f5f9', borderTop: '6px solid #10b981', overflow: 'hidden' }}>
             <div style={{ padding: '1.25rem', borderBottom: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
               <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: '700', color: '#1e293b' }}>
-                Done – Not yet Delivered
+                <a href="#" onClick={(e) => { e.preventDefault(); navigate(`/records?report=1&date=${selectedDate}&lang=${language}`); }} style={{ color: '#1e293b', textDecoration: 'underline', cursor: 'pointer' }} onMouseEnter={(e) => e.target.style.color = '#3b82f6'} onMouseLeave={(e) => e.target.style.color = '#1e293b'}>
+                  Done - Not Delivered {formatDdMmm(selectedDate)}
+                </a>
               </h3>
               <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', padding: '0.4rem 0.85rem', background: '#d1fae5', color: '#047857', borderRadius: '999px', fontSize: '0.85rem', fontWeight: '600' }}>
                 <Inbox size={14} />
@@ -1124,7 +1136,9 @@ export default function Dashboard() {
           <div className="work-order-card" style={{ background: '#fff', borderRadius: '16px', boxShadow: '0 4px 20px rgba(0, 0, 0, 0.04)', border: '1px solid #f1f5f9', borderTop: '6px solid #f59e0b', overflow: 'hidden' }}>
             <div style={{ padding: '1.25rem', borderBottom: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
               <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: '700', color: '#1e293b' }}>
-                Work Order Due Today
+                <a href="#" onClick={(e) => { e.preventDefault(); navigate(`/records?report=2&date=${selectedDate}&lang=${language}`); }} style={{ color: '#1e293b', textDecoration: 'underline', cursor: 'pointer' }} onMouseEnter={(e) => e.target.style.color = '#3b82f6'} onMouseLeave={(e) => e.target.style.color = '#1e293b'}>
+                  Due {formatDdMmm(selectedDate)}
+                </a>
               </h3>
               <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', padding: '0.4rem 0.85rem', background: '#fef3c7', color: '#b45309', borderRadius: '999px', fontSize: '0.85rem', fontWeight: '600' }}>
                 <CalendarCheck size={14} />
@@ -1182,7 +1196,9 @@ export default function Dashboard() {
           <div className="work-order-card" style={{ background: '#fff', borderRadius: '16px', boxShadow: '0 4px 20px rgba(0, 0, 0, 0.04)', border: '1px solid #f1f5f9', borderTop: '6px solid #3b82f6', overflow: 'hidden' }}>
             <div style={{ padding: '1.25rem', borderBottom: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
               <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: '700', color: '#1e293b' }}>
-                Work Order Delivered Today
+                <a href="#" onClick={(e) => { e.preventDefault(); navigate(`/records?report=3&date=${selectedDate}&lang=${language}`); }} style={{ color: '#1e293b', textDecoration: 'underline', cursor: 'pointer' }} onMouseEnter={(e) => e.target.style.color = '#3b82f6'} onMouseLeave={(e) => e.target.style.color = '#1e293b'}>
+                  Delivered {formatDdMmm(selectedDate)}
+                </a>
               </h3>
               <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', padding: '0.4rem 0.85rem', background: '#dbeafe', color: '#1d4ed8', borderRadius: '999px', fontSize: '0.85rem', fontWeight: '600' }}>
                 <Truck size={14} />
@@ -1240,7 +1256,9 @@ export default function Dashboard() {
           <div className="work-order-card" style={{ background: '#fff', borderRadius: '16px', boxShadow: '0 4px 20px rgba(0, 0, 0, 0.04)', border: '1px solid #f1f5f9', borderTop: '6px solid #8b5cf6', overflow: 'hidden' }}>
             <div style={{ padding: '1.25rem', borderBottom: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
               <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: '700', color: '#1e293b' }}>
-                Work Order Assigned on {formatDdMmmYyyy(selectedDate)}
+                <a href="#" onClick={(e) => { e.preventDefault(); navigate(`/records?report=4&date=${selectedDate}&lang=${language}`); }} style={{ color: '#1e293b', textDecoration: 'underline', cursor: 'pointer' }} onMouseEnter={(e) => e.target.style.color = '#3b82f6'} onMouseLeave={(e) => e.target.style.color = '#1e293b'}>
+                  Assigned {formatDdMmm(selectedDate)}
+                </a>
               </h3>
               <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', padding: '0.4rem 0.85rem', background: '#ede9fe', color: '#6d28d9', borderRadius: '999px', fontSize: '0.85rem', fontWeight: '600' }}>
                 <Clock size={14} />
@@ -1268,6 +1286,7 @@ export default function Dashboard() {
                       <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
                         <th style={{ padding: '0.85rem 1rem', fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase', fontWeight: '600', letterSpacing: '0.05em' }}>WO #</th>
                         <th style={{ padding: '0.85rem 1rem', fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase', fontWeight: '600', letterSpacing: '0.05em' }}>Assigned To</th>
+                        <th style={{ padding: '0.85rem 1rem', fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase', fontWeight: '600', letterSpacing: '0.05em' }}>Type</th>
                         <th style={{ padding: '0.85rem 1rem', fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase', fontWeight: '600', letterSpacing: '0.05em' }}>TAT</th>
                         <th style={{ padding: '0.85rem 1rem', fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase', fontWeight: '600', letterSpacing: '0.05em' }}>Total Audio Length</th>
                       </tr>
@@ -1279,6 +1298,11 @@ export default function Dashboard() {
                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><ClipboardList size={14} color="#94a3b8" /> {row.work_order_number}</div>
                           </td>
                           <td style={{ padding: '0.85rem 1rem', fontSize: '0.85rem', color: '#475569' }}>{row.assigned_to}</td>
+                          <td style={{ padding: '0.85rem 1rem', fontSize: '0.85rem', color: '#475569' }}>
+                            <span className={`pill ${row.request_type?.toLowerCase() === 'bench' ? 'req-bench' : 'req-full'}`} style={{ display: 'inline-block', padding: '2px 8px', borderRadius: '8px', fontSize: '0.8rem', fontWeight: '600' }}>
+                              {row.request_type || '—'}
+                            </span>
+                          </td>
                           <td style={{ padding: '0.85rem 1rem', fontSize: '0.85rem', color: '#475569' }}>{row.tat}</td>
                           <td style={{ padding: '0.85rem 1rem', fontSize: '0.9rem', fontWeight: '700', color: '#6366f1', fontFamily: 'monospace' }}>{formatSeconds(row.totalSeconds)}</td>
                         </tr>
@@ -1294,7 +1318,9 @@ export default function Dashboard() {
           <div className="work-order-card" style={{ background: '#fff', borderRadius: '16px', boxShadow: '0 4px 20px rgba(0, 0, 0, 0.04)', border: '1px solid #f1f5f9', borderTop: '6px solid #ec4899', overflow: 'hidden' }}>
             <div style={{ padding: '1.25rem', borderBottom: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
               <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: '700', color: '#1e293b' }}>
-                Audio Length by Assignee
+                <a href="#" onClick={(e) => { e.preventDefault(); navigate(`/records?report=5&date=${selectedDate}&lang=${language}`); }} style={{ color: '#1e293b', textDecoration: 'underline', cursor: 'pointer' }} onMouseEnter={(e) => e.target.style.color = '#3b82f6'} onMouseLeave={(e) => e.target.style.color = '#1e293b'}>
+                  Assigned Audio Length {formatDdMmm(selectedDate)}
+                </a>
               </h3>
               <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', padding: '0.4rem 0.85rem', background: '#fce7f3', color: '#be185d', borderRadius: '999px', fontSize: '0.85rem', fontWeight: '600' }}>
                 <Sparkles size={14} />

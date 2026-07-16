@@ -32,7 +32,7 @@ export default function Login() {
         await supabase.auth.signOut();
         setError('Your account has been disabled. Please contact your administrator.');
       } else {
-        navigate('/');
+        navigate('/records');
       }
     }
     setLoading(false);
