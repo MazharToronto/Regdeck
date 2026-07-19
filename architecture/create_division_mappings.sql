@@ -48,18 +48,10 @@ ON public.division_mappings
 FOR ALL
 TO authenticated
 USING (
-  EXISTS (
-    SELECT 1 FROM public.user_roles ur
-    JOIN public.roles r ON ur.role_id = r.id
-    WHERE ur.user_id = auth.uid()
-      AND r.role_name IN ('admin', 'manager')
-  )
+  ((auth.jwt() -> 'user_roles'::text) ? 'admin'::text) OR 
+  ((auth.jwt() -> 'user_roles'::text) ? 'manager'::text)
 )
 WITH CHECK (
-  EXISTS (
-    SELECT 1 FROM public.user_roles ur
-    JOIN public.roles r ON ur.role_id = r.id
-    WHERE ur.user_id = auth.uid()
-      AND r.role_name IN ('admin', 'manager')
-  )
+  ((auth.jwt() -> 'user_roles'::text) ? 'admin'::text) OR 
+  ((auth.jwt() -> 'user_roles'::text) ? 'manager'::text)
 );
