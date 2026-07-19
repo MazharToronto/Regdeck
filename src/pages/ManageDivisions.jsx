@@ -142,8 +142,6 @@ export default function ManageDivisions({ userRoles = [] }) {
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm('Are you sure you want to delete this division mapping?')) return;
-
     const { error } = await supabase
       .from('division_mappings')
       .delete()
