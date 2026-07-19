@@ -99,7 +99,7 @@ export default function InvoiceGeneration({ userRoles = [] }) {
       // 4. Fetch Division Mappings from division_mappings table
       const { data: mappingsData, error: mappingsError } = await supabase
         .from('division_mappings')
-        .select('division, gl, cc, fa, fund, io')
+        .select('division, gl, cc, fa, fund, io, language')
         .eq('language', filters.language);
       if (mappingsError) console.error("Could not fetch division mappings:", mappingsError);
 
@@ -341,9 +341,13 @@ export default function InvoiceGeneration({ userRoles = [] }) {
     });
     currentRow++;
 
-    // Sort mappings by FA code to maintain consistent layout
+    // Sort mappings by FA code and language to maintain consistent layout
     const sortedMappings = mappingsData && mappingsData.length > 0 
-      ? [...mappingsData].sort((a, b) => a.fa.localeCompare(b.fa))
+      ? [...mappingsData].sort((a, b) => {
+          const faCompare = (a.fa || '').localeCompare(b.fa || '');
+          if (faCompare !== 0) return faCompare;
+          return (a.language || '').localeCompare(b.language || '');
+        })
       : [
           { division: 'RPD', gl: '504046', cc: '816232', fa: '4301', fund: '8110', io: '' },
           { division: 'RAD', gl: '504046', cc: '816232', fa: '4321', fund: '8110', io: '' },
