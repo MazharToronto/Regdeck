@@ -341,12 +341,12 @@ export default function InvoiceGeneration({ userRoles = [] }) {
     });
     currentRow++;
 
-    // Sort mappings by FA code and language to maintain consistent layout
+    // Sort mappings by language and FA code to maintain consistent layout
     const sortedMappings = mappingsData && mappingsData.length > 0 
       ? [...mappingsData].sort((a, b) => {
-          const faCompare = (a.fa || '').localeCompare(b.fa || '');
-          if (faCompare !== 0) return faCompare;
-          return (a.language || '').localeCompare(b.language || '');
+          const langCompare = (a.language || '').localeCompare(b.language || '');
+          if (langCompare !== 0) return langCompare;
+          return (a.fa || '').localeCompare(b.fa || '');
         })
       : [
           { division: 'RPD', gl: '504046', cc: '816232', fa: '4301', fund: '8110', io: '' },
