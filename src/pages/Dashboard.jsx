@@ -1077,8 +1077,35 @@ export default function Dashboard() {
           {/* ===== Report 1: Done – Not yet Delivered ===== */}
           <div className="work-order-card" style={{ background: '#fff', borderRadius: '16px', boxShadow: '0 4px 20px rgba(0, 0, 0, 0.04)', border: '1px solid #f1f5f9', borderTop: '6px solid #10b981', overflow: 'hidden' }}>
             <div style={{ padding: '1.25rem', borderBottom: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
-              <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: '700', color: '#1e293b' }}>
-                <a href="#" onClick={(e) => { e.preventDefault(); navigate(`/records?report=1&date=${selectedDate}&lang=${language}`); }} style={{ color: '#1e293b', textDecoration: 'underline', cursor: 'pointer' }} onMouseEnter={(e) => e.target.style.color = '#3b82f6'} onMouseLeave={(e) => e.target.style.color = '#1e293b'}>
+              <h3 style={{ margin: 0 }}>
+                <a 
+                  href="#" 
+                  onClick={(e) => { e.preventDefault(); navigate(`/records?report=1&date=${selectedDate}&lang=${language}`); }} 
+                  style={{ 
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    padding: '0.5rem 1.1rem',
+                    borderRadius: 'var(--r-sm)',
+                    fontSize: '13px',
+                    fontWeight: '700',
+                    background: 'var(--accent)',
+                    color: '#fff',
+                    textDecoration: 'none',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease',
+                    border: '.5px solid var(--border)'
+                  }} 
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = 'var(--accent-deep)';
+                    e.currentTarget.style.transform = 'translateY(-1px)';
+                    e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.08)';
+                  }} 
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = 'var(--accent)';
+                    e.currentTarget.style.transform = 'none';
+                    e.currentTarget.style.boxShadow = 'none';
+                  }}
+                >
                   Done - Not Delivered {formatDdMmm(selectedDate)}
                 </a>
               </h3>
@@ -1135,8 +1162,35 @@ export default function Dashboard() {
           {/* ===== Report 2: Work Order Due Today ===== */}
           <div className="work-order-card" style={{ background: '#fff', borderRadius: '16px', boxShadow: '0 4px 20px rgba(0, 0, 0, 0.04)', border: '1px solid #f1f5f9', borderTop: '6px solid #f59e0b', overflow: 'hidden' }}>
             <div style={{ padding: '1.25rem', borderBottom: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
-              <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: '700', color: '#1e293b' }}>
-                <a href="#" onClick={(e) => { e.preventDefault(); navigate(`/records?report=2&date=${selectedDate}&lang=${language}`); }} style={{ color: '#1e293b', textDecoration: 'underline', cursor: 'pointer' }} onMouseEnter={(e) => e.target.style.color = '#3b82f6'} onMouseLeave={(e) => e.target.style.color = '#1e293b'}>
+              <h3 style={{ margin: 0 }}>
+                <a 
+                  href="#" 
+                  onClick={(e) => { e.preventDefault(); navigate(`/records?report=2&date=${selectedDate}&lang=${language}`); }} 
+                  style={{ 
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    padding: '0.5rem 1.1rem',
+                    borderRadius: 'var(--r-sm)',
+                    fontSize: '13px',
+                    fontWeight: '700',
+                    background: 'var(--accent)',
+                    color: '#fff',
+                    textDecoration: 'none',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease',
+                    border: '.5px solid var(--border)'
+                  }} 
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = 'var(--accent-deep)';
+                    e.currentTarget.style.transform = 'translateY(-1px)';
+                    e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.08)';
+                  }} 
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = 'var(--accent)';
+                    e.currentTarget.style.transform = 'none';
+                    e.currentTarget.style.boxShadow = 'none';
+                  }}
+                >
                   Due {formatDdMmm(selectedDate)}
                 </a>
               </h3>
@@ -1195,8 +1249,35 @@ export default function Dashboard() {
           {/* ===== Report 3: Work Order Delivered Today ===== */}
           <div className="work-order-card" style={{ background: '#fff', borderRadius: '16px', boxShadow: '0 4px 20px rgba(0, 0, 0, 0.04)', border: '1px solid #f1f5f9', borderTop: '6px solid #3b82f6', overflow: 'hidden' }}>
             <div style={{ padding: '1.25rem', borderBottom: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
-              <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: '700', color: '#1e293b' }}>
-                <a href="#" onClick={(e) => { e.preventDefault(); navigate(`/records?report=3&date=${selectedDate}&lang=${language}`); }} style={{ color: '#1e293b', textDecoration: 'underline', cursor: 'pointer' }} onMouseEnter={(e) => e.target.style.color = '#3b82f6'} onMouseLeave={(e) => e.target.style.color = '#1e293b'}>
+              <h3 style={{ margin: 0 }}>
+                <a 
+                  href="#" 
+                  onClick={(e) => { e.preventDefault(); navigate(`/records?report=3&date=${selectedDate}&lang=${language}`); }} 
+                  style={{ 
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    padding: '0.5rem 1.1rem',
+                    borderRadius: 'var(--r-sm)',
+                    fontSize: '13px',
+                    fontWeight: '700',
+                    background: 'var(--accent)',
+                    color: '#fff',
+                    textDecoration: 'none',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease',
+                    border: '.5px solid var(--border)'
+                  }} 
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = 'var(--accent-deep)';
+                    e.currentTarget.style.transform = 'translateY(-1px)';
+                    e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.08)';
+                  }} 
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = 'var(--accent)';
+                    e.currentTarget.style.transform = 'none';
+                    e.currentTarget.style.boxShadow = 'none';
+                  }}
+                >
                   Delivered {formatDdMmm(selectedDate)}
                 </a>
               </h3>
@@ -1255,8 +1336,35 @@ export default function Dashboard() {
           {/* ===== Report 4: Work Order Assigned on [date] ===== */}
           <div className="work-order-card" style={{ background: '#fff', borderRadius: '16px', boxShadow: '0 4px 20px rgba(0, 0, 0, 0.04)', border: '1px solid #f1f5f9', borderTop: '6px solid #8b5cf6', overflow: 'hidden' }}>
             <div style={{ padding: '1.25rem', borderBottom: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
-              <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: '700', color: '#1e293b' }}>
-                <a href="#" onClick={(e) => { e.preventDefault(); navigate(`/records?report=4&date=${selectedDate}&lang=${language}`); }} style={{ color: '#1e293b', textDecoration: 'underline', cursor: 'pointer' }} onMouseEnter={(e) => e.target.style.color = '#3b82f6'} onMouseLeave={(e) => e.target.style.color = '#1e293b'}>
+              <h3 style={{ margin: 0 }}>
+                <a 
+                  href="#" 
+                  onClick={(e) => { e.preventDefault(); navigate(`/records?report=4&date=${selectedDate}&lang=${language}`); }} 
+                  style={{ 
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    padding: '0.5rem 1.1rem',
+                    borderRadius: 'var(--r-sm)',
+                    fontSize: '13px',
+                    fontWeight: '700',
+                    background: 'var(--accent)',
+                    color: '#fff',
+                    textDecoration: 'none',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease',
+                    border: '.5px solid var(--border)'
+                  }} 
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = 'var(--accent-deep)';
+                    e.currentTarget.style.transform = 'translateY(-1px)';
+                    e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.08)';
+                  }} 
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = 'var(--accent)';
+                    e.currentTarget.style.transform = 'none';
+                    e.currentTarget.style.boxShadow = 'none';
+                  }}
+                >
                   Assigned {formatDdMmm(selectedDate)}
                 </a>
               </h3>
@@ -1317,8 +1425,35 @@ export default function Dashboard() {
           {/* ===== Report 5: Work Order Assigned on [date] (by Assignee & Type) ===== */}
           <div className="work-order-card" style={{ background: '#fff', borderRadius: '16px', boxShadow: '0 4px 20px rgba(0, 0, 0, 0.04)', border: '1px solid #f1f5f9', borderTop: '6px solid #ec4899', overflow: 'hidden' }}>
             <div style={{ padding: '1.25rem', borderBottom: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
-              <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: '700', color: '#1e293b' }}>
-                <a href="#" onClick={(e) => { e.preventDefault(); navigate(`/records?report=5&date=${selectedDate}&lang=${language}`); }} style={{ color: '#1e293b', textDecoration: 'underline', cursor: 'pointer' }} onMouseEnter={(e) => e.target.style.color = '#3b82f6'} onMouseLeave={(e) => e.target.style.color = '#1e293b'}>
+              <h3 style={{ margin: 0 }}>
+                <a 
+                  href="#" 
+                  onClick={(e) => { e.preventDefault(); navigate(`/records?report=5&date=${selectedDate}&lang=${language}`); }} 
+                  style={{ 
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    padding: '0.5rem 1.1rem',
+                    borderRadius: 'var(--r-sm)',
+                    fontSize: '13px',
+                    fontWeight: '700',
+                    background: 'var(--accent)',
+                    color: '#fff',
+                    textDecoration: 'none',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease',
+                    border: '.5px solid var(--border)'
+                  }} 
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = 'var(--accent-deep)';
+                    e.currentTarget.style.transform = 'translateY(-1px)';
+                    e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.08)';
+                  }} 
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = 'var(--accent)';
+                    e.currentTarget.style.transform = 'none';
+                    e.currentTarget.style.boxShadow = 'none';
+                  }}
+                >
                   Assigned Audio Length {formatDdMmm(selectedDate)}
                 </a>
               </h3>
