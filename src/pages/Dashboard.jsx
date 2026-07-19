@@ -99,16 +99,19 @@ export default function Dashboard() {
   const [report3Data, setReport3Data] = useState([]);
   const [report4Data, setReport4Data] = useState([]);
   const [report5Data, setReport5Data] = useState([]);
+  const [report6Data, setReport6Data] = useState([]);
   const [loading, setLoading] = useState(false);
   const [loading2, setLoading2] = useState(false);
   const [loading3, setLoading3] = useState(false);
   const [loading4, setLoading4] = useState(false);
   const [loading5, setLoading5] = useState(false);
+  const [loading6, setLoading6] = useState(false);
   const [error, setError] = useState(null);
   const [error2, setError2] = useState(null);
   const [error3, setError3] = useState(null);
   const [error4, setError4] = useState(null);
   const [error5, setError5] = useState(null);
+  const [error6, setError6] = useState(null);
   const [report5GrandTotal, setReport5GrandTotal] = useState(0);
 
   // --- Monthly States ---
@@ -150,6 +153,7 @@ export default function Dashboard() {
       setReport3Data([]);
       setReport4Data([]);
       setReport5Data([]);
+      setReport6Data([]);
       setReport5GrandTotal(0);
       return;
     }
@@ -343,11 +347,64 @@ export default function Dashboard() {
       setLoading5(false);
     };
 
+    // Report 6: Pending (status = 'Pending', created_at < now() - 24h)
+    const fetchReport6 = async () => {
+      setLoading6(true);
+      setError6(null);
+      try {
+        const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+        const { data, error: fetchError } = await supabase
+          .from('work_orders')
+          .select('wo_date, assigned_to, tat, request_type, audio_length')
+          .eq('language', language)
+          .eq('status', 'Pending')
+          .lt('created_at', oneDayAgo);
+
+        if (fetchError) {
+          setError6(fetchError.message);
+          setReport6Data([]);
+        } else {
+          // Group the records based on the combination of wo_date, assigned_to, tat, and request_type
+          const grouped = {};
+          (data || []).forEach((row) => {
+            const key = `${row.wo_date || ''}_${row.assigned_to || ''}_${row.tat || ''}_${row.request_type || ''}`;
+            if (!grouped[key]) {
+              grouped[key] = {
+                wo_date: row.wo_date,
+                assigned_to: row.assigned_to,
+                tat: row.tat,
+                request_type: row.request_type,
+                totalSeconds: 0,
+              };
+            }
+            grouped[key].totalSeconds += parseAudioToSeconds(row.audio_length);
+          });
+
+          // Sort grouped records by wo_date asc, then assigned_to asc, then tat, then request_type
+          const sortedData = Object.values(grouped).sort((a, b) => {
+            const dateDiff = new Date(a.wo_date || 0).getTime() - new Date(b.wo_date || 0).getTime();
+            if (dateDiff !== 0) return dateDiff;
+            const assignDiff = (a.assigned_to || '').localeCompare(b.assigned_to || '');
+            if (assignDiff !== 0) return assignDiff;
+            const tatDiff = (a.tat || 0) - (b.tat || 0);
+            if (tatDiff !== 0) return tatDiff;
+            return (a.request_type || '').localeCompare(b.request_type || '');
+          });
+
+          setReport6Data(sortedData);
+        }
+      } catch (err) {
+        setError6('Failed to fetch report data.');
+      }
+      setLoading6(false);
+    };
+
     fetchReport1();
     fetchReport2();
     fetchReport3();
     fetchReport4();
     fetchReport5();
+    fetchReport6();
   }, [language, selectedDate, filtersReady]);
 
   // Fetch Monthly reports when monthly filters change
@@ -1491,6 +1548,93 @@ export default function Dashboard() {
                         <tr key={idx} style={{ borderBottom: idx === report5Data.length - 1 ? 'none' : '1px solid #f1f5f9' }}>
                           <td style={{ padding: '0.85rem 1rem', fontSize: '0.85rem', fontWeight: '600', color: '#334155' }}>{row.assigned_to}</td>
                           <td style={{ padding: '0.85rem 1rem', fontSize: '0.85rem', color: '#475569' }}>{row.request_type}</td>
+                          <td style={{ padding: '0.85rem 1rem', fontSize: '0.9rem', fontWeight: '700', color: '#6366f1', fontFamily: 'monospace' }}>{formatSeconds(row.totalSeconds)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* ===== Report 6: Pending (status = 'Pending', created_at < now() - 24h) ===== */}
+          <div className="work-order-card" style={{ background: '#fff', borderRadius: '16px', boxShadow: '0 4px 20px rgba(0, 0, 0, 0.04)', border: '1px solid #f1f5f9', borderTop: '6px solid #ef4444', overflow: 'hidden' }}>
+            <div style={{ padding: '1.25rem', borderBottom: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+              <h3 style={{ margin: 0 }}>
+                <a 
+                  href="#" 
+                  onClick={(e) => { e.preventDefault(); navigate(`/records?report=6&lang=${language}`); }} 
+                  style={{ 
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    padding: '0.5rem 1.1rem',
+                    borderRadius: 'var(--r-sm)',
+                    fontSize: '13px',
+                    fontWeight: '700',
+                    background: 'var(--accent)',
+                    color: '#fff',
+                    textDecoration: 'none',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease',
+                    border: '.5px solid var(--border)'
+                  }} 
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = 'var(--accent-deep)';
+                    e.currentTarget.style.transform = 'translateY(-1px)';
+                    e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.08)';
+                  }} 
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = 'var(--accent)';
+                    e.currentTarget.style.transform = 'none';
+                    e.currentTarget.style.boxShadow = 'none';
+                  }}
+                >
+                  Pending
+                </a>
+              </h3>
+              <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', padding: '0.4rem 0.85rem', background: '#fee2e2', color: '#b91c1c', borderRadius: '999px', fontSize: '0.85rem', fontWeight: '600' }}>
+                <Clock size={14} />
+                {loading6 ? '…' : report6Data.length} Groups
+              </span>
+            </div>
+            <div style={{ padding: '1.25rem', background: '#f8fafc' }}>
+              {loading6 ? (
+                <div className="dashboard-empty-state" style={{ background: '#fff', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                  <p>Loading report data…</p>
+                </div>
+              ) : error6 ? (
+                <div className="dashboard-empty-state" style={{ background: '#fff', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                  <p style={{ color: '#dc2626' }}>{error6}</p>
+                </div>
+              ) : report6Data.length === 0 ? (
+                <div className="dashboard-empty-state" style={{ background: '#fff', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                  <Clock size={28} color="#94a3b8" />
+                  <p>No pending work orders match the criteria.</p>
+                </div>
+              ) : (
+                <div style={{ overflowX: 'auto', background: '#fff', borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 1px 2px rgba(0,0,0,0.02)' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                    <thead>
+                      <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
+                        <th style={{ padding: '0.85rem 1rem', fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase', fontWeight: '600', letterSpacing: '0.05em' }}>WO Date</th>
+                        <th style={{ padding: '0.85rem 1rem', fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase', fontWeight: '600', letterSpacing: '0.05em' }}>Assigned To</th>
+                        <th style={{ padding: '0.85rem 1rem', fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase', fontWeight: '600', letterSpacing: '0.05em' }}>TAT</th>
+                        <th style={{ padding: '0.85rem 1rem', fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase', fontWeight: '600', letterSpacing: '0.05em' }}>Type</th>
+                        <th style={{ padding: '0.85rem 1rem', fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase', fontWeight: '600', letterSpacing: '0.05em' }}>Audio Length</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {report6Data.map((row, idx) => (
+                        <tr key={idx} style={{ borderBottom: idx === report6Data.length - 1 ? 'none' : '1px solid #f1f5f9' }}>
+                          <td style={{ padding: '0.85rem 1rem', fontSize: '0.85rem', color: '#475569' }}>{formatDdMmm(row.wo_date)}</td>
+                          <td style={{ padding: '0.85rem 1rem', fontSize: '0.85rem', color: '#475569' }}>{row.assigned_to}</td>
+                          <td style={{ padding: '0.85rem 1rem', fontSize: '0.85rem', color: '#475569' }}>{row.tat}</td>
+                          <td style={{ padding: '0.85rem 1rem', fontSize: '0.85rem', color: '#475569' }}>
+                            <span className={`pill ${row.request_type?.toLowerCase() === 'bench' ? 'req-bench' : 'req-full'}`} style={{ display: 'inline-block', padding: '2px 8px', borderRadius: '8px', fontSize: '0.8rem', fontWeight: '600' }}>
+                              {row.request_type || '—'}
+                            </span>
+                          </td>
                           <td style={{ padding: '0.85rem 1rem', fontSize: '0.9rem', fontWeight: '700', color: '#6366f1', fontFamily: 'monospace' }}>{formatSeconds(row.totalSeconds)}</td>
                         </tr>
                       ))}

@@ -100,8 +100,8 @@ const parseReportUrlParams = (search) => {
     reportDate: dateParam || ''
   };
 
-  if (reportParam && dateParam) {
-    if (reportParam === '1') {
+  if (reportParam) {
+    if (reportParam === '1' && dateParam) {
       const d = new Date(dateParam);
       d.setDate(d.getDate() + 1);
       const dayAfter = d.toISOString().split('T')[0];
@@ -111,25 +111,32 @@ const parseReportUrlParams = (search) => {
         to_due_date: '',
         status: 'Done'
       };
-    } else if (reportParam === '2') {
+    } else if (reportParam === '2' && dateParam) {
       return {
         ...baseFilters,
         from_due_date: dateParam,
         to_due_date: dateParam
       };
-    } else if (reportParam === '3') {
+    } else if (reportParam === '3' && dateParam) {
       return {
         ...baseFilters,
         from_due_date: '',
         to_due_date: ''
       };
-    } else if (reportParam === '4' || reportParam === '5') {
+    } else if ((reportParam === '4' || reportParam === '5') && dateParam) {
       return {
         ...baseFilters,
         from_wo_date: dateParam,
         to_wo_date: dateParam,
         from_due_date: '',
         to_due_date: ''
+      };
+    } else if (reportParam === '6') {
+      return {
+        ...baseFilters,
+        from_due_date: '',
+        to_due_date: '',
+        status: 'Pending'
       };
     }
   } else if (woParam) {
@@ -375,25 +382,31 @@ export default function Reports({ userRoles = [], user }) {
     query = query.range(start, end);
 
     // Apply filters if provided
-    if (f.report && f.reportDate) {
-      if (f.report === '1') {
+    if (f.report) {
+      if (f.report === '1' && f.reportDate) {
         query = query
           .eq('language', f.language)
           .eq('status', 'Done')
           .is('delivery_date', null)
           .gt('due_date', f.reportDate);
-      } else if (f.report === '2') {
+      } else if (f.report === '2' && f.reportDate) {
         query = query
           .eq('language', f.language)
           .eq('due_date', f.reportDate);
-      } else if (f.report === '3') {
+      } else if (f.report === '3' && f.reportDate) {
         query = query
           .eq('language', f.language)
           .eq('delivery_date', f.reportDate);
-      } else if (f.report === '4' || f.report === '5') {
+      } else if ((f.report === '4' || f.report === '5') && f.reportDate) {
         query = query
           .eq('language', f.language)
           .eq('wo_date', f.reportDate);
+      } else if (f.report === '6') {
+        const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+        query = query
+          .eq('language', f.language)
+          .eq('status', 'Pending')
+          .lt('created_at', oneDayAgo);
       }
     } else {
       if (f.language) query = query.eq('language', f.language);
