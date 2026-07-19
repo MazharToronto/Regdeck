@@ -38,8 +38,7 @@ export default function ManageDivisions({ userRoles = [] }) {
     const { data, error } = await supabase
       .from('division_mappings')
       .select('*')
-      .order('language', { ascending: true })
-      .order('division', { ascending: true });
+      .order('fa', { ascending: true });
 
     if (error) {
       console.error('Error fetching division mappings:', error);

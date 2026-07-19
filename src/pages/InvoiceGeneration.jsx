@@ -341,9 +341,9 @@ export default function InvoiceGeneration({ userRoles = [] }) {
     });
     currentRow++;
 
-    // Sort mappings by division name to maintain clean layout
+    // Sort mappings by FA code to maintain consistent layout
     const sortedMappings = mappingsData && mappingsData.length > 0 
-      ? [...mappingsData].sort((a, b) => a.division.localeCompare(b.division))
+      ? [...mappingsData].sort((a, b) => a.fa.localeCompare(b.fa))
       : [
           { division: 'RPD', gl: '504046', cc: '816232', fa: '4301', fund: '8110', io: '' },
           { division: 'RAD', gl: '504046', cc: '816232', fa: '4321', fund: '8110', io: '' },
