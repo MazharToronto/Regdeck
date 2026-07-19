@@ -270,12 +270,12 @@ export default function InvoiceGeneration({ userRoles = [] }) {
         const matchingRate = ratesData.find(rt => rt.language === r.language && String(rt.tat) === String(r.tat));
         const rate = matchingRate ? parseFloat(parseFloat(matchingRate.rate_per_word).toFixed(3)) : 0;
         
-        const wordCount = r.word_count || 0;
+        const wordCount = typeof r.word_count === 'number' ? r.word_count : (parseInt(String(r.word_count || '0').replace(/,/g, ''), 10) || 0);
 
         // Use pre-calculated values from work_orders table
         const lateDeduction = parseFloat(r.late_deduction_amount) || 0;
         const finalTotal = parseFloat(r.total_amount) || 0;
-        const daysLate = r.days_late || 0;
+        const daysLate = typeof r.days_late === 'number' ? r.days_late : (parseInt(String(r.days_late || '0'), 10) || 0);
 
         divSubtotal += finalTotal;
 
