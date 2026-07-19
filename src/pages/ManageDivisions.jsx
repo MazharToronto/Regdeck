@@ -18,6 +18,7 @@ export default function ManageDivisions({ userRoles = [] }) {
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState(null); // id of row being edited
   const [formData, setFormData] = useState({
+    language: 'EN',
     division: '',
     gl: '',
     cc: '',
@@ -37,6 +38,7 @@ export default function ManageDivisions({ userRoles = [] }) {
     const { data, error } = await supabase
       .from('division_mappings')
       .select('*')
+      .order('language', { ascending: true })
       .order('division', { ascending: true });
 
     if (error) {
@@ -64,6 +66,7 @@ export default function ManageDivisions({ userRoles = [] }) {
   const openAddForm = () => {
     setEditingId(null);
     setFormData({
+      language: 'EN',
       division: '',
       gl: '',
       cc: '',
@@ -77,6 +80,7 @@ export default function ManageDivisions({ userRoles = [] }) {
   const openEditForm = (item) => {
     setEditingId(item.id);
     setFormData({
+      language: item.language,
       division: item.division,
       gl: item.gl,
       cc: item.cc,
@@ -96,6 +100,7 @@ export default function ManageDivisions({ userRoles = [] }) {
 
     setSaving(true);
     const payload = {
+      language: formData.language,
       division: formData.division.trim().toUpperCase(),
       gl: formData.gl.trim(),
       cc: formData.cc.trim(),
@@ -161,7 +166,8 @@ export default function ManageDivisions({ userRoles = [] }) {
   const filteredMappings = mappings.filter(item => 
     item.division.toLowerCase().includes(searchTerm.toLowerCase()) ||
     item.gl.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    item.cc.toLowerCase().includes(searchTerm.toLowerCase())
+    item.cc.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    item.language.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   return (
@@ -252,6 +258,7 @@ export default function ManageDivisions({ userRoles = [] }) {
             <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
               <thead>
                 <tr style={{ background: 'var(--canvas)', borderBottom: '2px solid var(--border)' }}>
+                  <th style={{ padding: '1rem 1.25rem', fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: '700', letterSpacing: '0.05em' }}>Language</th>
                   <th style={{ padding: '1rem 1.25rem', fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: '700', letterSpacing: '0.05em' }}>Division</th>
                   <th style={{ padding: '1rem 1.25rem', fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: '700', letterSpacing: '0.05em' }}>GL</th>
                   <th style={{ padding: '1rem 1.25rem', fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: '700', letterSpacing: '0.05em' }}>CC</th>
@@ -264,7 +271,7 @@ export default function ManageDivisions({ userRoles = [] }) {
               <tbody>
                 {filteredMappings.length === 0 ? (
                   <tr>
-                    <td colSpan="7" style={{ padding: '3rem 1.25rem', textAlign: 'center', color: 'var(--text-faint)' }}>
+                    <td colSpan="8" style={{ padding: '3rem 1.25rem', textAlign: 'center', color: 'var(--text-faint)' }}>
                       <AlertCircle size={28} style={{ display: 'block', margin: '0 auto 0.75rem', color: 'var(--text-faint)' }} />
                       No division mappings found matching your query.
                     </td>
@@ -272,6 +279,11 @@ export default function ManageDivisions({ userRoles = [] }) {
                 ) : (
                   filteredMappings.map((item) => (
                     <tr key={item.id} style={{ borderBottom: '1px solid var(--border)', transition: 'background-color 0.2s' }} className="table-row-hover">
+                      <td style={{ padding: '1rem 1.25rem', fontSize: '0.9rem', color: 'var(--text)' }}>
+                        <span style={{ display: 'inline-block', background: 'var(--accent-tint)', color: 'var(--accent-text)', padding: '2px 8px', borderRadius: '6px', fontSize: '0.85rem', fontWeight: '600' }}>
+                          {item.language}
+                        </span>
+                      </td>
                       <td style={{ padding: '1rem 1.25rem', fontSize: '0.9rem', fontWeight: '700', color: 'var(--text)' }}>
                         <span style={{ display: 'inline-block', background: 'var(--subtle)', padding: '2px 8px', borderRadius: '6px', fontSize: '0.85rem' }}>
                           {item.division}
@@ -341,6 +353,30 @@ export default function ManageDivisions({ userRoles = [] }) {
             {/* Modal content */}
             <form onSubmit={handleFormSubmit} style={{ padding: '1.5rem' }}>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '1.25rem', marginBottom: '1.5rem' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '11px', fontWeight: '700', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '0.4rem' }}>
+                    Language *
+                  </label>
+                  <select
+                    name="language"
+                    value={formData.language}
+                    onChange={handleInputChange}
+                    disabled={saving}
+                    required
+                    style={{
+                      width: '100%',
+                      padding: '0.6rem 0.85rem',
+                      border: '1px solid var(--border)',
+                      borderRadius: 'var(--r-md)',
+                      fontSize: '13px',
+                      outline: 'none',
+                      background: '#fff'
+                    }}
+                  >
+                    <option value="EN">EN English</option>
+                    <option value="FR">FR French</option>
+                  </select>
+                </div>
                 <div>
                   <label style={{ display: 'block', fontSize: '11px', fontWeight: '700', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '0.4rem' }}>
                     Division Name *

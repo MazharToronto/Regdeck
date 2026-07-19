@@ -99,7 +99,8 @@ export default function InvoiceGeneration({ userRoles = [] }) {
       // 4. Fetch Division Mappings from division_mappings table
       const { data: mappingsData, error: mappingsError } = await supabase
         .from('division_mappings')
-        .select('division, gl, cc, fa, fund, io');
+        .select('division, gl, cc, fa, fund, io')
+        .eq('language', filters.language);
       if (mappingsError) console.error("Could not fetch division mappings:", mappingsError);
 
       // 5. Generate Excel
