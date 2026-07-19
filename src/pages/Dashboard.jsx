@@ -1145,20 +1145,20 @@ export default function Dashboard() {
                     borderRadius: 'var(--r-sm)',
                     fontSize: '13px',
                     fontWeight: '700',
-                    background: 'var(--accent)',
-                    color: '#fff',
+                    background: 'var(--subtle)',
+                    color: 'var(--text)',
                     textDecoration: 'none',
                     cursor: 'pointer',
                     transition: 'all 0.2s ease',
                     border: '.5px solid var(--border)'
                   }} 
                   onMouseEnter={(e) => {
-                    e.currentTarget.style.background = 'var(--accent-deep)';
+                    e.currentTarget.style.background = 'var(--hover)';
                     e.currentTarget.style.transform = 'translateY(-1px)';
-                    e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.08)';
+                    e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.05)';
                   }} 
                   onMouseLeave={(e) => {
-                    e.currentTarget.style.background = 'var(--accent)';
+                    e.currentTarget.style.background = 'var(--subtle)';
                     e.currentTarget.style.transform = 'none';
                     e.currentTarget.style.boxShadow = 'none';
                   }}
@@ -1230,20 +1230,20 @@ export default function Dashboard() {
                     borderRadius: 'var(--r-sm)',
                     fontSize: '13px',
                     fontWeight: '700',
-                    background: 'var(--accent)',
-                    color: '#fff',
+                    background: 'var(--subtle)',
+                    color: 'var(--text)',
                     textDecoration: 'none',
                     cursor: 'pointer',
                     transition: 'all 0.2s ease',
                     border: '.5px solid var(--border)'
                   }} 
                   onMouseEnter={(e) => {
-                    e.currentTarget.style.background = 'var(--accent-deep)';
+                    e.currentTarget.style.background = 'var(--hover)';
                     e.currentTarget.style.transform = 'translateY(-1px)';
-                    e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.08)';
+                    e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.05)';
                   }} 
                   onMouseLeave={(e) => {
-                    e.currentTarget.style.background = 'var(--accent)';
+                    e.currentTarget.style.background = 'var(--subtle)';
                     e.currentTarget.style.transform = 'none';
                     e.currentTarget.style.boxShadow = 'none';
                   }}
@@ -1317,20 +1317,20 @@ export default function Dashboard() {
                     borderRadius: 'var(--r-sm)',
                     fontSize: '13px',
                     fontWeight: '700',
-                    background: 'var(--accent)',
-                    color: '#fff',
+                    background: 'var(--subtle)',
+                    color: 'var(--text)',
                     textDecoration: 'none',
                     cursor: 'pointer',
                     transition: 'all 0.2s ease',
                     border: '.5px solid var(--border)'
                   }} 
                   onMouseEnter={(e) => {
-                    e.currentTarget.style.background = 'var(--accent-deep)';
+                    e.currentTarget.style.background = 'var(--hover)';
                     e.currentTarget.style.transform = 'translateY(-1px)';
-                    e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.08)';
+                    e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.05)';
                   }} 
                   onMouseLeave={(e) => {
-                    e.currentTarget.style.background = 'var(--accent)';
+                    e.currentTarget.style.background = 'var(--subtle)';
                     e.currentTarget.style.transform = 'none';
                     e.currentTarget.style.boxShadow = 'none';
                   }}
@@ -1404,20 +1404,20 @@ export default function Dashboard() {
                     borderRadius: 'var(--r-sm)',
                     fontSize: '13px',
                     fontWeight: '700',
-                    background: 'var(--accent)',
-                    color: '#fff',
+                    background: 'var(--subtle)',
+                    color: 'var(--text)',
                     textDecoration: 'none',
                     cursor: 'pointer',
                     transition: 'all 0.2s ease',
                     border: '.5px solid var(--border)'
                   }} 
                   onMouseEnter={(e) => {
-                    e.currentTarget.style.background = 'var(--accent-deep)';
+                    e.currentTarget.style.background = 'var(--hover)';
                     e.currentTarget.style.transform = 'translateY(-1px)';
-                    e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.08)';
+                    e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.05)';
                   }} 
                   onMouseLeave={(e) => {
-                    e.currentTarget.style.background = 'var(--accent)';
+                    e.currentTarget.style.background = 'var(--subtle)';
                     e.currentTarget.style.transform = 'none';
                     e.currentTarget.style.boxShadow = 'none';
                   }}
@@ -1493,20 +1493,20 @@ export default function Dashboard() {
                     borderRadius: 'var(--r-sm)',
                     fontSize: '13px',
                     fontWeight: '700',
-                    background: 'var(--accent)',
-                    color: '#fff',
+                    background: 'var(--subtle)',
+                    color: 'var(--text)',
                     textDecoration: 'none',
                     cursor: 'pointer',
                     transition: 'all 0.2s ease',
                     border: '.5px solid var(--border)'
                   }} 
                   onMouseEnter={(e) => {
-                    e.currentTarget.style.background = 'var(--accent-deep)';
+                    e.currentTarget.style.background = 'var(--hover)';
                     e.currentTarget.style.transform = 'translateY(-1px)';
-                    e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.08)';
+                    e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.05)';
                   }} 
                   onMouseLeave={(e) => {
-                    e.currentTarget.style.background = 'var(--accent)';
+                    e.currentTarget.style.background = 'var(--subtle)';
                     e.currentTarget.style.transform = 'none';
                     e.currentTarget.style.boxShadow = 'none';
                   }}
@@ -1572,20 +1572,20 @@ export default function Dashboard() {
                     borderRadius: 'var(--r-sm)',
                     fontSize: '13px',
                     fontWeight: '700',
-                    background: 'var(--accent)',
-                    color: '#fff',
+                    background: 'var(--subtle)',
+                    color: 'var(--text)',
                     textDecoration: 'none',
                     cursor: 'pointer',
                     transition: 'all 0.2s ease',
                     border: '.5px solid var(--border)'
                   }} 
                   onMouseEnter={(e) => {
-                    e.currentTarget.style.background = 'var(--accent-deep)';
+                    e.currentTarget.style.background = 'var(--hover)';
                     e.currentTarget.style.transform = 'translateY(-1px)';
-                    e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.08)';
+                    e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.05)';
                   }} 
                   onMouseLeave={(e) => {
-                    e.currentTarget.style.background = 'var(--accent)';
+                    e.currentTarget.style.background = 'var(--subtle)';
                     e.currentTarget.style.transform = 'none';
                     e.currentTarget.style.boxShadow = 'none';
                   }}
