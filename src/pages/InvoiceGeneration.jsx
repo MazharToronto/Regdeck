@@ -96,8 +96,14 @@ export default function InvoiceGeneration({ userRoles = [] }) {
       const { data: ratesData, error: ratesError } = await supabase.from('reference_rate').select('language, tat, rate_per_word');
       if (ratesError) console.error("Could not fetch rates:", ratesError);
 
-      // 4. Generate Excel
-      await createExcelInvoice(data, ratesData || []);
+      // 4. Fetch Division Mappings from division_mappings table
+      const { data: mappingsData, error: mappingsError } = await supabase
+        .from('division_mappings')
+        .select('division, gl, cc, fa, fund, io');
+      if (mappingsError) console.error("Could not fetch division mappings:", mappingsError);
+
+      // 5. Generate Excel
+      await createExcelInvoice(data, ratesData || [], mappingsData || []);
       setSuccess('Invoice generated successfully.');
     } catch (err) {
       console.error(err);
@@ -107,7 +113,7 @@ export default function InvoiceGeneration({ userRoles = [] }) {
     }
   };
 
-  const createExcelInvoice = async (records, ratesData = []) => {
+  const createExcelInvoice = async (records, ratesData = [], mappingsData = []) => {
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet('Invoice', {
       views: [{ showGridLines: false }]
@@ -334,23 +340,26 @@ export default function InvoiceGeneration({ userRoles = [] }) {
     });
     currentRow++;
 
-    // Mapping FA constants
-    const faMap = {
-      'RPD': '4301',
-      'RAD': '4321',
-      'IAD': '4341',
-      'ID': '4361'
-    };
+    // Sort mappings by division name to maintain clean layout
+    const sortedMappings = mappingsData && mappingsData.length > 0 
+      ? [...mappingsData].sort((a, b) => a.division.localeCompare(b.division))
+      : [
+          { division: 'RPD', gl: '504046', cc: '816232', fa: '4301', fund: '8110', io: '' },
+          { division: 'RAD', gl: '504046', cc: '816232', fa: '4321', fund: '8110', io: '' },
+          { division: 'IAD', gl: '504046', cc: '816232', fa: '4341', fund: '8110', io: '' },
+          { division: 'ID',  gl: '504046', cc: '816232', fa: '4361', fund: '8110', io: '' }
+        ];
 
-    ['RPD', 'RAD', 'IAD', 'ID'].forEach(div => {
+    sortedMappings.forEach(mapping => {
       const row = worksheet.getRow(currentRow);
-      row.getCell(3).value = div;   // C: Division
-      row.getCell(5).value = '504046'; // E: GL
-      row.getCell(6).value = '816232'; // F: CC
-      row.getCell(7).value = faMap[div] || ''; // G: FA
-      row.getCell(8).value = '8110'; // H: Fund
+      row.getCell(3).value = mapping.division;   // C: Division
+      row.getCell(5).value = mapping.gl;         // E: GL
+      row.getCell(6).value = mapping.cc;         // F: CC
+      row.getCell(7).value = mapping.fa;         // G: FA
+      row.getCell(8).value = mapping.fund;       // H: Fund
+      row.getCell(9).value = mapping.io || '';   // I: IO
       
-      const divTotal = divisionTotals[div] || 0;
+      const divTotal = divisionTotals[mapping.division] || 0;
       if (divTotal > 0) {
         row.getCell(14).value = divTotal; // N: amount with $ in format
         row.getCell(14).font = { bold: true, color: { argb: 'FF002060' } };

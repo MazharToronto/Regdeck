@@ -77,6 +77,10 @@ export default function Sidebar({ canManageUsers, canCreate, isManager, isAdmin,
                 <span>Manage Rates</span>
               </NavLink>
             )}
+            <NavLink to="/admin/divisions" className={({isActive}) => `sidebar-link ${isActive ? 'active' : ''}`}>
+              <Layers size={18} />
+              <span>Manage Divisions</span>
+            </NavLink>
             <NavLink to="/invoice-generation" className={({isActive}) => `sidebar-link ${isActive ? 'active' : ''}`}>
               <FileSpreadsheet size={18} />
               <span>Invoice Gen</span>
