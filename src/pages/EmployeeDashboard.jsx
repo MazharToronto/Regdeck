@@ -142,79 +142,113 @@ export default function EmployeeDashboard({ user }) {
     };
   }, [workOrders]);
 
+  // Color config for badge backgrounds matching Dashboard.jsx report cards
+  const colorConfig = {
+    '#3b82f6': { badgeBg: '#dbeafe', badgeText: '#1d4ed8' }, // Blue
+    '#f59e0b': { badgeBg: '#fef3c7', badgeText: '#a16207' }, // Amber
+    '#ef4444': { badgeBg: '#fee2e2', badgeText: '#b91c1c' }, // Red
+  };
+
   const renderKanbanCard = (title, items, icon, colorHex) => {
     const totalSeconds = items.reduce((sum, item) => sum + item.secondsValue, 0);
+    const { badgeBg, badgeText } = colorConfig[colorHex] || { badgeBg: '#f1f5f9', badgeText: '#475569' };
 
     return (
-      <div style={{
+      <div className="work-order-card" style={{
         background: '#fff',
-        borderRadius: '12px',
-        border: '1px solid #e2e8f0',
-        boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)',
+        borderRadius: '16px',
+        boxShadow: '0 4px 20px rgba(0, 0, 0, 0.04)',
+        border: '1px solid #f1f5f9',
+        borderTop: `6px solid ${colorHex}`,
+        overflow: 'hidden',
         display: 'flex',
-        flexDirection: 'column',
-        overflow: 'hidden'
+        flexDirection: 'column'
       }}>
         {/* Card Header */}
         <div style={{
-          padding: '16px',
-          background: colorHex,
-          color: '#fff',
-          fontWeight: '600',
+          padding: '1.25rem',
+          borderBottom: '1px solid #f1f5f9',
           display: 'flex',
+          justifyContent: 'space-between',
           alignItems: 'center',
-          gap: '8px',
-          fontSize: '15px'
+          flexWrap: 'wrap',
+          gap: '1rem'
         }}>
-          {icon}
-          {title}
+          <h3 style={{ margin: 0 }}>
+            <span style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              padding: '0.5rem 1.1rem',
+              borderRadius: 'var(--r-sm)',
+              fontSize: '13px',
+              fontWeight: '700',
+              background: 'var(--subtle)',
+              color: 'var(--text)',
+              border: '.5px solid var(--border)'
+            }}>
+              {title}
+            </span>
+          </h3>
+          <span style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.35rem',
+            padding: '0.4rem 0.85rem',
+            background: badgeBg,
+            color: badgeText,
+            borderRadius: '999px',
+            fontSize: '0.85rem',
+            fontWeight: '600'
+          }}>
+            {icon}
+            {items.length} {items.length === 1 ? 'Record' : 'Records'}
+          </span>
         </div>
 
         {/* Card Body (Table) */}
-        <div style={{ padding: '0', flexGrow: 1, overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
-            <thead>
-              <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e2e8f0' }}>
-                <th style={{ padding: '10px 12px', textAlign: 'left', color: '#475569', fontWeight: '600' }}>WO #</th>
-                <th style={{ padding: '10px 12px', textAlign: 'left', color: '#475569', fontWeight: '600' }}>Type</th>
-                <th style={{ padding: '10px 12px', textAlign: 'left', color: '#475569', fontWeight: '600' }}>Due</th>
-                <th style={{ padding: '10px 12px', textAlign: 'right', color: '#475569', fontWeight: '600' }}>Audio length</th>
-              </tr>
-            </thead>
-            <tbody>
-              {items.length === 0 ? (
-                <tr>
-                  <td colSpan="4" style={{ padding: '24px', textAlign: 'center', color: '#94a3b8' }}>
-                    No work orders found.
-                  </td>
-                </tr>
-              ) : (
-                items.map(item => (
-                  <tr key={item.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                    <td style={{ padding: '10px 12px', color: '#1e293b', fontWeight: '500' }}>{item.work_order_number || '—'}</td>
-                    <td style={{ padding: '10px 12px', color: '#64748b' }}>{item.request_type || '—'}</td>
-                    <td style={{ padding: '10px 12px', color: '#64748b' }}>{formatShortDate(item.due_date) || '—'}</td>
-                    <td style={{ padding: '10px 12px', textAlign: 'right', color: '#1e293b', fontWeight: '500' }}>
-                      {item.displayAudio}
+        <div style={{ padding: '1.25rem', background: '#f8fafc', flexGrow: 1 }}>
+          {items.length === 0 ? (
+            <div className="dashboard-empty-state" style={{ background: '#fff', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+              {React.cloneElement(icon, { size: 28, color: '#94a3b8' })}
+              <p>No work orders found.</p>
+            </div>
+          ) : (
+            <div style={{ overflowX: 'auto', background: '#fff', borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 1px 2px rgba(0,0,0,0.02)' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                <thead>
+                  <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
+                    <th style={{ padding: '0.85rem 1rem', fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase', fontWeight: '600', letterSpacing: '0.05em' }}>WO #</th>
+                    <th style={{ padding: '0.85rem 1rem', fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase', fontWeight: '600', letterSpacing: '0.05em' }}>Type</th>
+                    <th style={{ padding: '0.85rem 1rem', fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase', fontWeight: '600', letterSpacing: '0.05em' }}>Due</th>
+                    <th style={{ padding: '0.85rem 1rem', fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase', fontWeight: '600', letterSpacing: '0.05em', textAlign: 'right' }}>Audio Length</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {items.map((item, idx) => (
+                    <tr key={item.id} style={{ borderBottom: idx === items.length - 1 ? 'none' : '1px solid #f1f5f9' }}>
+                      <td style={{ padding: '0.85rem 1rem', fontSize: '0.85rem', fontWeight: '600', color: '#334155' }}>{item.work_order_number || '—'}</td>
+                      <td style={{ padding: '0.85rem 1rem', fontSize: '0.85rem', color: '#475569' }}>{item.request_type || '—'}</td>
+                      <td style={{ padding: '0.85rem 1rem', fontSize: '0.85rem', color: '#475569' }}>{formatShortDate(item.due_date) || '—'}</td>
+                      <td style={{ padding: '0.85rem 1rem', fontSize: '0.9rem', fontWeight: '700', color: '#6366f1', fontFamily: 'monospace', textAlign: 'right' }}>
+                        {item.displayAudio}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+                {/* Card Footer (Totals) */}
+                <tfoot>
+                  <tr style={{ background: '#f8fafc', borderTop: '1px solid #e2e8f0' }}>
+                    <td colSpan="3" style={{ padding: '0.85rem 1rem', textAlign: 'right', fontWeight: '700', color: '#1e293b', fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                      Total
+                    </td>
+                    <td style={{ padding: '0.85rem 1rem', textAlign: 'right', fontWeight: '700', color: '#6366f1', fontSize: '0.9rem', fontFamily: 'monospace' }}>
+                      {formatSecondsToAudioLength(totalSeconds)}
                     </td>
                   </tr>
-                ))
-              )}
-            </tbody>
-            {/* Card Footer (Totals) */}
-            {items.length > 0 && (
-              <tfoot>
-                <tr style={{ background: '#f8fafc', borderTop: '2px solid #e2e8f0' }}>
-                  <td colSpan="3" style={{ padding: '12px', textAlign: 'right', fontWeight: 'bold', color: '#1e293b' }}>
-                    Total
-                  </td>
-                  <td style={{ padding: '12px', textAlign: 'right', fontWeight: 'bold', color: '#1e293b' }}>
-                    {formatSecondsToAudioLength(totalSeconds)}
-                  </td>
-                </tr>
-              </tfoot>
-            )}
-          </table>
+                </tfoot>
+              </table>
+            </div>
+          )}
         </div>
       </div>
     );
