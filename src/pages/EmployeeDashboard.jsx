@@ -58,27 +58,12 @@ export default function EmployeeDashboard({ user }) {
   const [workOrders, setWorkOrders] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  const [resolvedUserName, setResolvedUserName] = useState(user?.user_metadata?.full_name || '');
-
-  // Robustly resolve full name from metadata or ref_users
-  useEffect(() => {
-    const resolveName = async () => {
-      if (user?.user_metadata?.full_name) {
-        setResolvedUserName(user.user_metadata.full_name);
-      } else if (user?.id) {
-        const { data } = await supabase.from('ref_users').select('name').eq('user_id', user.id).maybeSingle();
-        if (data?.name) {
-          setResolvedUserName(data.name);
-        }
-      }
-    };
-    resolveName();
-  }, [user]);
+  const userName = user?.user_metadata?.full_name || '';
 
   useEffect(() => {
     const fetchMyWorkOrders = async () => {
       setLoading(true);
-      const nameToQuery = (resolvedUserName || '').trim();
+      const nameToQuery = userName.trim();
       if (!nameToQuery) {
         setWorkOrders([]);
         setLoading(false);
@@ -125,7 +110,7 @@ export default function EmployeeDashboard({ user }) {
     };
 
     fetchMyWorkOrders();
-  }, [resolvedUserName]);
+  }, [userName]);
 
   const reportData = useMemo(() => {
     const today = new Date();
