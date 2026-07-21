@@ -58,34 +58,74 @@ export default function EmployeeDashboard({ user }) {
   const [workOrders, setWorkOrders] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  const userName = user?.user_metadata?.full_name || '';
+  const [resolvedUserName, setResolvedUserName] = useState(user?.user_metadata?.full_name || '');
+
+  // Robustly resolve full name from metadata or ref_users
+  useEffect(() => {
+    const resolveName = async () => {
+      if (user?.user_metadata?.full_name) {
+        setResolvedUserName(user.user_metadata.full_name);
+      } else if (user?.id) {
+        const { data } = await supabase.from('ref_users').select('name').eq('user_id', user.id).maybeSingle();
+        if (data?.name) {
+          setResolvedUserName(data.name);
+        }
+      }
+    };
+    resolveName();
+  }, [user]);
 
   useEffect(() => {
     const fetchMyWorkOrders = async () => {
       setLoading(true);
-      if (!userName) {
+      const nameToQuery = (resolvedUserName || '').trim();
+      if (!nameToQuery) {
+        setWorkOrders([]);
         setLoading(false);
         return;
       }
 
-      // Fetch all incomplete or recently completed work orders assigned to the user
-      // Status isn't explicitly constrained here so we can do all client-side filtering
-      const { data, error } = await supabase
-        .from('work_orders')
-        .select('id, work_order_number, request_type, due_date, audio_length, status, tat')
-        .eq('assigned_to', userName);
+      let allData = [];
+      let page = 0;
+      const pageSize = 1000;
+      let hasMore = true;
+      let fetchError = null;
 
-      if (error) {
-        console.error('Error fetching work orders:', error);
+      while (hasMore) {
+        const start = page * pageSize;
+        const end = start + pageSize - 1;
+
+        const { data, error } = await supabase
+          .from('work_orders')
+          .select('id, work_order_number, request_type, due_date, audio_length, status, tat')
+          .eq('assigned_to', nameToQuery)
+          .range(start, end);
+
+        if (error) {
+          fetchError = error;
+          break;
+        }
+
+        if (data && data.length > 0) {
+          allData = allData.concat(data);
+          if (data.length < pageSize) hasMore = false;
+          else page++;
+        } else {
+          hasMore = false;
+        }
+      }
+
+      if (fetchError) {
+        console.error('Error fetching work orders:', fetchError);
         setWorkOrders([]);
       } else {
-        setWorkOrders(data || []);
+        setWorkOrders(allData);
       }
       setLoading(false);
     };
 
     fetchMyWorkOrders();
-  }, [userName]);
+  }, [resolvedUserName]);
 
   const reportData = useMemo(() => {
     const today = new Date();
