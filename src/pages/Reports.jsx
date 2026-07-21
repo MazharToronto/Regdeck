@@ -153,7 +153,22 @@ const parseReportUrlParams = (search) => {
 export default function Reports({ userRoles = [], user }) {
   const location = useLocation();
   const isEmployee = !userRoles.includes('admin') && !userRoles.includes('manager');
-  const userName = user?.user_metadata?.full_name || '';
+  const [resolvedUserName, setResolvedUserName] = useState(user?.user_metadata?.full_name || '');
+
+  // Robustly resolve full name from metadata or ref_users
+  useEffect(() => {
+    const resolveName = async () => {
+      if (user?.user_metadata?.full_name) {
+        setResolvedUserName(user.user_metadata.full_name);
+      } else if (user?.id) {
+        const { data } = await supabase.from('ref_users').select('name').eq('user_id', user.id).maybeSingle();
+        if (data?.name) {
+          setResolvedUserName(data.name);
+        }
+      }
+    };
+    resolveName();
+  }, [user]);
   const [records, setRecords] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -422,8 +437,8 @@ export default function Reports({ userRoles = [], user }) {
     }
 
     // Employee role: only show records assigned to them
-    if (isEmployee && userName) {
-      query = query.eq('assigned_to', userName);
+    if (isEmployee && resolvedUserName) {
+      query = query.eq('assigned_to', resolvedUserName.trim());
     }
 
     // Like search across selected string columns
@@ -461,8 +476,9 @@ export default function Reports({ userRoles = [], user }) {
   };
 
   useEffect(() => {
+    if (isEmployee && !resolvedUserName) return;
     fetchRecords(filters, currentPage, rowsPerPage, sortConfig, debouncedSearchTerm);
-  }, [currentPage, rowsPerPage, sortConfig, debouncedSearchTerm]);
+  }, [currentPage, rowsPerPage, sortConfig, debouncedSearchTerm, resolvedUserName, isEmployee]);
 
   const handleFilterChange = (e) => {
     setFilters(prev => ({ 
@@ -719,8 +735,8 @@ export default function Reports({ userRoles = [], user }) {
       if (f.work_order_number) query = query.ilike('work_order_number', `%${f.work_order_number}%`);
       if (f.file_number) query = query.ilike('file_number', `%${f.file_number}%`);
 
-      if (isEmployee && userName) {
-        query = query.eq('assigned_to', userName);
+      if (isEmployee && resolvedUserName) {
+        query = query.eq('assigned_to', resolvedUserName.trim());
       }
 
       const cleanSearch = debouncedSearchTerm.trim();
