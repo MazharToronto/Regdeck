@@ -125,7 +125,7 @@ export default function BulkUpdateWorkOrders() {
         throw new Error('The uploaded file is empty or has no valid data rows.');
       }
 
-      // Build composite IDs using row order within each WO+Assignee group
+      // Build composite IDs using row order within each WO group
       const seqMap = {};
       const records = [];
 
@@ -137,7 +137,7 @@ export default function BulkUpdateWorkOrders() {
 
         if (!workOrderNum) continue; // skip rows without WO#
 
-        const prefix = `${workOrderNum}_${assignedTo || 'Unassigned'}_`;
+        const prefix = `${workOrderNum}_`;
         if (!seqMap[prefix]) seqMap[prefix] = 1;
         const seq = seqMap[prefix]++;
         const compositeId = `${prefix}${String(seq).padStart(4, '0')}`;

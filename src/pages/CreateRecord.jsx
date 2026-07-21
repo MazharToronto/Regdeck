@@ -45,8 +45,8 @@ export default function CreateRecord({ user }) {
     const str = String(dateVal).trim();
     const months = { jan: '01', feb: '02', mar: '03', apr: '04', may: '05', jun: '06', jul: '07', aug: '08', sep: '09', oct: '10', nov: '11', dec: '12' };
 
-    // DD-Mon-YY (e.g., "03-Feb-26")
-    let match = str.match(/^(\d{1,2})-(\w{3})-(\d{2})$/i);
+    // DD<sep>Mon<sep>YY where <sep> is dash, slash, or space (e.g., "03-Feb-26", "13 Apr 26", "02/Apr/26")
+    let match = str.match(/^(\d{1,2})[-\/\s](\w{3})[-\/\s](\d{2})$/i);
     if (match) {
       const day = String(match[1]).padStart(2, '0');
       const mon = months[match[2].toLowerCase()];
@@ -54,8 +54,8 @@ export default function CreateRecord({ user }) {
       if (mon) return `${year}-${mon}-${day}`;
     }
 
-    // DD-Mon-YYYY (e.g., "03-Feb-2026")
-    match = str.match(/^(\d{1,2})-(\w{3})-(\d{4})$/i);
+    // DD<sep>Mon<sep>YYYY where <sep> is dash, slash, or space (e.g., "03-Feb-2026", "13 Apr 2026", "02/Apr/2026")
+    match = str.match(/^(\d{1,2})[-\/\s](\w{3})[-\/\s](\d{4})$/i);
     if (match) {
       const day = String(match[1]).padStart(2, '0');
       const mon = months[match[2].toLowerCase()];
@@ -313,10 +313,10 @@ export default function CreateRecord({ user }) {
       reader.onload = async (e) => {
         try {
           const data = new Uint8Array(e.target.result);
-          const workbook = XLSX.read(data, { type: 'array' });
+          const workbook = XLSX.read(data, { type: 'array', cellDates: true });
           const firstSheetName = workbook.SheetNames[0];
           const worksheet = workbook.Sheets[firstSheetName];
-          const jsonData = XLSX.utils.sheet_to_json(worksheet, { raw: false, cellDates: true }); 
+          const jsonData = XLSX.utils.sheet_to_json(worksheet, { raw: false, dateNF: 'yyyy-mm-dd' }); 
 
           if (!jsonData || jsonData.length === 0) {
             throw new Error("The selected file is empty or invalid.");
@@ -337,7 +337,7 @@ export default function CreateRecord({ user }) {
               continue;
             }
 
-            const prefix = `${workOrderNum.replace(/\s+/g, ' ').trim()}_${assignedTo || 'Unassigned'}_`;
+            const prefix = `${workOrderNum.replace(/\s+/g, ' ').trim()}_`;
             
             let currentSeq;
             if (sequenceCache[prefix]) {

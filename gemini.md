@@ -5,7 +5,7 @@
 
 ### `work_orders` Table Schema
 
-**Primary Key:** Composite ID string → `{Work Order #}_{Assigned To}_{Sequence}` (e.g., `RCE-10342-DD_Sylvia_0001`)
+**Primary Key:** Composite ID string → `{Work Order #}_{Sequence}` (e.g., `RCE-10342-DD_0001`)
 
 **Input Shape (Form Submission):**
 ```json

@@ -165,7 +165,7 @@ export default function Dashboard() {
       try {
         const { data, error: fetchError } = await supabase
           .from('work_orders')
-          .select('wo_date, work_order_number, due_date, tat, assigned_to')
+          .select('wo_date, work_order_number, due_date, tat, assigned_to, status')
           .eq('language', language)
           .is('delivery_date', null)
           .eq('status', 'Done')
@@ -176,10 +176,11 @@ export default function Dashboard() {
           setError(fetchError.message);
           setReport1Data([]);
         } else {
-          // Deduplicate by work_order_number — keep first occurrence per WO#
+          // Group by 5 columns: work_order_number, assigned_to, wo_date, due_date, status
           const seen = new Map();
           (data || []).forEach(row => {
-            if (!seen.has(row.work_order_number)) seen.set(row.work_order_number, row);
+            const key = `${row.work_order_number || ''}|${row.assigned_to || ''}|${row.wo_date || ''}|${row.due_date || ''}|${row.status || ''}`;
+            if (!seen.has(key)) seen.set(key, row);
           });
           const uniqueData = Array.from(seen.values());
           const sortedData = uniqueData.sort((a, b) => {
@@ -202,7 +203,7 @@ export default function Dashboard() {
       try {
         const { data, error: fetchError } = await supabase
           .from('work_orders')
-          .select('wo_date, work_order_number, delivery_date, status, assigned_to')
+          .select('wo_date, work_order_number, due_date, delivery_date, status, assigned_to')
           .eq('language', language)
           .eq('due_date', selectedDate)
           .order('wo_date', { ascending: true });
@@ -211,10 +212,11 @@ export default function Dashboard() {
           setError2(fetchError.message);
           setReport2Data([]);
         } else {
-          // Deduplicate by work_order_number — keep first occurrence per WO#
+          // Group by 5 columns: work_order_number, assigned_to, wo_date, due_date, status
           const seen = new Map();
           (data || []).forEach(row => {
-            if (!seen.has(row.work_order_number)) seen.set(row.work_order_number, row);
+            const key = `${row.work_order_number || ''}|${row.assigned_to || ''}|${row.wo_date || ''}|${row.due_date || ''}|${row.status || ''}`;
+            if (!seen.has(key)) seen.set(key, row);
           });
           const uniqueData = Array.from(seen.values());
           const sortedData = uniqueData.sort((a, b) => {
@@ -246,7 +248,14 @@ export default function Dashboard() {
           setError3(fetchError.message);
           setReport3Data([]);
         } else {
-          const sortedData = (data || []).sort((a, b) => {
+          // Group by 5 columns: work_order_number, assigned_to, wo_date, due_date, status
+          const seen = new Map();
+          (data || []).forEach(row => {
+            const key = `${row.work_order_number || ''}|${row.assigned_to || ''}|${row.wo_date || ''}|${row.due_date || ''}|${row.status || ''}`;
+            if (!seen.has(key)) seen.set(key, row);
+          });
+          const uniqueData = Array.from(seen.values());
+          const sortedData = uniqueData.sort((a, b) => {
             const timeDiff = new Date(a.wo_date).getTime() - new Date(b.wo_date).getTime();
             if (timeDiff !== 0) return timeDiff;
             return (a.work_order_number || '').localeCompare(b.work_order_number || '');
@@ -266,7 +275,7 @@ export default function Dashboard() {
       try {
         const { data, error: fetchError } = await supabase
           .from('work_orders')
-          .select('work_order_number, tat, assigned_to, audio_length, request_type')
+          .select('work_order_number, tat, assigned_to, audio_length, request_type, wo_date, due_date, status')
           .eq('language', language)
           .eq('wo_date', selectedDate)
           .order('work_order_number', { ascending: true });
@@ -275,15 +284,18 @@ export default function Dashboard() {
           setError4(fetchError.message);
           setReport4Data([]);
         } else {
-          // Group rows by work_order_number, summing audio_length
+          // Group by 5 columns: work_order_number, assigned_to, wo_date, due_date, status
           const grouped = {};
           (data || []).forEach((row) => {
-            const key = row.work_order_number;
+            const key = `${row.work_order_number || ''}|${row.assigned_to || ''}|${row.request_type || ''}|${row.tat || ''}|${row.wo_date || ''}|${row.due_date || ''}|${row.status || ''}`;
             if (!grouped[key]) {
               grouped[key] = {
                 work_order_number: row.work_order_number,
-                tat: row.tat,
                 assigned_to: row.assigned_to,
+                wo_date: row.wo_date,
+                due_date: row.due_date,
+                status: row.status,
+                tat: row.tat,
                 request_type: row.request_type,
                 totalSeconds: 0,
               };

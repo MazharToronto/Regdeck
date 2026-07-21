@@ -32,9 +32,25 @@ export default function CreativeGroupedView({ userRoles = [], user }) {
   const [error, setError] = useState(null);
   const [expandedCards, setExpandedCards] = useState({});
   const [userOptions, setUserOptions] = useState([]);
+  const [statusOptions, setStatusOptions] = useState(['Done', 'In Process', 'Pending']);
+  const [updatingId, setUpdatingId] = useState(null);
 
   const isEmployee = !userRoles.includes('admin') && !userRoles.includes('manager');
   const userName = user?.user_metadata?.full_name || '';
+
+  // Load status options from ref_work_order_statuses
+  useEffect(() => {
+    const loadStatuses = async () => {
+      const { data } = await supabase.from('ref_work_order_statuses').select('name').order('name');
+      if (data?.length) {
+        const names = data.map(s => s.name).filter(Boolean);
+        const defaults = ['Done', 'In Process', 'Pending'];
+        const combined = Array.from(new Set([...defaults, ...names]));
+        setStatusOptions(combined);
+      }
+    };
+    loadStatuses();
+  }, []);
 
   // Filter values — default From/To Due to current month range
   const [filters, setFilters] = useState(() => {
@@ -164,6 +180,44 @@ export default function CreativeGroupedView({ userRoles = [], user }) {
       ...prev,
       [compositeKey]: prev[compositeKey] === false ? true : false
     }));
+  };
+
+  const handleStatusChange = async (card, newStatus) => {
+    if (!newStatus || newStatus === card.status) return;
+
+    setUpdatingId(card.id);
+    setError(null);
+
+    try {
+      const subIds = (card.subRecords || []).map(r => r.id).filter(Boolean);
+      const woNumber = card.work_order_number;
+
+      // Update all corresponding records in Supabase
+      let query = supabase.from('work_orders').update({ status: newStatus });
+      if (subIds.length > 0) {
+        query = query.in('id', subIds);
+      } else if (woNumber) {
+        query = query.eq('work_order_number', woNumber);
+      }
+
+      const { error: updateError } = await query;
+      if (updateError) throw updateError;
+
+      // Optimistically update local state so UI updates instantly
+      setRecords(prevRecords =>
+        prevRecords.map(rec => {
+          if (subIds.includes(rec.id) || (woNumber && rec.work_order_number === woNumber)) {
+            return { ...rec, status: newStatus };
+          }
+          return rec;
+        })
+      );
+    } catch (err) {
+      console.error('Error updating status:', err);
+      setError(`Failed to update status for ${card.work_order_number}: ${err.message}`);
+    } finally {
+      setUpdatingId(null);
+    }
   };
 
   const formatDdMmm = (dateStr) => {
@@ -387,10 +441,38 @@ export default function CreativeGroupedView({ userRoles = [], user }) {
                 {/* Card Header */}
                 <div className="wo-head">
                   <span className="wo-num">{card.work_order_number || 'Unnamed WO'}</span>
-                  <span className={`wo-badge ${getStatusBadgeClass(card.status)}`}>
-                    <StatusIcon status={card.status} />
-                    {card.status || 'Pending'}
-                  </span>
+                  <div 
+                    className={`wo-badge ${getStatusBadgeClass(card.status)} wo-badge-interactive`}
+                    title="Click to update status for all file records in this work order"
+                  >
+                    {updatingId === card.id ? (
+                      <RotateCcw size={11} className="spin" />
+                    ) : (
+                      <StatusIcon status={card.status} />
+                    )}
+                    <span>{card.status || 'Pending'}</span>
+                    <ChevronDown size={11} style={{ marginLeft: '1px', opacity: 0.75 }} />
+                    <select
+                      value={card.status || 'Pending'}
+                      disabled={updatingId === card.id}
+                      onChange={(e) => handleStatusChange(card, e.target.value)}
+                      style={{
+                        position: 'absolute',
+                        top: 0,
+                        left: 0,
+                        width: '100%',
+                        height: '100%',
+                        opacity: 0,
+                        cursor: updatingId === card.id ? 'wait' : 'pointer'
+                      }}
+                    >
+                      {statusOptions.map(opt => (
+                        <option key={opt} value={opt} style={{ background: '#ffffff', color: '#1e293b' }}>
+                          {opt}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
                 
                 {/* Card Metadata */}

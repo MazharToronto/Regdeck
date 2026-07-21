@@ -376,7 +376,7 @@ export default function Reports({ userRoles = [], user }) {
       .order(targetSortConfig.key, { ascending: targetSortConfig.direction === 'asc' });
 
     if (targetSortConfig.key === 'due_date') {
-      query = query.order('work_order_number', { ascending: true });
+      query = query.order('id', { ascending: true });
     }
 
     query = query.range(start, end);
@@ -700,8 +700,13 @@ export default function Reports({ userRoles = [], user }) {
       let query = supabase
         .from('work_orders')
         .select('*')
-        .order(sortConfig.key, { ascending: sortConfig.direction === 'asc' })
-        .range(start, end);
+        .order(sortConfig.key, { ascending: sortConfig.direction === 'asc' });
+
+      if (sortConfig.key === 'due_date') {
+        query = query.order('id', { ascending: true });
+      }
+
+      query = query.range(start, end);
 
       if (f.language) query = query.eq('language', f.language);
       if (f.region) query = query.eq('region', f.region);
