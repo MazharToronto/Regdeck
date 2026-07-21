@@ -36,7 +36,22 @@ export default function CreativeGroupedView({ userRoles = [], user }) {
   const [updatingId, setUpdatingId] = useState(null);
 
   const isEmployee = !userRoles.includes('admin') && !userRoles.includes('manager');
-  const userName = user?.user_metadata?.full_name || '';
+  const [resolvedUserName, setResolvedUserName] = useState(user?.user_metadata?.full_name || '');
+
+  // Robustly resolve full name from metadata or ref_users
+  useEffect(() => {
+    const resolveName = async () => {
+      if (user?.user_metadata?.full_name) {
+        setResolvedUserName(user.user_metadata.full_name);
+      } else if (user?.id) {
+        const { data } = await supabase.from('ref_users').select('name').eq('user_id', user.id).maybeSingle();
+        if (data?.name) {
+          setResolvedUserName(data.name);
+        }
+      }
+    };
+    resolveName();
+  }, [user]);
 
   // Load status options from ref_work_order_statuses
   useEffect(() => {
@@ -84,13 +99,20 @@ export default function CreativeGroupedView({ userRoles = [], user }) {
   }, [isEmployee]);
 
   useEffect(() => {
-    fetchRecords(filters);
-  }, []);
+    if (isEmployee && !resolvedUserName) return;
+    fetchRecords(filters, resolvedUserName);
+  }, [resolvedUserName, isEmployee]);
 
-  const fetchRecords = async (activeFilters = null) => {
+  const fetchRecords = async (activeFilters = null, currentUserName = resolvedUserName) => {
     setLoading(true);
     setError(null);
     
+    if (isEmployee && !currentUserName) {
+      setRecords([]);
+      setLoading(false);
+      return;
+    }
+
     const f = activeFilters || filters;
     let allData = [];
     let page = 0;
@@ -109,8 +131,8 @@ export default function CreativeGroupedView({ userRoles = [], user }) {
         .order('work_order_number', { ascending: true })
         .range(start, end);
 
-      if (isEmployee && userName) {
-        query = query.eq('assigned_to', userName);
+      if (isEmployee) {
+        query = query.eq('assigned_to', currentUserName);
       } else if (f.assigned_to) {
         query = query.eq('assigned_to', f.assigned_to);
       }

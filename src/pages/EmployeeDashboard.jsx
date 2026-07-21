@@ -274,21 +274,21 @@ export default function EmployeeDashboard({ user }) {
         alignItems: 'start'
       }}>
         {renderKanbanCard(
-          "Work in Process and Pending",
+          "Process and Pending",
           reportData.active,
           <Clock size={18} />,
           '#3b82f6' // Blue
         )}
 
         {renderKanbanCard(
-          "Needs Attention",
+          "Needs attention",
           reportData.needsAttention,
           <AlertCircle size={18} />,
           '#f59e0b' // Amber
         )}
         
         {renderKanbanCard(
-          "Work Past Due Date",
+          "Past Due date",
           reportData.workDue,
           <AlertTriangle size={18} />,
           '#ef4444' // Red
