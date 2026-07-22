@@ -26,12 +26,28 @@ const formatSecondsToAudioLength = (totalSeconds) => {
   return `${hrs}:${mins.toString().padStart(2, '0')}`;
 };
 
-// Format date as DD-MMM (e.g. 1-Apr)
+// Helper to safely parse ISO date strings (YYYY-MM-DD) into local midnight dates without timezone offset shift
+const parseISODateToLocal = (dateStr) => {
+  if (!dateStr) return null;
+  if (typeof dateStr === 'string' && dateStr.length === 10 && dateStr.includes('-')) {
+    const [y, m, d] = dateStr.split('-').map(Number);
+    return new Date(y, m - 1, d, 0, 0, 0, 0);
+  }
+  const d = new Date(dateStr);
+  d.setHours(0, 0, 0, 0);
+  return d;
+};
+
+// Format date as DD-MMM (e.g. 22-Jul) using UTC date components for ISO date strings
 const formatShortDate = (dateStr) => {
   if (!dateStr) return '';
   const d = new Date(dateStr);
+  if (isNaN(d)) return '';
+  const isISODate = typeof dateStr === 'string' && dateStr.length === 10 && dateStr.includes('-');
+  const day = isISODate ? d.getUTCDate() : d.getDate();
+  const monthIndex = isISODate ? d.getUTCMonth() : d.getMonth();
   const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-  return `${d.getDate()}-${months[d.getMonth()]}`;
+  return `${day}-${months[monthIndex]}`;
 };
 
 // Group records by WO# + Type + Due Date, summing audio lengths
@@ -138,18 +154,16 @@ export default function EmployeeDashboard({ user }) {
 
       // 2. Needs Attention: due within 2 days AND status is "In Process" or "Pending"
       if (wo.due_date && isActiveStatus) {
-        const dueDateObj = new Date(wo.due_date);
-        dueDateObj.setHours(0, 0, 0, 0);
-        if (dueDateObj >= today && dueDateObj <= twoDaysFromNow) {
+        const dueDateObj = parseISODateToLocal(wo.due_date);
+        if (dueDateObj && dueDateObj >= today && dueDateObj <= twoDaysFromNow) {
           needsAttention.push(mappedRecord);
         }
       }
 
       // 3. Work Due: past due date AND status is "In Process" or "Pending"
       if (wo.due_date && isActiveStatus) {
-        const dueDateObj = new Date(wo.due_date);
-        dueDateObj.setHours(0, 0, 0, 0);
-        if (dueDateObj < today) {
+        const dueDateObj = parseISODateToLocal(wo.due_date);
+        if (dueDateObj && dueDateObj < today) {
           workDue.push(mappedRecord);
         }
       }
