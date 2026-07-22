@@ -260,19 +260,18 @@ export default function CreativeGroupedView({ userRoles = [], user }) {
       const parts = String(len).split(':').map(n => parseInt(n, 10));
       if (parts.some(isNaN)) return;
       if (parts.length === 2) {
-        totalSeconds += parts[0] * 60 + parts[1];
+        totalSeconds += parts[0] * 3600 + parts[1] * 60;
       } else if (parts.length === 3) {
         totalSeconds += parts[0] * 3600 + parts[1] * 60 + parts[2];
+      } else if (parts.length === 1) {
+        totalSeconds += parts[0] * 3600;
       }
     });
     if (totalSeconds === 0) return '—';
-    const h = Math.floor(totalSeconds / 3600);
-    const m = Math.floor((totalSeconds % 3600) / 60);
-    const s = totalSeconds % 60;
-    if (h > 0) {
-      return `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
-    }
-    return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+    const totalM = Math.floor(totalSeconds / 60);
+    const h = Math.floor(totalM / 60);
+    const m = totalM % 60;
+    return `${h}:${String(m).padStart(2, '0')}`;
   };
 
   // Group records and combine identical work orders

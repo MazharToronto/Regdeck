@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../supabaseClient';
 import { Clock, AlertTriangle, AlertCircle } from 'lucide-react';
 
-// Utility to calculate total seconds from audio length string
+// Utility to calculate total seconds from audio length string (hh:mm format)
 const parseAudioToSeconds = (audioLengthStr) => {
   if (!audioLengthStr) return 0;
   const parts = audioLengthStr.toString().split(':');
@@ -10,24 +10,20 @@ const parseAudioToSeconds = (audioLengthStr) => {
   if (parts.length === 3) {
     totalSeconds += parseInt(parts[0], 10) * 3600 + parseInt(parts[1], 10) * 60 + parseInt(parts[2], 10);
   } else if (parts.length === 2) {
-    totalSeconds += parseInt(parts[0], 10) * 60 + parseInt(parts[1], 10);
+    totalSeconds += parseInt(parts[0], 10) * 3600 + parseInt(parts[1], 10) * 60; // hh:mm
   } else if (parts.length === 1) {
-    totalSeconds += parseInt(parts[0], 10) * 60;
+    totalSeconds += parseInt(parts[0], 10) * 3600;
   }
   return isNaN(totalSeconds) ? 0 : totalSeconds;
 };
 
-// Format total seconds back into audio length string
+// Format total seconds back into audio length string in hh:mm format
 const formatSecondsToAudioLength = (totalSeconds) => {
   if (!totalSeconds || totalSeconds === 0) return '0:00';
-  const hrs = Math.floor(totalSeconds / 3600);
-  const mins = Math.floor((totalSeconds % 3600) / 60);
-  const secs = totalSeconds % 60;
-  
-  if (hrs > 0) {
-    return `${hrs}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-  }
-  return `${mins}:${secs.toString().padStart(2, '0')}`;
+  const totalM = Math.floor(totalSeconds / 60);
+  const hrs = Math.floor(totalM / 60);
+  const mins = totalM % 60;
+  return `${hrs}:${mins.toString().padStart(2, '0')}`;
 };
 
 // Format date as DD-MMM (e.g. 1-Apr)

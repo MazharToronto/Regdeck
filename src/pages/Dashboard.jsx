@@ -60,26 +60,25 @@ const getEmployeePillClass = (name) => {
   return `emp-${Math.abs(hash) % 12}`;
 };
 
-// Parse any audio length string (H:MM:SS, M:SS, or bare minutes) → total seconds
+// Parse audio length string (hh:mm or hh:mm:ss) → total seconds
 const parseAudioToSeconds = (str) => {
   if (!str || typeof str !== 'string') return 0;
   const trimmed = str.trim();
   const parts = trimmed.split(':').map(Number);
   if (parts.some(isNaN)) return 0;
   if (parts.length === 3) return parts[0] * 3600 + parts[1] * 60 + parts[2];
-  if (parts.length === 2) return parts[0] * 60 + parts[1];
-  if (parts.length === 1) return parts[0] * 60; // bare number = minutes
+  if (parts.length === 2) return parts[0] * 3600 + parts[1] * 60; // hh:mm format
+  if (parts.length === 1) return parts[0] * 3600; // bare number = hours
   return 0;
 };
 
-// Format total seconds back to M:SS or H:MM:SS
+// Format total seconds back to hh:mm format
 const formatSeconds = (totalSeconds) => {
   if (!totalSeconds || isNaN(totalSeconds)) return '—';
-  const h = Math.floor(totalSeconds / 3600);
-  const m = Math.floor((totalSeconds % 3600) / 60);
-  const s = totalSeconds % 60;
-  if (h > 0) return `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
-  return `${m}:${String(s).padStart(2, '0')}`;
+  const totalM = Math.floor(totalSeconds / 60);
+  const h = Math.floor(totalM / 60);
+  const m = totalM % 60;
+  return `${h}:${String(m).padStart(2, '0')}`;
 };
 
 export default function Dashboard() {
