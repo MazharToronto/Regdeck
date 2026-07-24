@@ -6,7 +6,7 @@ export default function Home({ canCreate = false }) {
 
   return (
     <div className="page-container">
-      <h1 className="page-title">Welcome to InvoiceGen</h1>
+      <h1 className="page-title">Welcome to Regtrack</h1>
       <p className="home-subtitle">Manage your work orders efficiently. Choose an action below to get started.</p>
 
       <div className="home-actions">

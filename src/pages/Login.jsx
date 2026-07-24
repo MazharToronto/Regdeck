@@ -52,7 +52,7 @@ export default function Login() {
         </div>
 
         <h1 className="auth-title">Welcome Back</h1>
-        <p className="auth-subtitle">Sign in to your InvoiceGen account.</p>
+        <p className="auth-subtitle">Sign in to your Regtrack account.</p>
 
         {error && <div className="auth-error">{error}</div>}
 
