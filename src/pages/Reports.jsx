@@ -764,16 +764,48 @@ export default function Reports({ userRoles = [], user }) {
 
       query = query.range(start, end);
 
-      if (f.language) query = query.eq('language', f.language);
-      if (f.region) query = query.eq('region', f.region);
-      if (f.assigned_to && !isEmployee) query = query.eq('assigned_to', f.assigned_to);
-      if (f.from_wo_date) query = query.gte('wo_date', f.from_wo_date);
-      if (f.to_wo_date) query = query.lte('wo_date', f.to_wo_date);
-      if (f.from_due_date) query = query.gte('due_date', f.from_due_date);
-      if (f.to_due_date) query = query.lte('due_date', f.to_due_date);
-      if (f.status) query = query.eq('status', f.status);
-      if (f.work_order_number) query = query.ilike('work_order_number', `%${f.work_order_number}%`);
-      if (f.file_number) query = query.ilike('file_number', `%${f.file_number}%`);
+      if (f.report && ['1', '2', '3', '4', '5', '6'].includes(f.report)) {
+        if (f.report === '1' && f.reportDate) {
+          query = query
+            .eq('language', f.language)
+            .eq('status', 'Done')
+            .is('delivery_date', null)
+            .gt('due_date', f.reportDate);
+        } else if (f.report === '2' && f.reportDate) {
+          query = query
+            .eq('language', f.language)
+            .eq('due_date', f.reportDate);
+        } else if (f.report === '3' && f.reportDate) {
+          query = query
+            .eq('language', f.language)
+            .eq('delivery_date', f.reportDate);
+        } else if ((f.report === '4' || f.report === '5') && f.reportDate) {
+          query = query
+            .eq('language', f.language)
+            .eq('wo_date', f.reportDate);
+        } else if (f.report === '6') {
+          const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+          query = query
+            .eq('language', f.language)
+            .eq('status', 'Pending')
+            .lt('created_at', oneDayAgo);
+        }
+      } else {
+        if (f.language) query = query.eq('language', f.language);
+        if (f.region) query = query.eq('region', f.region);
+        if (f.assigned_to && !isEmployee) query = query.eq('assigned_to', f.assigned_to);
+        if (f.from_wo_date) query = query.gte('wo_date', f.from_wo_date);
+        if (f.to_wo_date) query = query.lte('wo_date', f.to_wo_date);
+        if (f.from_due_date) query = query.gte('due_date', f.from_due_date);
+        if (f.to_due_date) query = query.lte('due_date', f.to_due_date);
+        if (f.status === 'active') {
+          query = query.in('status', ['In Process', 'Pending']);
+        } else if (f.status) {
+          query = query.eq('status', f.status);
+        }
+        if (f.work_order_number) query = query.ilike('work_order_number', `%${f.work_order_number}%`);
+        if (f.file_number) query = query.ilike('file_number', `%${f.file_number}%`);
+      }
 
       if (isEmployee && resolvedUserName) {
         query = query.eq('assigned_to', resolvedUserName.trim());
