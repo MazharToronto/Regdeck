@@ -175,6 +175,38 @@ html, body {
   padding: 0.4rem 0.75rem 0.2rem;
 }
 
+.sidebar-submenu-link {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.5rem 0.75rem 0.5rem 2rem;
+  border-radius: var(--r-md);
+  color: var(--text-muted);
+  text-decoration: none;
+  font-size: 12.5px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  border: none;
+  background: transparent;
+  width: 100%;
+}
+
+.sidebar-submenu-link:hover { background: var(--hover); color: var(--text); }
+
+.sidebar-submenu-link.active {
+  background: var(--accent-tint);
+  color: var(--accent-text);
+  font-weight: 700;
+  border-left: 3px solid var(--accent);
+  padding-left: calc(2rem - 3px);
+}
+
+.sidebar.collapsed .sidebar-submenu-link {
+  padding: 0.6rem;
+  justify-content: center;
+}
+.sidebar.collapsed .sidebar-submenu-link span { display: none; }
+
 .sidebar-footer { margin-top: auto; padding-top: 1rem; border-top: .5px solid var(--border); }
 
 /* ===== Top Bar ===== */
