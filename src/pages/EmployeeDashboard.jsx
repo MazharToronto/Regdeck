@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 import { Clock, AlertTriangle, AlertCircle } from 'lucide-react';
 
@@ -50,7 +51,7 @@ const formatShortDate = (dateStr) => {
   return `${day}-${months[monthIndex]}`;
 };
 
-// Group records by WO# + Type + Due Date, summing audio lengths
+// Group records by WO# + Type + Due Date, summing audio lengths, and sort by due_date ASC
 const groupByWO = (items) => {
   const grouped = new Map();
   items.forEach(item => {
@@ -63,10 +64,20 @@ const groupByWO = (items) => {
       grouped.set(key, { ...item });
     }
   });
-  return Array.from(grouped.values());
+  const result = Array.from(grouped.values());
+  result.sort((a, b) => {
+    if (!a.due_date && !b.due_date) return 0;
+    if (!a.due_date) return 1;
+    if (!b.due_date) return -1;
+    const dateCmp = a.due_date.localeCompare(b.due_date);
+    if (dateCmp !== 0) return dateCmp;
+    return (a.work_order_number || '').localeCompare(b.work_order_number || '');
+  });
+  return result;
 };
 
 export default function EmployeeDashboard({ user }) {
+  const navigate = useNavigate();
   const [workOrders, setWorkOrders] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -184,7 +195,7 @@ export default function EmployeeDashboard({ user }) {
     '#ef4444': { badgeBg: '#fee2e2', badgeText: '#b91c1c' }, // Red
   };
 
-  const renderKanbanCard = (title, items, icon, colorHex) => {
+  const renderKanbanCard = (title, items, icon, colorHex, reportId) => {
     const totalSeconds = items.reduce((sum, item) => sum + item.secondsValue, 0);
     const { badgeBg, badgeText } = colorConfig[colorHex] || { badgeBg: '#f1f5f9', badgeText: '#475569' };
 
@@ -209,7 +220,12 @@ export default function EmployeeDashboard({ user }) {
           flexWrap: 'wrap',
           gap: '1rem'
         }}>
-          <h3 style={{ margin: 0 }}>
+          <h3 
+            style={{ margin: 0, cursor: reportId ? 'pointer' : 'default' }}
+            onClick={() => {
+              if (reportId) navigate(`/records?report=${reportId}`);
+            }}
+          >
             <span style={{
               display: 'inline-flex',
               alignItems: 'center',
@@ -219,8 +235,23 @@ export default function EmployeeDashboard({ user }) {
               fontWeight: '700',
               background: 'var(--subtle)',
               color: 'var(--text)',
-              border: '.5px solid var(--border)'
-            }}>
+              border: '.5px solid var(--border)',
+              transition: 'all 0.15s ease'
+            }}
+            onMouseOver={(e) => {
+              if (reportId) {
+                e.currentTarget.style.background = '#e2e8f0';
+                e.currentTarget.style.borderColor = '#cbd5e1';
+              }
+            }}
+            onMouseOut={(e) => {
+              if (reportId) {
+                e.currentTarget.style.background = 'var(--subtle)';
+                e.currentTarget.style.borderColor = 'var(--border)';
+              }
+            }}
+            title={reportId ? `Click to view ${title} in My Requests` : ''}
+            >
               {title}
             </span>
           </h3>
@@ -312,21 +343,24 @@ export default function EmployeeDashboard({ user }) {
           "Process and Pending",
           reportData.active,
           <Clock size={18} />,
-          '#3b82f6' // Blue
+          '#3b82f6', // Blue
+          'ee1'
         )}
 
         {renderKanbanCard(
           "Needs attention",
           reportData.needsAttention,
           <AlertCircle size={18} />,
-          '#f59e0b' // Amber
+          '#f59e0b', // Amber
+          'ee2'
         )}
         
         {renderKanbanCard(
           "Past Due date",
           reportData.workDue,
           <AlertTriangle size={18} />,
-          '#ef4444' // Red
+          '#ef4444', // Red
+          'ee3'
         )}
       </div>
     </div>

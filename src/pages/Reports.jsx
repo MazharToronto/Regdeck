@@ -101,7 +101,49 @@ const parseReportUrlParams = (search) => {
   };
 
   if (reportParam) {
-    if (reportParam === '1' && dateParam) {
+    if (reportParam === 'ee1') {
+      return {
+        ...baseFilters,
+        from_due_date: '',
+        to_due_date: '',
+        status: ''
+      };
+    } else if (reportParam === 'ee2') {
+      const todayObj = new Date();
+      const yyyy = todayObj.getFullYear();
+      const mm = String(todayObj.getMonth() + 1).padStart(2, '0');
+      const dd = String(todayObj.getDate()).padStart(2, '0');
+      const todayStr = `${yyyy}-${mm}-${dd}`;
+
+      const twoDaysObj = new Date(todayObj);
+      twoDaysObj.setDate(twoDaysObj.getDate() + 2);
+      const y2 = twoDaysObj.getFullYear();
+      const m2 = String(twoDaysObj.getMonth() + 1).padStart(2, '0');
+      const d2 = String(twoDaysObj.getDate()).padStart(2, '0');
+      const twoDaysStr = `${y2}-${m2}-${d2}`;
+
+      return {
+        ...baseFilters,
+        from_due_date: todayStr,
+        to_due_date: twoDaysStr,
+        status: ''
+      };
+    } else if (reportParam === 'ee3') {
+      const todayObj = new Date();
+      const yesterdayObj = new Date(todayObj);
+      yesterdayObj.setDate(yesterdayObj.getDate() - 1);
+      const y = yesterdayObj.getFullYear();
+      const m = String(yesterdayObj.getMonth() + 1).padStart(2, '0');
+      const d = String(yesterdayObj.getDate()).padStart(2, '0');
+      const yesterdayStr = `${y}-${m}-${d}`;
+
+      return {
+        ...baseFilters,
+        from_due_date: '',
+        to_due_date: yesterdayStr,
+        status: ''
+      };
+    } else if (reportParam === '1' && dateParam) {
       const d = new Date(dateParam);
       d.setDate(d.getDate() + 1);
       const dayAfter = d.toISOString().split('T')[0];
