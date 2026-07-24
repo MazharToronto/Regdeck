@@ -106,7 +106,7 @@ const parseReportUrlParams = (search) => {
         ...baseFilters,
         from_due_date: '',
         to_due_date: '',
-        status: ''
+        status: 'active'
       };
     } else if (reportParam === 'ee2') {
       const todayObj = new Date();
@@ -126,7 +126,7 @@ const parseReportUrlParams = (search) => {
         ...baseFilters,
         from_due_date: todayStr,
         to_due_date: twoDaysStr,
-        status: ''
+        status: 'active'
       };
     } else if (reportParam === 'ee3') {
       const todayObj = new Date();
@@ -141,7 +141,7 @@ const parseReportUrlParams = (search) => {
         ...baseFilters,
         from_due_date: '',
         to_due_date: yesterdayStr,
-        status: ''
+        status: 'active'
       };
     } else if (reportParam === '1' && dateParam) {
       const d = new Date(dateParam);
@@ -439,7 +439,7 @@ export default function Reports({ userRoles = [], user }) {
     query = query.range(start, end);
 
     // Apply filters if provided
-    if (f.report) {
+    if (f.report && ['1', '2', '3', '4', '5', '6'].includes(f.report)) {
       if (f.report === '1' && f.reportDate) {
         query = query
           .eq('language', f.language)
@@ -473,7 +473,11 @@ export default function Reports({ userRoles = [], user }) {
       if (f.to_wo_date) query = query.lte('wo_date', f.to_wo_date);
       if (f.from_due_date) query = query.gte('due_date', f.from_due_date);
       if (f.to_due_date) query = query.lte('due_date', f.to_due_date);
-      if (f.status) query = query.eq('status', f.status);
+      if (f.status === 'active') {
+        query = query.in('status', ['In Process', 'Pending']);
+      } else if (f.status) {
+        query = query.eq('status', f.status);
+      }
       if (f.work_order_number) query = query.ilike('work_order_number', `%${f.work_order_number}%`);
       if (f.file_number) query = query.ilike('file_number', `%${f.file_number}%`);
     }
@@ -1112,6 +1116,7 @@ export default function Reports({ userRoles = [], user }) {
             <label className="filter-label">Status</label>
             <select name="status" className="filter-select" value={filters.status} onChange={handleFilterChange}>
               <option value="">All</option>
+              <option value="active">Active (In Process / Pending)</option>
               {statusOptions.map(s => <option key={s} value={s}>{s}</option>)}
             </select>
           </div>
