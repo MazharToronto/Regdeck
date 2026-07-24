@@ -430,17 +430,45 @@ export default function Dashboard() {
       setLoadingM1(true);
       setErrorM1(null);
       try {
-        // Construct the 1st day of the selected month
-        const startDate = new Date(monthlyYear, monthlyMonth - 1, 1).toISOString().split('T')[0];
-        // Day 0 of the next month corresponds to the last day of the current month
-        const endDate = new Date(monthlyYear, monthlyMonth, 0).toISOString().split('T')[0];
+        const yyyy = String(monthlyYear);
+        const mm = String(monthlyMonth).padStart(2, '0');
+        const lastDayNum = new Date(monthlyYear, monthlyMonth, 0).getDate();
+        const dd = String(lastDayNum).padStart(2, '0');
 
-        const { data, error: fetchError } = await supabase
-          .from('work_orders')
-          .select('region, assigned_to, audio_length, word_count, character_wz_space, line_count')
-          .eq('language', monthlyLanguage)
-          .gte('due_date', startDate)
-          .lte('due_date', endDate);
+        const startDate = `${yyyy}-${mm}-01`;
+        const endDate = `${yyyy}-${mm}-${dd}`;
+
+        let allData = [];
+        let page = 0;
+        const pageSize = 1000;
+        let hasMore = true;
+        let fetchError = null;
+
+        while (hasMore) {
+          const start = page * pageSize;
+          const end = start + pageSize - 1;
+
+          const { data, error } = await supabase
+            .from('work_orders')
+            .select('region, assigned_to, audio_length, word_count, character_wz_space, line_count')
+            .eq('language', monthlyLanguage)
+            .gte('due_date', startDate)
+            .lte('due_date', endDate)
+            .range(start, end);
+
+          if (error) {
+            fetchError = error;
+            break;
+          }
+
+          if (data && data.length > 0) {
+            allData = allData.concat(data);
+            if (data.length < pageSize) hasMore = false;
+            else page++;
+          } else {
+            hasMore = false;
+          }
+        }
 
         if (fetchError) {
           setErrorM1(fetchError.message);
@@ -450,7 +478,7 @@ export default function Dashboard() {
           const groupedRegion = {};
           const groupedAssignee = {};
 
-          (data || []).forEach((row) => {
+          (allData || []).forEach((row) => {
             const region = row.region || 'Unknown';
             const assignee = row.assigned_to || 'Unassigned';
             
@@ -513,15 +541,40 @@ export default function Dashboard() {
       setLoadingM3(true);
       setErrorM3(null);
       try {
-        const startDate = new Date(monthlyYear, 0, 1).toISOString().split('T')[0];
-        const endDate = new Date(monthlyYear, 11, 31).toISOString().split('T')[0];
+        const startDate = `${monthlyYear}-01-01`;
+        const endDate = `${monthlyYear}-12-31`;
 
-        const { data, error: fetchError } = await supabase
-          .from('work_orders')
-          .select('due_date, audio_length')
-          .eq('language', monthlyLanguage)
-          .gte('due_date', startDate)
-          .lte('due_date', endDate);
+        let allData = [];
+        let page = 0;
+        const pageSize = 1000;
+        let hasMore = true;
+        let fetchError = null;
+
+        while (hasMore) {
+          const start = page * pageSize;
+          const end = start + pageSize - 1;
+
+          const { data, error } = await supabase
+            .from('work_orders')
+            .select('due_date, audio_length')
+            .eq('language', monthlyLanguage)
+            .gte('due_date', startDate)
+            .lte('due_date', endDate)
+            .range(start, end);
+
+          if (error) {
+            fetchError = error;
+            break;
+          }
+
+          if (data && data.length > 0) {
+            allData = allData.concat(data);
+            if (data.length < pageSize) hasMore = false;
+            else page++;
+          } else {
+            hasMore = false;
+          }
+        }
 
         if (fetchError) {
           setErrorM3(fetchError.message);
@@ -530,11 +583,11 @@ export default function Dashboard() {
           // Initialize 12 months array
           const monthlyTotals = Array.from({ length: 12 }, (_, i) => ({
             monthIndex: i,
-            monthName: new Date(0, i).toLocaleString('default', { month: 'short' }),
+            monthName: new Date(2000, i, 1).toLocaleString('default', { month: 'short' }),
             audioSeconds: 0
           }));
 
-          (data || []).forEach(row => {
+          (allData || []).forEach(row => {
             if (row.due_date && row.audio_length) {
               const parts = row.due_date.split('-');
               if (parts.length >= 2) {
@@ -568,29 +621,50 @@ export default function Dashboard() {
       setLoadingM5(true);
       setErrorM5(null);
       try {
-        // Create base date (1st of the selected month)
-        const baseDate = new Date(monthlyYear, monthlyMonth - 1, 1);
-        
-        // Start date: 3 months before
-        const startDateObj = new Date(baseDate);
-        startDateObj.setMonth(startDateObj.getMonth() - 3);
-        const startDate = startDateObj.toISOString().split('T')[0];
+        // Start date: 3 months before selected month
+        const startMonthObj = new Date(monthlyYear, monthlyMonth - 1 - 3, 1);
+        const startY = startMonthObj.getFullYear();
+        const startM = String(startMonthObj.getMonth() + 1).padStart(2, '0');
+        const startDate = `${startY}-${startM}-01`;
 
-        // End date: 1 month after (end of that month)
-        const endDateObj = new Date(baseDate);
-        endDateObj.setMonth(endDateObj.getMonth() + 1);
-        // move to end of the month
-        const nextMonth = endDateObj.getMonth();
-        const nextYear = endDateObj.getFullYear();
-        const endOfMonthObj = new Date(nextYear, nextMonth + 1, 0); // last day
-        const endDate = endOfMonthObj.toISOString().split('T')[0];
+        // End date: 1 month after selected month (last day of that month)
+        const endMonthObj = new Date(monthlyYear, monthlyMonth - 1 + 1, 1);
+        const endY = endMonthObj.getFullYear();
+        const endM = endMonthObj.getMonth() + 1;
+        const endLastDay = new Date(endY, endM, 0).getDate();
+        const endDate = `${endY}-${String(endM).padStart(2, '0')}-${String(endLastDay).padStart(2, '0')}`;
 
-        const { data, error: fetchError } = await supabase
-          .from('work_orders')
-          .select('due_date, audio_length, word_count, character_wz_space, line_count')
-          .eq('language', monthlyLanguage)
-          .gte('due_date', startDate)
-          .lte('due_date', endDate);
+        let allData = [];
+        let page = 0;
+        const pageSize = 1000;
+        let hasMore = true;
+        let fetchError = null;
+
+        while (hasMore) {
+          const start = page * pageSize;
+          const end = start + pageSize - 1;
+
+          const { data, error } = await supabase
+            .from('work_orders')
+            .select('due_date, audio_length, word_count, character_wz_space, line_count')
+            .eq('language', monthlyLanguage)
+            .gte('due_date', startDate)
+            .lte('due_date', endDate)
+            .range(start, end);
+
+          if (error) {
+            fetchError = error;
+            break;
+          }
+
+          if (data && data.length > 0) {
+            allData = allData.concat(data);
+            if (data.length < pageSize) hasMore = false;
+            else page++;
+          } else {
+            hasMore = false;
+          }
+        }
 
         if (fetchError) {
           setErrorM5(fetchError.message);
@@ -615,7 +689,7 @@ export default function Dashboard() {
             });
           }
 
-          (data || []).forEach(row => {
+          (allData || []).forEach(row => {
             if (!row.due_date) return;
             const parts = row.due_date.split('-');
             if (parts.length >= 2) {
