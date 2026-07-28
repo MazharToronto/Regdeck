@@ -15,13 +15,23 @@ export default function BulkUpdateWorkOrders() {
 
   const cleanKey = (k) => k.replace(/\r\n/g, ' ').replace(/\s+/g, ' ').trim();
 
-  const months = {
-    jan: '01', feb: '02', mar: '03', apr: '04', may: '05', jun: '06',
-    jul: '07', aug: '08', sep: '09', oct: '10', nov: '11', dec: '12',
+  const monthsMap = {
+    jan: '01', january: '01',
+    feb: '02', february: '02',
+    mar: '03', march: '03',
+    apr: '04', april: '04',
+    may: '05',
+    jun: '06', june: '06',
+    jul: '07', july: '07',
+    aug: '08', august: '08',
+    sep: '09', sept: '09', september: '09',
+    oct: '10', october: '10',
+    nov: '11', november: '11',
+    dec: '12', december: '12',
   };
 
   const parseSafeDate = (dateVal) => {
-    if (!dateVal) return null;
+    if (dateVal === null || dateVal === undefined) return null;
 
     if (dateVal instanceof Date) {
       if (isNaN(dateVal.getTime())) return null;
@@ -32,29 +42,47 @@ export default function BulkUpdateWorkOrders() {
     }
 
     const str = String(dateVal).trim();
+    if (!str || str === '—' || str === '-' || str === 'null' || str === 'undefined') return null;
 
-    // DD-Mon-YY
-    let match = str.match(/^(\d{1,2})-(\w{3})-(\d{2})$/i);
-    if (match) {
-      const day = match[1].padStart(2, '0');
-      const mon = months[match[2].toLowerCase()];
-      if (mon) return `20${match[3]}-${mon}-${day}`;
+    // Handle Excel serial date numbers (e.g. 45150)
+    if (!isNaN(str) && Number(str) > 30000 && Number(str) < 60000) {
+      const excelEpoch = new Date(1899, 11, 30);
+      const d = new Date(excelEpoch.getTime() + Number(str) * 86400 * 1000);
+      if (!isNaN(d.getTime())) {
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${y}-${m}-${day}`;
+      }
     }
 
-    // DD-Mon-YYYY
-    match = str.match(/^(\d{1,2})-(\w{3})-(\d{4})$/i);
+    // DD-Mon-YYYY or DD Mon YYYY or DD/Mon/YYYY (e.g. 05-Sept-2025, 27 Aug 2025, 9-Feb-2026, 05/Sept/2025)
+    let match = str.match(/^(\d{1,2})[-/\s.]+(\w{3,9})[-/\s.]+(\d{4})$/i);
     if (match) {
       const day = match[1].padStart(2, '0');
-      const mon = months[match[2].toLowerCase()];
+      const mon = monthsMap[match[2].toLowerCase()];
       if (mon) return `${match[3]}-${mon}-${day}`;
     }
 
-    // DD-Mon (no year → current year)
-    match = str.match(/^(\d{1,2})-(\w{3})$/i);
+    // DD-Mon-YY or DD Mon YY or DD/Mon/YY (e.g. 05 Sept 25, 27 Aug 25, 05-Sept-25)
+    match = str.match(/^(\d{1,2})[-/\s.]+(\w{3,9})[-/\s.]+(\d{2})$/i);
     if (match) {
       const day = match[1].padStart(2, '0');
-      const mon = months[match[2].toLowerCase()];
-      if (mon) return `${new Date().getFullYear()}-${mon}-${day}`;
+      const mon = monthsMap[match[2].toLowerCase()];
+      if (mon) {
+        const yr = parseInt(match[3], 10);
+        const fullYear = yr > 70 ? `19${match[3]}` : `20${match[3]}`;
+        return `${fullYear}-${mon}-${day}`;
+      }
+    }
+
+    // YYYY-MM-DD (already ISO)
+    match = str.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})$/);
+    if (match) {
+      const y = match[1];
+      const m = match[2].padStart(2, '0');
+      const d = match[3].padStart(2, '0');
+      return `${y}-${m}-${d}`;
     }
 
     // DD-MM-YYYY or DD/MM/YYYY
@@ -65,14 +93,24 @@ export default function BulkUpdateWorkOrders() {
       return `${match[3]}-${month}-${day}`;
     }
 
-    // YYYY-MM-DD (already ISO)
-    match = str.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
-    if (match) return str;
+    // Mon DD, YYYY or Mon DD YYYY (e.g. Sept 05, 2025)
+    match = str.match(/^(\w{3,9})[-/\s.]+(\d{1,2})[,\s]+(\d{4})$/i);
+    if (match) {
+      const mon = monthsMap[match[1].toLowerCase()];
+      const day = match[2].padStart(2, '0');
+      if (mon) return `${match[3]}-${mon}-${day}`;
+    }
 
-    // Fallback
-    const d = new Date(dateVal + 'T00:00:00');
-    if (isNaN(d.getTime())) return null;
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    // Fallback: JS Date constructor
+    const d = new Date(str);
+    if (!isNaN(d.getTime())) {
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${y}-${m}-${day}`;
+    }
+
+    return null;
   };
 
   const cleanKeys = (row) => {
@@ -81,6 +119,22 @@ export default function BulkUpdateWorkOrders() {
       cleaned[cleanKey(key)] = row[key];
     }
     return cleaned;
+  };
+
+  // Resilient helper to locate row values matching regex or string patterns
+  const findRowValue = (r, patterns) => {
+    for (const p of patterns) {
+      if (typeof p === 'string' && r[p] !== undefined && r[p] !== null && String(r[p]).trim() !== '') {
+        return r[p];
+      } else if (p instanceof RegExp) {
+        for (const k in r) {
+          if (p.test(k) && r[k] !== undefined && r[k] !== null && String(r[k]).trim() !== '') {
+            return r[k];
+          }
+        }
+      }
+    }
+    return null;
   };
 
   // ── File Handling ──
@@ -130,38 +184,38 @@ export default function BulkUpdateWorkOrders() {
       for (const rawRow of jsonData) {
         const row = cleanKeys(rawRow);
 
-        const workOrderNum = (
-          row['WorkOrder #'] || 
-          row['Work Order #'] || 
-          row['Work Order Number'] || 
-          row['WO Number'] || 
-          row['WO #'] || 
-          ''
-        ).replace(/\s+/g, ' ').trim();
+        const workOrderNumVal = findRowValue(row, [/work\s*order\s*#/i, /wo\s*#/i, /work\s*order/i, /wo\s*number/i]);
+        const workOrderNum = (workOrderNumVal || '').toString().replace(/\s+/g, ' ').trim();
 
-        const fileNum = (
-          row['File Number'] || 
-          row['File #'] || 
-          row['File No'] || 
-          row['File No.'] || 
-          row['FileNumber'] || 
-          ''
-        ).trim() || null;
+        const fileNumVal = findRowValue(row, [/file\s*number/i, /file\s*#/i, /file\s*no/i, /file/i]);
+        const fileNum = (fileNumVal || '').toString().trim() || null;
 
-        const hearingDateRaw = row['Hearing Date'] || row['Hearing date'] || row['HearingDate'] || null;
+        const hearingDateRaw = findRowValue(row, [/hearing\s*date/i, /hearing\s*dt/i, /hearing/i]);
         const hearingDate = parseSafeDate(hearingDateRaw);
 
-        const assignedTo = (row['Assigned to'] || row['Assigned To'] || '').trim();
+        const assignedToVal = findRowValue(row, [/assigned\s*to/i, /assigned/i]);
+        const assignedTo = (assignedToVal || '').toString().trim();
 
         if (!workOrderNum) continue; // skip rows without WO#
 
         // Parse update fields
-        const wordCountRaw = String(row['Word Count'] || '').replace(/,/g, '').trim();
-        const charSpaceRaw = String(row['Character wz Space'] || '').replace(/,/g, '').trim();
-        const status = (row['Status'] || '').trim() || null;
-        const delDateRaw = row['Del Date'] || null;
-        const empComments = (row['Transcriptionist Comments'] || '').trim() || null;
-        const adminComments = (row['RegDeck Admin Comments'] || '').trim() || null;
+        const wordCountVal = findRowValue(row, [/word\s*count/i, /words/i]);
+        const wordCountRaw = String(wordCountVal || '').replace(/,/g, '').trim();
+
+        const charSpaceVal = findRowValue(row, [/character\s*wz?\s*space/i, /char\s*wz?\s*space/i, /character/i]);
+        const charSpaceRaw = String(charSpaceVal || '').replace(/,/g, '').trim();
+
+        const statusVal = findRowValue(row, [/status/i]);
+        const status = (statusVal || '').toString().trim() || null;
+
+        const delDateRaw = findRowValue(row, [/del\s*date/i, /delivery\s*date/i, /del\s*dt/i]);
+        const delDate = parseSafeDate(delDateRaw);
+
+        const empCommentsVal = findRowValue(row, [/transcriptionist\s*comments/i, /employee\s*comments/i, /transcriptionist/i]);
+        const empComments = (empCommentsVal || '').toString().trim() || null;
+
+        const adminCommentsVal = findRowValue(row, [/regdeck\s*admin\s*comments/i, /admin\s*comments/i]);
+        const adminComments = (adminCommentsVal || '').toString().trim() || null;
 
         records.push({
           work_order_number: workOrderNum,
@@ -170,7 +224,7 @@ export default function BulkUpdateWorkOrders() {
           word_count: wordCountRaw ? parseInt(wordCountRaw, 10) : null,
           character_wz_space: charSpaceRaw ? parseInt(charSpaceRaw, 10) : null,
           status,
-          del_date: parseSafeDate(delDateRaw),
+          del_date: delDate,
           employee_comments: empComments,
           regdeck_admin_comments: adminComments,
           _assigned: assignedTo,
