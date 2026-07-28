@@ -173,6 +173,9 @@ export default function BulkUpdateWorkOrders() {
       const data = new Uint8Array(buffer);
       const workbook = XLSX.read(data, { type: 'array', raw: false, cellDates: true });
       const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+
+      // Parse both as object rows and 2D matrix rows (for column E / index 4 fallback)
+      const matrix = XLSX.utils.sheet_to_json(firstSheet, { header: 1, raw: false, cellDates: true });
       const jsonData = XLSX.utils.sheet_to_json(firstSheet, { raw: false, cellDates: true });
 
       if (!jsonData || jsonData.length === 0) {
@@ -181,16 +184,19 @@ export default function BulkUpdateWorkOrders() {
 
       const records = [];
 
-      for (const rawRow of jsonData) {
+      for (let i = 0; i < jsonData.length; i++) {
+        const rawRow = jsonData[i];
         const row = cleanKeys(rawRow);
+        const rowArr = matrix && matrix[i + 1] ? matrix[i + 1] : [];
 
-        const workOrderNumVal = findRowValue(row, [/work\s*order\s*#/i, /wo\s*#/i, /work\s*order/i, /wo\s*number/i]);
+        const workOrderNumVal = findRowValue(row, [/work\s*order\s*#/i, /wo\s*#/i, /work\s*order/i, /wo\s*number/i]) || (rowArr && rowArr[0]);
         const workOrderNum = (workOrderNumVal || '').toString().replace(/\s+/g, ' ').trim();
 
-        const fileNumVal = findRowValue(row, [/file\s*number/i, /file\s*#/i, /file\s*no/i, /file/i]);
+        const fileNumVal = findRowValue(row, [/file\s*number/i, /file\s*#/i, /file\s*no/i, /file/i]) || (rowArr && rowArr[2]);
         const fileNum = (fileNumVal || '').toString().trim() || null;
 
-        const hearingDateRaw = findRowValue(row, [/hearing\s*date/i, /hearing\s*dt/i, /hearing/i]);
+        // Extract Hearing Date from header match or fallback to Column E (index 4)
+        const hearingDateRaw = findRowValue(row, [/hearing\s*date/i, /hearing\s*dt/i, /hearing/i]) || (rowArr && rowArr[4]);
         const hearingDate = parseSafeDate(hearingDateRaw);
 
         const assignedToVal = findRowValue(row, [/assigned\s*to/i, /assigned/i]);
