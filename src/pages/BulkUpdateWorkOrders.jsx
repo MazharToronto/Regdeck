@@ -200,7 +200,7 @@ export default function BulkUpdateWorkOrders() {
         const hearingDate = parseSafeDate(hearingDateRaw);
 
         const assignedToVal = findRowValue(row, [/assigned\s*to/i, /assigned/i]);
-        const assignedTo = (assignedToVal || '').toString().trim();
+        const assignedTo = (assignedToVal || '').toString().trim() || null;
 
         if (!workOrderNum) continue; // skip rows without WO#
 
@@ -227,18 +227,18 @@ export default function BulkUpdateWorkOrders() {
           work_order_number: workOrderNum,
           file_number: fileNum,
           hearing_date: hearingDate,
+          assigned_to: assignedTo,
           word_count: wordCountRaw ? parseInt(wordCountRaw, 10) : null,
           character_wz_space: charSpaceRaw ? parseInt(charSpaceRaw, 10) : null,
           status,
           del_date: delDate,
           employee_comments: empComments,
           regdeck_admin_comments: adminComments,
-          _assigned: assignedTo,
         });
       }
 
       if (records.length === 0) {
-        throw new Error('No valid records found. Ensure the file has "Work Order #", "File Number", and "Hearing Date" columns.');
+        throw new Error('No valid records found. Ensure the file has "Work Order #", "File Number", "Hearing Date", and "Assigned To" columns.');
       }
 
       setPreviewData(records);
@@ -295,9 +295,15 @@ export default function BulkUpdateWorkOrders() {
             query = query.is('hearing_date', null);
           }
 
+          if (record.assigned_to) {
+            query = query.eq('assigned_to', record.assigned_to);
+          } else {
+            query = query.is('assigned_to', null);
+          }
+
           const { data, error: updateError } = await query.select('id');
 
-          const recIdLabel = `${record.work_order_number} | ${record.file_number || 'No File#'} | ${record.hearing_date || 'No Hearing Date'}`;
+          const recIdLabel = `${record.work_order_number} | ${record.file_number || 'No File#'} | ${record.hearing_date || 'No Hearing Date'} | ${record.assigned_to || 'No Assigned To'}`;
 
           if (updateError) {
             errors.push({ id: recIdLabel, error: updateError.message });
@@ -405,7 +411,7 @@ export default function BulkUpdateWorkOrders() {
               Drop your .xlsx file here
             </h3>
             <p style={{ color: '#94a3b8', fontSize: '0.9rem', marginBottom: '20px' }}>
-              Excel file with Work Order #, File Number, Hearing Date, Word Count, Status, Del Date, etc.
+              Excel file with Work Order #, File Number, Hearing Date, Assigned To, Word Count, Status, Del Date, etc.
             </p>
             <input type="file" accept=".xlsx" onChange={handleFileChange} style={{ display: 'none' }} id="bulk-update-upload" />
             <label htmlFor="bulk-update-upload" className="btn-primary" style={{ display: 'inline-block', cursor: 'pointer', margin: 0 }}>
@@ -475,6 +481,7 @@ export default function BulkUpdateWorkOrders() {
                   <th style={{ position: 'sticky', top: 0, zIndex: 1 }}>Work Order #</th>
                   <th style={{ position: 'sticky', top: 0, zIndex: 1 }}>File Number</th>
                   <th style={{ position: 'sticky', top: 0, zIndex: 1 }}>Hearing Date</th>
+                  <th style={{ position: 'sticky', top: 0, zIndex: 1 }}>Assigned To</th>
                   <th style={{ position: 'sticky', top: 0, zIndex: 1 }}>Word Count</th>
                   <th style={{ position: 'sticky', top: 0, zIndex: 1 }}>Char w/ Space</th>
                   <th style={{ position: 'sticky', top: 0, zIndex: 1 }}>Status</th>
@@ -494,6 +501,7 @@ export default function BulkUpdateWorkOrders() {
                     </td>
                     <td>{row.file_number || '—'}</td>
                     <td>{formatDisplayDate(row.hearing_date)}</td>
+                    <td>{row.assigned_to || '—'}</td>
                     <td style={{ textAlign: 'right' }}>{row.word_count?.toLocaleString() ?? '—'}</td>
                     <td style={{ textAlign: 'right' }}>{row.character_wz_space?.toLocaleString() ?? '—'}</td>
                     <td>
