@@ -125,47 +125,60 @@ export default function BulkUpdateWorkOrders() {
         throw new Error('The uploaded file is empty or has no valid data rows.');
       }
 
-      // Build composite IDs using row order within each WO group
-      const seqMap = {};
       const records = [];
 
       for (const rawRow of jsonData) {
         const row = cleanKeys(rawRow);
 
-        const workOrderNum = (row['WorkOrder #'] || row['Work Order #'] || '').replace(/\s+/g, ' ').trim();
+        const workOrderNum = (
+          row['WorkOrder #'] || 
+          row['Work Order #'] || 
+          row['Work Order Number'] || 
+          row['WO Number'] || 
+          row['WO #'] || 
+          ''
+        ).replace(/\s+/g, ' ').trim();
+
+        const fileNum = (
+          row['File Number'] || 
+          row['File #'] || 
+          row['File No'] || 
+          row['File No.'] || 
+          row['FileNumber'] || 
+          ''
+        ).trim() || null;
+
+        const hearingDateRaw = row['Hearing Date'] || row['Hearing date'] || row['HearingDate'] || null;
+        const hearingDate = parseSafeDate(hearingDateRaw);
+
         const assignedTo = (row['Assigned to'] || row['Assigned To'] || '').trim();
 
         if (!workOrderNum) continue; // skip rows without WO#
 
-        const prefix = `${workOrderNum}_`;
-        if (!seqMap[prefix]) seqMap[prefix] = 1;
-        const seq = seqMap[prefix]++;
-        const compositeId = `${prefix}${String(seq).padStart(4, '0')}`;
-
         // Parse update fields
-        const wordCountRaw = (row['Word Count'] || '').replace(/,/g, '').trim();
-        const charSpaceRaw = (row['Character wz Space'] || '').replace(/,/g, '').trim();
+        const wordCountRaw = String(row['Word Count'] || '').replace(/,/g, '').trim();
+        const charSpaceRaw = String(row['Character wz Space'] || '').replace(/,/g, '').trim();
         const status = (row['Status'] || '').trim() || null;
         const delDateRaw = row['Del Date'] || null;
         const empComments = (row['Transcriptionist Comments'] || '').trim() || null;
         const adminComments = (row['RegDeck Admin Comments'] || '').trim() || null;
 
         records.push({
-          id: compositeId,
+          work_order_number: workOrderNum,
+          file_number: fileNum,
+          hearing_date: hearingDate,
           word_count: wordCountRaw ? parseInt(wordCountRaw, 10) : null,
           character_wz_space: charSpaceRaw ? parseInt(charSpaceRaw, 10) : null,
           status,
           del_date: parseSafeDate(delDateRaw),
           employee_comments: empComments,
           regdeck_admin_comments: adminComments,
-          // Display-only fields for the preview table
-          _wo: workOrderNum,
           _assigned: assignedTo,
         });
       }
 
       if (records.length === 0) {
-        throw new Error('No valid records found. Ensure the file has "WorkOrder #" or "Work Order #" column.');
+        throw new Error('No valid records found. Ensure the file has "Work Order #", "File Number", and "Hearing Date" columns.');
       }
 
       setPreviewData(records);
@@ -205,20 +218,35 @@ export default function BulkUpdateWorkOrders() {
             regdeck_admin_comments: record.regdeck_admin_comments,
           };
 
-          const { data, error: updateError } = await supabase
+          let query = supabase
             .from('work_orders')
             .update(updatePayload)
-            .eq('id', record.id)
-            .select('id');
+            .eq('work_order_number', record.work_order_number);
+
+          if (record.file_number) {
+            query = query.eq('file_number', record.file_number);
+          } else {
+            query = query.is('file_number', null);
+          }
+
+          if (record.hearing_date) {
+            query = query.eq('hearing_date', record.hearing_date);
+          } else {
+            query = query.is('hearing_date', null);
+          }
+
+          const { data, error: updateError } = await query.select('id');
+
+          const recIdLabel = `${record.work_order_number} | ${record.file_number || 'No File#'} | ${record.hearing_date || 'No Hearing Date'}`;
 
           if (updateError) {
-            errors.push({ id: record.id, error: updateError.message });
+            errors.push({ id: recIdLabel, error: updateError.message });
             errorCount++;
           } else if (!data || data.length === 0) {
-            errors.push({ id: record.id, error: 'ID not found in database' });
+            errors.push({ id: recIdLabel, error: 'No matching record found in database' });
             notFoundCount++;
           } else {
-            successCount++;
+            successCount += data.length;
           }
         });
 
@@ -267,7 +295,7 @@ export default function BulkUpdateWorkOrders() {
             <CheckCircle size={20} style={{ marginRight: '8px', flexShrink: 0 }} />
             <span>
               <strong>{result.successCount}</strong> updated successfully
-              {result.notFoundCount > 0 && <> · <strong>{result.notFoundCount}</strong> ID(s) not found</>}
+              {result.notFoundCount > 0 && <> · <strong>{result.notFoundCount}</strong> record(s) not found</>}
               {result.errorCount > 0 && <> · <strong>{result.errorCount}</strong> error(s)</>}
             </span>
           </div>
@@ -317,7 +345,7 @@ export default function BulkUpdateWorkOrders() {
               Drop your .xlsx file here
             </h3>
             <p style={{ color: '#94a3b8', fontSize: '0.9rem', marginBottom: '20px' }}>
-              Excel file with Work Order #, Assigned to, Word Count, Status, Del Date, etc.
+              Excel file with Work Order #, File Number, Hearing Date, Word Count, Status, Del Date, etc.
             </p>
             <input type="file" accept=".xlsx" onChange={handleFileChange} style={{ display: 'none' }} id="bulk-update-upload" />
             <label htmlFor="bulk-update-upload" className="btn-primary" style={{ display: 'inline-block', cursor: 'pointer', margin: 0 }}>
@@ -384,7 +412,9 @@ export default function BulkUpdateWorkOrders() {
               <thead>
                 <tr>
                   <th style={{ position: 'sticky', top: 0, zIndex: 1 }}>#</th>
-                  <th style={{ position: 'sticky', top: 0, zIndex: 1 }}>Composite ID</th>
+                  <th style={{ position: 'sticky', top: 0, zIndex: 1 }}>Work Order #</th>
+                  <th style={{ position: 'sticky', top: 0, zIndex: 1 }}>File Number</th>
+                  <th style={{ position: 'sticky', top: 0, zIndex: 1 }}>Hearing Date</th>
                   <th style={{ position: 'sticky', top: 0, zIndex: 1 }}>Word Count</th>
                   <th style={{ position: 'sticky', top: 0, zIndex: 1 }}>Char w/ Space</th>
                   <th style={{ position: 'sticky', top: 0, zIndex: 1 }}>Status</th>
@@ -399,9 +429,11 @@ export default function BulkUpdateWorkOrders() {
                     <td style={{ color: '#94a3b8', fontSize: '0.85rem' }}>{idx + 1}</td>
                     <td>
                       <code style={{ fontSize: '0.8rem', color: '#818cf8', background: 'rgba(99,102,241,0.1)', padding: '2px 6px', borderRadius: '4px' }}>
-                        {row.id}
+                        {row.work_order_number}
                       </code>
                     </td>
+                    <td>{row.file_number || '—'}</td>
+                    <td>{formatDisplayDate(row.hearing_date)}</td>
                     <td style={{ textAlign: 'right' }}>{row.word_count?.toLocaleString() ?? '—'}</td>
                     <td style={{ textAlign: 'right' }}>{row.character_wz_space?.toLocaleString() ?? '—'}</td>
                     <td>
