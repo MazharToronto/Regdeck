@@ -49,26 +49,64 @@ export default function InvoiceDashboard() {
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
-      const startDate = `${year}-01-01`;
-      const endDate = `${year}-12-31`;
 
-      const { data, error } = await supabase
-        .from('work_orders')
-        .select('region, delivery_date, total_amount, language')
-        .eq('language', language)
-        .gte('delivery_date', startDate)
-        .lte('delivery_date', endDate);
+      let allRecords = [];
+      let page = 0;
+      const pageSize = 1000;
+      let hasMore = true;
 
-      if (error) {
-        console.error('Error fetching work orders:', error);
-        setWorkOrders([]);
-      } else {
-        setWorkOrders(data || []);
+      while (hasMore) {
+        const { data, error } = await supabase
+          .from('work_orders')
+          .select('region, delivery_date, del_date, due_date, wo_date, total_amount, language')
+          .eq('language', language)
+          .range(page * pageSize, (page + 1) * pageSize - 1);
+
+        if (error) {
+          console.error('Error fetching work orders:', error);
+          hasMore = false;
+        } else if (data && data.length > 0) {
+          allRecords = allRecords.concat(data);
+          if (data.length < pageSize) {
+            hasMore = false;
+          } else {
+            page++;
+          }
+        } else {
+          hasMore = false;
+        }
       }
+
+      // Filter records that fall within the selected year using any available date field
+      const yearRecords = allRecords.filter(wo => {
+        const dateStr = wo.delivery_date || wo.del_date || wo.due_date || wo.wo_date;
+        if (!dateStr) return false;
+        const str = String(dateStr).trim();
+        const yStr = str.substring(0, 4);
+        return yStr === year.toString();
+      });
+
+      setWorkOrders(yearRecords);
       setLoading(false);
     };
     fetchData();
   }, [language, year]);
+
+  // Helper to extract month name (e.g. 'January') without timezone shift
+  const getMonthNameFromDate = (dateStr) => {
+    if (!dateStr) return null;
+    const str = String(dateStr).trim();
+    if (str.length >= 7 && str.includes('-')) {
+      const parts = str.split('T')[0].split('-');
+      if (parts.length >= 2) {
+        const m = parseInt(parts[1], 10);
+        if (m >= 1 && m <= 12) return MONTHS[m - 1];
+      }
+    }
+    const d = new Date(dateStr);
+    if (!isNaN(d.getTime())) return MONTHS[d.getUTCMonth()];
+    return null;
+  };
 
   // Build region × month matrix for total_amount
   const reportData = useMemo(() => {
@@ -79,10 +117,12 @@ export default function InvoiceDashboard() {
     });
 
     workOrders.forEach(wo => {
-      if (!wo.delivery_date || !wo.region) return;
-      const d = new Date(wo.delivery_date);
-      const monthName = MONTHS[d.getUTCMonth()];
+      const targetDate = wo.delivery_date || wo.del_date || wo.due_date || wo.wo_date;
+      if (!targetDate || !wo.region) return;
+
+      const monthName = getMonthNameFromDate(targetDate);
       const amount = parseFloat(wo.total_amount) || 0;
+
       if (matrix[wo.region] && monthName) {
         matrix[wo.region][monthName] += amount;
       }
