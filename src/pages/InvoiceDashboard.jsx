@@ -35,8 +35,6 @@ export default function InvoiceDashboard() {
 
   const years = [(currentYear - 1).toString(), currentYear.toString(), (currentYear + 1).toString()];
 
-  const [ratesMap, setRatesMap] = useState({});
-
   useEffect(() => {
     const loadOptions = async () => {
       const { data: langData } = await supabase.from('ref_languages').select('code, label');
@@ -44,17 +42,6 @@ export default function InvoiceDashboard() {
         setLanguageOptions(langData);
         setLanguage(langData[0].code);
       }
-
-      // Load reference rates for dynamic rate * word_count fallback calculations
-      const { data: ratesData } = await supabase.from('reference_rate').select('language, tat, rate_per_word');
-      const rMap = {};
-      if (ratesData) {
-        ratesData.forEach(r => {
-          const rateVal = parseFloat(parseFloat(r.rate_per_word).toFixed(3));
-          rMap[`${r.language}_${r.tat}`] = rateVal;
-        });
-      }
-      setRatesMap(rMap);
     };
     loadOptions();
   }, []);
@@ -62,6 +49,10 @@ export default function InvoiceDashboard() {
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
+
+      // Build year date range for server-side filtering (matching InvoiceGeneration)
+      const startDateStr = `${year}-01-01`;
+      const endDateStr = `${year}-12-31`;
 
       let allRecords = [];
       let page = 0;
@@ -73,6 +64,9 @@ export default function InvoiceDashboard() {
           .from('work_orders')
           .select('region, delivery_date, total_amount, word_count, tat, late_deduction_amount, language')
           .eq('language', language)
+          .gte('delivery_date', startDateStr)
+          .lte('delivery_date', endDateStr)
+          .order('id', { ascending: true })
           .range(page * pageSize, (page + 1) * pageSize - 1);
 
         if (error) {
@@ -90,15 +84,8 @@ export default function InvoiceDashboard() {
         }
       }
 
-      // Filter records that fall within the selected year using delivery_date only (matches InvoiceGeneration logic)
-      const yearRecords = allRecords.filter(wo => {
-        if (!wo.delivery_date) return false;
-        const str = String(wo.delivery_date).trim();
-        const yStr = str.substring(0, 4);
-        return yStr === year.toString();
-      });
-
-      setWorkOrders(yearRecords);
+      console.log(`Dashboard: Fetched ${allRecords.length} ${language} records for ${year}`);
+      setWorkOrders(allRecords);
       setLoading(false);
     };
     fetchData();
@@ -120,7 +107,8 @@ export default function InvoiceDashboard() {
     return null;
   };
 
-  // Build region × month matrix for total_amount (matching InvoiceGeneration logic)
+  // Build region × month matrix using stored total_amount (matching InvoiceGeneration logic exactly)
+  // InvoiceGeneration uses: const finalTotal = parseFloat(r.total_amount) || 0;
   const reportData = useMemo(() => {
     const matrix = {};
     REGIONS.forEach(region => {
@@ -132,16 +120,8 @@ export default function InvoiceDashboard() {
       if (!wo.delivery_date || !wo.region) return;
 
       const monthName = getMonthNameFromDate(wo.delivery_date);
-
-      let amount = parseFloat(wo.total_amount) || 0;
-      if (amount === 0 && wo.word_count && wo.tat) {
-        const wc = typeof wo.word_count === 'number' ? wo.word_count : (parseInt(String(wo.word_count || '0').replace(/,/g, ''), 10) || 0);
-        const rateKey = `${wo.language}_${wo.tat}`;
-        const rate = ratesMap[rateKey] || 0;
-        const lateDeduction = parseFloat(wo.late_deduction_amount) || 0;
-        amount = (wc * rate) - lateDeduction;
-        if (amount < 0) amount = 0;
-      }
+      // Use stored total_amount directly — same as InvoiceGeneration line 284
+      const amount = parseFloat(wo.total_amount) || 0;
 
       if (matrix[wo.region] && monthName) {
         matrix[wo.region][monthName] += amount;
@@ -149,7 +129,7 @@ export default function InvoiceDashboard() {
     });
 
     return matrix;
-  }, [workOrders, ratesMap]);
+  }, [workOrders]);
 
   // Transform matrix into array format for Recharts
   const chartData = useMemo(() => {
