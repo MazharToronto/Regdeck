@@ -71,7 +71,7 @@ export default function InvoiceDashboard() {
       while (hasMore) {
         const { data, error } = await supabase
           .from('work_orders')
-          .select('region, delivery_date, due_date, wo_date, total_amount, word_count, tat, late_deduction_amount, language')
+          .select('region, delivery_date, total_amount, word_count, tat, late_deduction_amount, language')
           .eq('language', language)
           .range(page * pageSize, (page + 1) * pageSize - 1);
 
@@ -90,11 +90,10 @@ export default function InvoiceDashboard() {
         }
       }
 
-      // Filter records that fall within the selected year using delivery_date (with fallback to due_date/wo_date)
+      // Filter records that fall within the selected year using delivery_date only (matches InvoiceGeneration logic)
       const yearRecords = allRecords.filter(wo => {
-        const dateStr = wo.delivery_date || wo.due_date || wo.wo_date;
-        if (!dateStr) return false;
-        const str = String(dateStr).trim();
+        if (!wo.delivery_date) return false;
+        const str = String(wo.delivery_date).trim();
         const yStr = str.substring(0, 4);
         return yStr === year.toString();
       });
@@ -130,10 +129,9 @@ export default function InvoiceDashboard() {
     });
 
     workOrders.forEach(wo => {
-      const targetDate = wo.delivery_date || wo.due_date || wo.wo_date;
-      if (!targetDate || !wo.region) return;
+      if (!wo.delivery_date || !wo.region) return;
 
-      const monthName = getMonthNameFromDate(targetDate);
+      const monthName = getMonthNameFromDate(wo.delivery_date);
 
       let amount = parseFloat(wo.total_amount) || 0;
       if (amount === 0 && wo.word_count && wo.tat) {
