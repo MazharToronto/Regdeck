@@ -82,7 +82,7 @@ export default function InvoiceGeneration({ userRoles = [] }) {
         .gte('delivery_date', startDateStr)
         .lte('delivery_date', endDateStr)
         .order('division', { ascending: true })
-        .order('due_date', { ascending: true });
+        .order('work_order_number', { ascending: true });
 
       if (dbError) throw dbError;
       
