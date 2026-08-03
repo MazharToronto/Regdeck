@@ -179,18 +179,12 @@ export default function CreativeGroupedView({ userRoles = [], user }) {
   };
 
   const handleReset = () => {
-    const now = new Date();
-    const year = now.getFullYear();
-    const month = now.getMonth();
-    const firstDay = `${year}-${String(month + 1).padStart(2, '0')}-01`;
-    const lastDate = new Date(year, month + 1, 0).getDate();
-    const lastDay = `${year}-${String(month + 1).padStart(2, '0')}-${String(lastDate).padStart(2, '0')}`;
     const cleared = {
       assigned_to: '',
       from_wo_date: '',
       to_wo_date: '',
-      from_due_date: firstDay,
-      to_due_date: lastDay,
+      from_due_date: '',
+      to_due_date: '',
       work_order_number: ''
     };
     setFilters(cleared);
