@@ -295,7 +295,7 @@ export default function EmployeeDashboard({ user }) {
                       <td style={{ padding: '0.85rem 1rem', fontSize: '0.85rem', fontWeight: '600', color: '#334155' }}>{item.work_order_number || '—'}</td>
                       <td style={{ padding: '0.85rem 1rem', fontSize: '0.85rem', color: '#475569' }}>{item.request_type || '—'}</td>
                       <td style={{ padding: '0.85rem 1rem', fontSize: '0.85rem', color: '#475569' }}>{formatShortDate(item.due_date) || '—'}</td>
-                      <td style={{ padding: '0.85rem 1rem', fontSize: '0.9rem', fontWeight: '700', color: '#6366f1', fontFamily: 'monospace', textAlign: 'right' }}>
+                      <td style={{ padding: '0.85rem 1rem', fontSize: '0.85rem', color: '#475569', textAlign: 'right' }}>
                         {item.displayAudio}
                       </td>
                     </tr>
@@ -307,7 +307,7 @@ export default function EmployeeDashboard({ user }) {
                     <td colSpan="3" style={{ padding: '0.85rem 1rem', textAlign: 'right', fontWeight: '700', color: '#1e293b', fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                       Total
                     </td>
-                    <td style={{ padding: '0.85rem 1rem', textAlign: 'right', fontWeight: '700', color: '#6366f1', fontSize: '0.9rem', fontFamily: 'monospace' }}>
+                    <td style={{ padding: '0.85rem 1rem', textAlign: 'right', fontWeight: '700', color: '#334155', fontSize: '0.85rem' }}>
                       {formatSecondsToAudioLength(totalSeconds)}
                     </td>
                   </tr>

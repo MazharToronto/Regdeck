@@ -905,7 +905,7 @@ export default function Dashboard() {
                                   {row.region}
                                 </span>
                               </td>
-                              <td style={{ padding: '0.85rem 1rem', fontSize: '0.9rem', fontWeight: '700', color: '#6366f1', fontFamily: 'monospace' }}>{formatSeconds(row.audioSeconds)}</td>
+                              <td style={{ padding: '0.85rem 1rem', fontSize: '0.85rem', color: '#475569' }}>{formatSeconds(row.audioSeconds)}</td>
                               <td style={{ padding: '0.85rem 1rem', fontSize: '0.85rem', color: '#475569' }}>{row.wordCount.toLocaleString()}</td>
                               <td style={{ padding: '0.85rem 1rem', fontSize: '0.85rem', color: '#475569' }}>{row.characterSpace.toLocaleString()}</td>
                               <td style={{ padding: '0.85rem 1rem', fontSize: '0.85rem', color: '#475569' }}>{row.lineCount.toLocaleString()}</td>
@@ -963,7 +963,7 @@ export default function Dashboard() {
                                   {row.assigned_to}
                                 </span>
                               </td>
-                              <td style={{ padding: '0.85rem 1rem', fontSize: '0.9rem', fontWeight: '700', color: '#6366f1', fontFamily: 'monospace' }}>{formatSeconds(row.audioSeconds)}</td>
+                              <td style={{ padding: '0.85rem 1rem', fontSize: '0.85rem', color: '#475569' }}>{formatSeconds(row.audioSeconds)}</td>
                               <td style={{ padding: '0.85rem 1rem', fontSize: '0.85rem', color: '#475569' }}>{row.wordCount.toLocaleString()}</td>
                               <td style={{ padding: '0.85rem 1rem', fontSize: '0.85rem', color: '#475569' }}>{row.characterSpace.toLocaleString()}</td>
                               <td style={{ padding: '0.85rem 1rem', fontSize: '0.85rem', color: '#475569' }}>{row.lineCount.toLocaleString()}</td>
@@ -1137,7 +1137,7 @@ export default function Dashboard() {
                               <td style={{ padding: '0.85rem 1rem', fontSize: '0.85rem', fontWeight: '600', color: row.isCurrentMonth ? '#8b5cf6' : '#334155' }}>
                                 {row.displayMonth} {row.isCurrentMonth && <span style={{ fontSize: '0.7rem', padding: '2px 6px', background: '#8b5cf6', color: '#fff', borderRadius: '4px', marginLeft: '6px' }}>Current</span>}
                               </td>
-                              <td style={{ padding: '0.85rem 1rem', fontSize: '0.9rem', fontWeight: '700', color: '#6366f1', fontFamily: 'monospace' }}>{formatSeconds(row.audioSeconds)}</td>
+                              <td style={{ padding: '0.85rem 1rem', fontSize: '0.85rem', color: '#475569' }}>{formatSeconds(row.audioSeconds)}</td>
                               <td style={{ padding: '0.85rem 1rem', fontSize: '0.85rem', color: '#475569' }}>{row.wordCount.toLocaleString()}</td>
                               <td style={{ padding: '0.85rem 1rem', fontSize: '0.85rem', color: '#475569' }}>{row.characterSpace.toLocaleString()}</td>
                               <td style={{ padding: '0.85rem 1rem', fontSize: '0.85rem', color: '#475569' }}>{row.lineCount.toLocaleString()}</td>
@@ -1554,7 +1554,7 @@ export default function Dashboard() {
                             </span>
                           </td>
                           <td style={{ padding: '0.85rem 1rem', fontSize: '0.85rem', color: '#475569' }}>{row.tat}</td>
-                          <td style={{ padding: '0.85rem 1rem', fontSize: '0.9rem', fontWeight: '700', color: '#6366f1', fontFamily: 'monospace' }}>{formatSeconds(row.totalSeconds)}</td>
+                          <td style={{ padding: '0.85rem 1rem', fontSize: '0.85rem', color: '#475569' }}>{formatSeconds(row.totalSeconds)}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -1633,7 +1633,7 @@ export default function Dashboard() {
                         <tr key={idx} style={{ borderBottom: idx === report5Data.length - 1 ? 'none' : '1px solid #f1f5f9' }}>
                           <td style={{ padding: '0.85rem 1rem', fontSize: '0.85rem', fontWeight: '600', color: '#334155' }}>{row.assigned_to}</td>
                           <td style={{ padding: '0.85rem 1rem', fontSize: '0.85rem', color: '#475569' }}>{row.request_type}</td>
-                          <td style={{ padding: '0.85rem 1rem', fontSize: '0.9rem', fontWeight: '700', color: '#6366f1', fontFamily: 'monospace' }}>{formatSeconds(row.totalSeconds)}</td>
+                          <td style={{ padding: '0.85rem 1rem', fontSize: '0.85rem', color: '#475569' }}>{formatSeconds(row.totalSeconds)}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -1720,7 +1720,7 @@ export default function Dashboard() {
                               {row.request_type || '—'}
                             </span>
                           </td>
-                          <td style={{ padding: '0.85rem 1rem', fontSize: '0.9rem', fontWeight: '700', color: '#6366f1', fontFamily: 'monospace' }}>{formatSeconds(row.totalSeconds)}</td>
+                          <td style={{ padding: '0.85rem 1rem', fontSize: '0.85rem', color: '#475569' }}>{formatSeconds(row.totalSeconds)}</td>
                         </tr>
                       ))}
                     </tbody>
