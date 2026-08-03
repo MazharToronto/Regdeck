@@ -97,14 +97,12 @@ function App() {
                 <Route path="/dashboard" element={<Dashboard />} />
                 <Route path="/admin/users" element={<AllUsersScreen />} />
                 <Route path="/admin/create" element={<AdminScreen />} />
+                <Route path="/admin/rates" element={<ReferenceRates />} />
                 <Route path="/invoice-generation" element={<InvoiceGeneration userRoles={userRoles} />} />
                 <Route path="/bulk-update" element={<BulkUpdateWorkOrders />} />
                 <Route path="/admin/divisions" element={<ManageDivisions userRoles={userRoles} />} />
                 <Route path="/admin" element={<Navigate to="/admin/users" />} />
               </>
-            )}
-            {isAdmin && (
-              <Route path="/admin/rates" element={<ReferenceRates />} />
             )}
             {isManager && (
               <Route path="/invoice-dashboard" element={<InvoiceDashboard />} />
