@@ -633,7 +633,7 @@ export default function Reports({ userRoles = [], user }) {
         draft.line_count = !isNaN(chars) ? Math.round(chars / 65) : '';
       }
 
-      if (field === 'due_date' || field === 'delivery_date') {
+      if (field === 'due_date' || field === 'delivery_date' || field === 'word_count' || field === 'tat' || field === 'language') {
         draft.days_late = calculateBusinessDays(draft.due_date, draft.delivery_date);
 
         // Calculate late_deduction_amount and total_amount
