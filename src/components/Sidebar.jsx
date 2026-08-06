@@ -65,7 +65,7 @@ export default function Sidebar({ canManageUsers, canCreate, isManager, isAdmin,
             <div className="sidebar-section-title">Admin</div>
             <NavLink to="/dashboard" className={({isActive}) => `sidebar-link ${isActive ? 'active' : ''}`}>
               <BarChart3 size={18} />
-              <span>Reports</span>
+              <span>Dashboard</span>
             </NavLink>
             <NavLink to="/admin/users" className={({isActive}) => `sidebar-link ${isActive ? 'active' : ''}`}>
               <Users size={18} />

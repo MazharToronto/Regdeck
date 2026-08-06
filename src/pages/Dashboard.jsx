@@ -726,7 +726,7 @@ export default function Dashboard() {
 
   return (
     <div className="page-container">
-      <h1 className="page-title" style={{ marginBottom: '1.5rem' }}>Reports</h1>
+      <h1 className="page-title" style={{ marginBottom: '1.5rem' }}>Dashboard</h1>
       
       {/* Toggle Panel */}
       <div style={{ 
@@ -854,7 +854,7 @@ export default function Dashboard() {
               <div className="dashboard-prompt-icon">
                 <BarChart3 size={32} />
               </div>
-              <h3>Select filters to view reports</h3>
+              <h3>Select filters to view dashboard</h3>
               <p>Choose a language, month, and year above to generate the monthly dashboard report cards.</p>
             </div>
           ) : (
@@ -1210,7 +1210,7 @@ export default function Dashboard() {
           <div className="dashboard-prompt-icon">
             <BarChart3 size={32} />
           </div>
-          <h3>Select filters to view reports</h3>
+          <h3>Select filters to view dashboard</h3>
           <p>Choose a language and a date above to generate the dashboard report cards.</p>
         </div>
       ) : (
