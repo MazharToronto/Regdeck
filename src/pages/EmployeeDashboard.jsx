@@ -81,6 +81,60 @@ export default function EmployeeDashboard({ user }) {
   const [workOrders, setWorkOrders] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  // Column reordering state
+  const [empColOrder, setEmpColOrder] = useState(['work_order_number', 'request_type', 'due_date', 'displayAudio']);
+  const [draggedEmpColumn, setDraggedEmpColumn] = useState(null);
+
+  const handleEmpDragStart = (e, colKey) => {
+    setDraggedEmpColumn(colKey);
+    if (e.dataTransfer) {
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', colKey);
+    }
+  };
+
+  const handleEmpDragOver = (e) => {
+    e.preventDefault();
+    if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
+  };
+
+  const handleEmpDrop = (e, targetColKey) => {
+    e.preventDefault();
+    if (!draggedEmpColumn || draggedEmpColumn === targetColKey) return;
+    setEmpColOrder(prev => {
+      const draggedIdx = prev.indexOf(draggedEmpColumn);
+      const targetIdx = prev.indexOf(targetColKey);
+      if (draggedIdx === -1 || targetIdx === -1) return prev;
+      const newOrder = [...prev];
+      newOrder.splice(draggedIdx, 1);
+      newOrder.splice(targetIdx, 0, draggedEmpColumn);
+      return newOrder;
+    });
+    setDraggedEmpColumn(null);
+  };
+
+  const colLabelsEmp = {
+    work_order_number: 'WO #',
+    request_type: 'Type',
+    due_date: 'Due',
+    displayAudio: 'Audio Length'
+  };
+
+  const renderEmpCell = (colKey, item) => {
+    switch (colKey) {
+      case 'work_order_number':
+        return <td key={colKey} style={{ padding: '0.85rem 1rem', fontSize: '0.85rem', fontWeight: '600', color: '#334155' }}>{item.work_order_number || '—'}</td>;
+      case 'request_type':
+        return <td key={colKey} style={{ padding: '0.85rem 1rem', fontSize: '0.85rem', color: '#475569' }}>{item.request_type || '—'}</td>;
+      case 'due_date':
+        return <td key={colKey} style={{ padding: '0.85rem 1rem', fontSize: '0.85rem', color: '#475569' }}>{formatShortDate(item.due_date) || '—'}</td>;
+      case 'displayAudio':
+        return <td key={colKey} style={{ padding: '0.85rem 1rem', fontSize: '0.85rem', color: '#475569', textAlign: 'right' }}>{item.displayAudio}</td>;
+      default:
+        return null;
+    }
+  };
+
   const userName = user?.user_metadata?.full_name || '';
 
   useEffect(() => {
@@ -283,21 +337,36 @@ export default function EmployeeDashboard({ user }) {
               <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
                 <thead>
                   <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
-                    <th style={{ padding: '0.85rem 1rem', fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase', fontWeight: '600', letterSpacing: '0.05em' }}>WO #</th>
-                    <th style={{ padding: '0.85rem 1rem', fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase', fontWeight: '600', letterSpacing: '0.05em' }}>Type</th>
-                    <th style={{ padding: '0.85rem 1rem', fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase', fontWeight: '600', letterSpacing: '0.05em' }}>Due</th>
-                    <th style={{ padding: '0.85rem 1rem', fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase', fontWeight: '600', letterSpacing: '0.05em', textAlign: 'right' }}>Audio Length</th>
+                    {empColOrder.map(colKey => (
+                      <th
+                        key={colKey}
+                        draggable
+                        onDragStart={(e) => handleEmpDragStart(e, colKey)}
+                        onDragOver={handleEmpDragOver}
+                        onDrop={(e) => handleEmpDrop(e, colKey)}
+                        className="sortable-header"
+                        style={{
+                          padding: '0.85rem 1rem',
+                          fontSize: '0.75rem',
+                          color: '#64748b',
+                          textTransform: 'uppercase',
+                          fontWeight: '600',
+                          letterSpacing: '0.05em',
+                          cursor: 'move',
+                          userSelect: 'none',
+                          textAlign: colKey === 'displayAudio' ? 'right' : 'left'
+                        }}
+                        title={`Drag to reorder ${colLabelsEmp[colKey]}`}
+                      >
+                        {colLabelsEmp[colKey]}
+                      </th>
+                    ))}
                   </tr>
                 </thead>
                 <tbody>
                   {items.map((item, idx) => (
                     <tr key={item.id} style={{ borderBottom: idx === items.length - 1 ? 'none' : '1px solid #f1f5f9' }}>
-                      <td style={{ padding: '0.85rem 1rem', fontSize: '0.85rem', fontWeight: '600', color: '#334155' }}>{item.work_order_number || '—'}</td>
-                      <td style={{ padding: '0.85rem 1rem', fontSize: '0.85rem', color: '#475569' }}>{item.request_type || '—'}</td>
-                      <td style={{ padding: '0.85rem 1rem', fontSize: '0.85rem', color: '#475569' }}>{formatShortDate(item.due_date) || '—'}</td>
-                      <td style={{ padding: '0.85rem 1rem', fontSize: '0.85rem', color: '#475569', textAlign: 'right' }}>
-                        {item.displayAudio}
-                      </td>
+                      {empColOrder.map(colKey => renderEmpCell(colKey, item))}
                     </tr>
                   ))}
                 </tbody>

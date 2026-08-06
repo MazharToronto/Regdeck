@@ -31,9 +31,8 @@ export default function InvoiceDashboard() {
   const [year, setYear] = useState(currentYear.toString());
   const [workOrders, setWorkOrders] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [availableYears, setAvailableYears] = useState([currentYear.toString()]);
   const [languageOptions, setLanguageOptions] = useState([]);
-
-  const years = [(currentYear - 1).toString(), currentYear.toString(), (currentYear + 1).toString()];
 
   useEffect(() => {
     const loadOptions = async () => {
@@ -41,6 +40,37 @@ export default function InvoiceDashboard() {
       if (langData?.length) {
         setLanguageOptions(langData);
         setLanguage(langData[0].code);
+      }
+
+      // Query unique years from delivery_date column in work_orders
+      try {
+        const { data: delDates, error: delError } = await supabase
+          .from('work_orders')
+          .select('delivery_date')
+          .not('delivery_date', 'is', null);
+
+        if (!delError && delDates) {
+          const yearSet = new Set();
+          const currentYearStr = new Date().getFullYear().toString();
+          yearSet.add(currentYearStr);
+
+          delDates.forEach(row => {
+            if (row.delivery_date) {
+              const str = String(row.delivery_date).trim();
+              if (str.length >= 4) {
+                const y = str.slice(0, 4);
+                if (/^\d{4}$/.test(y)) {
+                  yearSet.add(y);
+                }
+              }
+            }
+          });
+          const sortedYears = Array.from(yearSet).sort((a, b) => b.localeCompare(a));
+          setAvailableYears(sortedYears);
+          setYear(currentYearStr);
+        }
+      } catch (err) {
+        console.error('Error fetching delivery_date years:', err);
       }
     };
     loadOptions();
@@ -158,16 +188,44 @@ export default function InvoiceDashboard() {
     return '$' + val.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   };
 
-  // Table header style matching screenshot
+  const theme = useMemo(() => {
+    if (language === 'FR') {
+      return {
+        chartHeaderBg: '#2d5a27',
+        thBg: '#2d5a27',
+        thBorder: '#1c3b19',
+        thTotalBg: '#1c3b19',
+        totalRowBg: '#f0f7f0',
+        totalRowBorder: '#2d5a27',
+        totalCellBg: '#2d5a27',
+        textColor: '#2d5a27',
+        langActiveBg: '#2d5a27'
+      };
+    }
+    // Default EN: All Blue theme
+    return {
+      chartHeaderBg: '#1e3a5f',
+      thBg: '#1e3a5f',
+      thBorder: '#0f2640',
+      thTotalBg: '#0f2640',
+      totalRowBg: '#f0f4f8',
+      totalRowBorder: '#1e3a5f',
+      totalCellBg: '#1e3a5f',
+      textColor: '#1e3a5f',
+      langActiveBg: '#1e3a5f'
+    };
+  }, [language]);
+
+  // Table header style matching theme
   const thStyle = {
     padding: '8px 12px',
     textAlign: 'right',
     fontWeight: 'bold',
     color: '#fff',
-    backgroundColor: '#1e3a5f',
+    backgroundColor: theme.thBg,
     fontSize: '12px',
     whiteSpace: 'nowrap',
-    borderBottom: '2px solid #0f2640'
+    borderBottom: `2px solid ${theme.thBorder}`
   };
 
   const thStyleLeft = { ...thStyle, textAlign: 'left' };
@@ -176,7 +234,7 @@ export default function InvoiceDashboard() {
     padding: '6px 12px',
     textAlign: 'right',
     fontSize: '12px',
-    color: '#1e3a5f',
+    color: theme.textColor,
     borderBottom: '1px solid #e2e8f0',
     whiteSpace: 'nowrap'
   };
@@ -186,8 +244,8 @@ export default function InvoiceDashboard() {
   const totalRowStyle = {
     ...tdStyle,
     fontWeight: 'bold',
-    borderTop: '2px solid #1e3a5f',
-    backgroundColor: '#f0f4f8'
+    borderTop: `2px solid ${theme.totalRowBorder}`,
+    backgroundColor: theme.totalRowBg
   };
 
   const totalRowLeftStyle = { ...totalRowStyle, textAlign: 'left' };
@@ -195,7 +253,7 @@ export default function InvoiceDashboard() {
   const totalColStyle = {
     ...tdStyle,
     fontWeight: 'bold',
-    color: '#1e3a5f'
+    color: theme.textColor
   };
 
   const renderTable = (title, hstMultiplier = 1) => {
@@ -207,7 +265,7 @@ export default function InvoiceDashboard() {
           textAlign: 'center',
           fontWeight: 'bold',
           fontSize: '16px',
-          color: '#1e3a5f',
+          color: theme.textColor,
           padding: '8px 0 4px'
         }}>
           {year}
@@ -221,7 +279,7 @@ export default function InvoiceDashboard() {
                 {MONTHS.map(m => (
                   <th key={m} style={thStyle}>{m}</th>
                 ))}
-                <th style={{ ...thStyle, backgroundColor: '#0f2640' }}>Total</th>
+                <th style={{ ...thStyle, backgroundColor: theme.thTotalBg }}>Total</th>
               </tr>
             </thead>
             <tbody>
@@ -250,7 +308,7 @@ export default function InvoiceDashboard() {
                     <td key={m} style={totalRowStyle}>{fmt(val)}</td>
                   );
                 })}
-                <td style={{ ...totalRowStyle, backgroundColor: '#1e3a5f', color: '#fff' }}>
+                <td style={{ ...totalRowStyle, backgroundColor: theme.totalCellBg, color: '#fff' }}>
                   {fmt(grandTotal * hstMultiplier)}
                 </td>
               </tr>
@@ -298,7 +356,7 @@ export default function InvoiceDashboard() {
                   fontSize: '13px',
                   fontWeight: '600',
                   transition: 'all 0.2s',
-                  backgroundColor: language === lang.code ? '#6366f1' : '#f8fafc',
+                  backgroundColor: language === lang.code ? theme.langActiveBg : '#f8fafc',
                   color: language === lang.code ? '#fff' : '#475569'
                 }}
               >
@@ -317,7 +375,7 @@ export default function InvoiceDashboard() {
             className="form-input"
             style={{ width: '120px', padding: '6px 12px', fontSize: '13px' }}
           >
-            {years.map(y => (
+            {availableYears.map(y => (
               <option key={y} value={y}>{y}</option>
             ))}
           </select>
@@ -331,7 +389,7 @@ export default function InvoiceDashboard() {
         <div style={{ background: '#fff', borderRadius: '12px', padding: '1.5rem', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' }}>
           {/* Chart for Report 1 */}
           <div style={{ width: '100%', height: 400, marginBottom: '4rem' }}>
-            <div style={{ textAlign: 'center', backgroundColor: '#2d5a27', color: 'white', padding: '12px', fontWeight: 'bold', fontSize: '16px', marginBottom: '20px', borderRadius: '4px' }}>
+            <div style={{ textAlign: 'center', backgroundColor: theme.chartHeaderBg, color: 'white', padding: '12px', fontWeight: 'bold', fontSize: '16px', marginBottom: '20px', borderRadius: '4px', transition: 'background-color 0.3s ease' }}>
               Month on Month Invoiced Amount Per Region
             </div>
             <ResponsiveContainer width="100%" height="100%">

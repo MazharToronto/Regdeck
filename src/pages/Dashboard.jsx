@@ -94,24 +94,32 @@ export default function Dashboard() {
     return `${yyyy}-${mm}-${dd}`;
   });
   const [report1Data, setReport1Data] = useState([]);
+  const [reportPastDueData, setReportPastDueData] = useState([]);
   const [report2Data, setReport2Data] = useState([]);
   const [report3Data, setReport3Data] = useState([]);
   const [report4Data, setReport4Data] = useState([]);
   const [report5Data, setReport5Data] = useState([]);
   const [report6Data, setReport6Data] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [loadingPastDue, setLoadingPastDue] = useState(false);
   const [loading2, setLoading2] = useState(false);
   const [loading3, setLoading3] = useState(false);
   const [loading4, setLoading4] = useState(false);
   const [loading5, setLoading5] = useState(false);
   const [loading6, setLoading6] = useState(false);
   const [error, setError] = useState(null);
+  const [errorPastDue, setErrorPastDue] = useState(null);
   const [error2, setError2] = useState(null);
   const [error3, setError3] = useState(null);
   const [error4, setError4] = useState(null);
   const [error5, setError5] = useState(null);
   const [error6, setError6] = useState(null);
   const [report5GrandTotal, setReport5GrandTotal] = useState(0);
+
+  const [report4BenchSeconds, setReport4BenchSeconds] = useState(0);
+  const [report4FullSeconds, setReport4FullSeconds] = useState(0);
+  const [report4TotalSeconds, setReport4TotalSeconds] = useState(0);
+  const [report4TotalRecords, setReport4TotalRecords] = useState(0);
 
   // --- Monthly States ---
   const currentYear = new Date().getFullYear();
@@ -130,6 +138,548 @@ export default function Dashboard() {
   const [errorM1, setErrorM1] = useState(null);
   const [errorM3, setErrorM3] = useState(null);
   const [errorM5, setErrorM5] = useState(null);
+
+  // --- Table Sorting States ---
+  const [sortM1, setSortM1] = useState({ key: '', direction: 'asc' });
+  const [sortM2, setSortM2] = useState({ key: '', direction: 'asc' });
+  const [sortM5, setSortM5] = useState({ key: '', direction: 'asc' });
+
+  const [sortD1, setSortD1] = useState({ key: '', direction: 'asc' });
+  const [sortPastDue, setSortPastDue] = useState({ key: '', direction: 'asc' });
+  const [sortD2, setSortD2] = useState({ key: '', direction: 'asc' });
+  const [sortD3, setSortD3] = useState({ key: '', direction: 'asc' });
+  const [sortD4, setSortD4] = useState({ key: '', direction: 'asc' });
+  const [sortD5, setSortD5] = useState({ key: '', direction: 'asc' });
+  const [sortD6, setSortD6] = useState({ key: '', direction: 'asc' });
+
+  // --- Table Column Ordering States ---
+  const [colOrderM1, setColOrderM1] = useState(['region', 'audioSeconds', 'wordCount', 'characterSpace', 'lineCount']);
+  const [colOrderM2, setColOrderM2] = useState(['assigned_to', 'audioSeconds', 'wordCount', 'characterSpace', 'lineCount']);
+  const [colOrderM5, setColOrderM5] = useState(['displayMonth', 'audioSeconds', 'wordCount', 'characterSpace', 'lineCount']);
+
+  const [colOrderD1, setColOrderD1] = useState(['work_order_number', 'assigned_to', 'wo_date', 'due_date', 'tat', 'delivery_action']);
+  const [colOrderPastDue, setColOrderPastDue] = useState(['work_order_number', 'wo_date', 'assigned_to', 'request_type', 'tat', 'due_date', 'status', 'delivery_action']);
+  const [colOrderD2, setColOrderD2] = useState(['work_order_number', 'assigned_to', 'wo_date', 'delivery_date', 'status', 'delivery_action']);
+  const [colOrderD3, setColOrderD3] = useState(['work_order_number', 'assigned_to', 'wo_date', 'due_date', 'status']);
+  const [colOrderD4, setColOrderD4] = useState(['work_order_number', 'assigned_to', 'request_type', 'tat', 'totalSeconds']);
+  const [colOrderD5, setColOrderD5] = useState(['assigned_to', 'request_type', 'totalSeconds']);
+  const [colOrderD6, setColOrderD6] = useState(['wo_date', 'assigned_to', 'tat', 'request_type', 'totalSeconds']);
+
+  const [draggedColumn, setDraggedColumn] = useState(null);
+
+  const handleDragStart = (e, colKey) => {
+    setDraggedColumn(colKey);
+    if (e.dataTransfer) {
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', colKey);
+    }
+  };
+
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
+  };
+
+  const handleDrop = (e, targetColKey, orderedColumns, setOrderedColumns) => {
+    e.preventDefault();
+    if (!draggedColumn || draggedColumn === targetColKey) return;
+
+    setOrderedColumns(prev => {
+      const draggedIdx = prev.indexOf(draggedColumn);
+      const targetIdx = prev.indexOf(targetColKey);
+      if (draggedIdx === -1 || targetIdx === -1) return prev;
+
+      const newOrder = [...prev];
+      newOrder.splice(draggedIdx, 1);
+      newOrder.splice(targetIdx, 0, draggedColumn);
+      return newOrder;
+    });
+    setDraggedColumn(null);
+  };
+
+  const handleSortToggle = (sortState, setSortState) => (key) => {
+    let direction = 'asc';
+    if (sortState.key === key && sortState.direction === 'asc') {
+      direction = 'desc';
+    }
+    setSortState({ key, direction });
+  };
+
+  const sortTableData = (data, sortConfig) => {
+    if (!sortConfig || !sortConfig.key || !data || data.length === 0) return data;
+    const { key, direction } = sortConfig;
+    const multiplier = direction === 'asc' ? 1 : -1;
+
+    return [...data].sort((a, b) => {
+      let valA = a[key];
+      let valB = b[key];
+
+      if (valA === null || valA === undefined) valA = '';
+      if (valB === null || valB === undefined) valB = '';
+
+      if (typeof valA === 'number' && typeof valB === 'number') {
+        return (valA - valB) * multiplier;
+      }
+
+      const numA = Number(valA);
+      const numB = Number(valB);
+      if (!isNaN(numA) && !isNaN(numB) && String(valA).trim() !== '' && String(valB).trim() !== '' && typeof valA !== 'boolean') {
+        return (numA - numB) * multiplier;
+      }
+
+      const strA = String(valA).toLowerCase();
+      const strB = String(valB).toLowerCase();
+      return strA.localeCompare(strB, undefined, { numeric: true, sensitivity: 'base' }) * multiplier;
+    });
+  };
+
+  const renderSortHeader = (label, sortKey, currentSort, setSortState, orderedColumns, setOrderedColumns, style = {}) => {
+    const handleSort = handleSortToggle(currentSort, setSortState);
+    const isSorted = currentSort.key === sortKey;
+    const icon = !isSorted ? (
+      <span className="sort-icon invisible">↕</span>
+    ) : currentSort.direction === 'asc' ? (
+      <span className="sort-icon">↑</span>
+    ) : (
+      <span className="sort-icon">↓</span>
+    );
+
+    return (
+      <th
+        key={sortKey}
+        draggable
+        onDragStart={(e) => handleDragStart(e, sortKey)}
+        onDragOver={handleDragOver}
+        onDrop={(e) => handleDrop(e, sortKey, orderedColumns, setOrderedColumns)}
+        onClick={() => handleSort(sortKey)}
+        className="sortable-header"
+        style={{
+          padding: '0.7rem 0.5rem',
+          fontSize: '0.75rem',
+          color: '#64748b',
+          textTransform: 'uppercase',
+          fontWeight: '600',
+          letterSpacing: '0.04em',
+          whiteSpace: 'nowrap',
+          cursor: 'move',
+          userSelect: 'none',
+          textAlign: sortKey === 'delivery_action' ? 'center' : 'left',
+          ...style
+        }}
+        title={`Drag to reorder column | Click to sort by ${label}`}
+      >
+        {label} {icon}
+      </th>
+    );
+  };
+
+  // --- Column Labels & Cell Renderers ---
+  const colLabelsM1 = { region: 'Region', audioSeconds: 'Audio Length', wordCount: 'Word Count', characterSpace: 'Characters', lineCount: 'Line Count' };
+  const renderCellM1 = (colKey, row) => {
+    switch (colKey) {
+      case 'region':
+        return (
+          <td key={colKey} style={{ padding: '0.85rem 1rem', fontSize: '0.85rem', fontWeight: '600', color: '#334155' }}>
+            <span className={`pill ${getRegionPillClass(row.region)}`} style={{ display: 'inline-block', padding: '2px 8px', borderRadius: '8px', fontSize: '0.8rem', fontWeight: '600' }}>
+              {row.region}
+            </span>
+          </td>
+        );
+      case 'audioSeconds': return <td key={colKey} style={{ padding: '0.85rem 1rem', fontSize: '0.85rem', color: '#475569' }}>{formatSeconds(row.audioSeconds)}</td>;
+      case 'wordCount': return <td key={colKey} style={{ padding: '0.85rem 1rem', fontSize: '0.85rem', color: '#475569' }}>{row.wordCount.toLocaleString()}</td>;
+      case 'characterSpace': return <td key={colKey} style={{ padding: '0.85rem 1rem', fontSize: '0.85rem', color: '#475569' }}>{row.characterSpace.toLocaleString()}</td>;
+      case 'lineCount': return <td key={colKey} style={{ padding: '0.85rem 1rem', fontSize: '0.85rem', color: '#475569' }}>{row.lineCount.toLocaleString()}</td>;
+      default: return null;
+    }
+  };
+
+  const colLabelsM2 = { assigned_to: 'Assignee', audioSeconds: 'Audio Length', wordCount: 'Word Count', characterSpace: 'Characters', lineCount: 'Line Count' };
+  const renderCellM2 = (colKey, row) => {
+    switch (colKey) {
+      case 'assigned_to':
+        return (
+          <td key={colKey} style={{ padding: '0.85rem 1rem', fontSize: '0.85rem', fontWeight: '600', color: '#334155' }}>
+            <span className={`pill ${getEmployeePillClass(row.assigned_to)}`}>
+              {row.assigned_to}
+            </span>
+          </td>
+        );
+      case 'audioSeconds': return <td key={colKey} style={{ padding: '0.85rem 1rem', fontSize: '0.85rem', color: '#475569' }}>{formatSeconds(row.audioSeconds)}</td>;
+      case 'wordCount': return <td key={colKey} style={{ padding: '0.85rem 1rem', fontSize: '0.85rem', color: '#475569' }}>{row.wordCount.toLocaleString()}</td>;
+      case 'characterSpace': return <td key={colKey} style={{ padding: '0.85rem 1rem', fontSize: '0.85rem', color: '#475569' }}>{row.characterSpace.toLocaleString()}</td>;
+      case 'lineCount': return <td key={colKey} style={{ padding: '0.85rem 1rem', fontSize: '0.85rem', color: '#475569' }}>{row.lineCount.toLocaleString()}</td>;
+      default: return null;
+    }
+  };
+
+  const colLabelsM5 = { displayMonth: 'Month', audioSeconds: 'Audio Length', wordCount: 'Word Count', characterSpace: 'Characters', lineCount: 'Line Count' };
+  const renderCellM5 = (colKey, row) => {
+    switch (colKey) {
+      case 'displayMonth':
+        return (
+          <td key={colKey} style={{ padding: '0.85rem 1rem', fontSize: '0.85rem', fontWeight: '600', color: row.isCurrentMonth ? '#8b5cf6' : '#334155' }}>
+            {row.displayMonth} {row.isCurrentMonth && <span style={{ fontSize: '0.7rem', padding: '2px 6px', background: '#8b5cf6', color: '#fff', borderRadius: '4px', marginLeft: '6px' }}>Current</span>}
+          </td>
+        );
+      case 'audioSeconds': return <td key={colKey} style={{ padding: '0.85rem 1rem', fontSize: '0.85rem', color: '#475569' }}>{formatSeconds(row.audioSeconds)}</td>;
+      case 'wordCount': return <td key={colKey} style={{ padding: '0.85rem 1rem', fontSize: '0.85rem', color: '#475569' }}>{row.wordCount.toLocaleString()}</td>;
+      case 'characterSpace': return <td key={colKey} style={{ padding: '0.85rem 1rem', fontSize: '0.85rem', color: '#475569' }}>{row.characterSpace.toLocaleString()}</td>;
+      case 'lineCount': return <td key={colKey} style={{ padding: '0.85rem 1rem', fontSize: '0.85rem', color: '#475569' }}>{row.lineCount.toLocaleString()}</td>;
+      default: return null;
+    }
+  };
+
+  const handleDeliveryAction = async (row, action) => {
+    if (action === 'delivered') {
+      const now = new Date();
+      const estDate = new Date(now.toLocaleString('en-US', { timeZone: 'America/New_York' }));
+      const yyyy = estDate.getFullYear();
+      const mm = String(estDate.getMonth() + 1).padStart(2, '0');
+      const dd = String(estDate.getDate()).padStart(2, '0');
+      const todayEst = `${yyyy}-${mm}-${dd}`;
+
+      try {
+        let updateQuery = supabase
+          .from('work_orders')
+          .update({ delivery_date: todayEst })
+          .eq('language', language)
+          .eq('status', 'Done');
+
+        if (row.work_order_number) updateQuery = updateQuery.eq('work_order_number', row.work_order_number);
+        else updateQuery = updateQuery.is('work_order_number', null);
+
+        if (row.assigned_to) updateQuery = updateQuery.eq('assigned_to', row.assigned_to);
+        else updateQuery = updateQuery.is('assigned_to', null);
+
+        if (row.wo_date) updateQuery = updateQuery.eq('wo_date', row.wo_date);
+        else updateQuery = updateQuery.is('wo_date', null);
+
+        if (row.due_date) updateQuery = updateQuery.eq('due_date', row.due_date);
+        else updateQuery = updateQuery.is('due_date', null);
+
+        if (row.tat !== undefined && row.tat !== null) updateQuery = updateQuery.eq('tat', row.tat);
+        else updateQuery = updateQuery.is('tat', null);
+
+        const { error: updateError } = await updateQuery;
+
+        if (updateError) {
+          alert(`Failed to update delivery date: ${updateError.message}`);
+        } else {
+          setReport1Data(prev => prev.filter(item => !(
+            item.work_order_number === row.work_order_number &&
+            item.assigned_to === row.assigned_to &&
+            item.wo_date === row.wo_date &&
+            item.due_date === row.due_date &&
+            item.tat === row.tat
+          )));
+        }
+      } catch (err) {
+        alert('An error occurred while updating the delivery date.');
+      }
+    }
+  };
+
+  const colLabelsD1 = { work_order_number: 'WO #', assigned_to: 'Assigned To', wo_date: 'WO Date', due_date: 'Due', tat: 'TAT', delivery_action: 'Delivered' };
+  const renderCellD1 = (colKey, row) => {
+    switch (colKey) {
+      case 'work_order_number':
+        return (
+          <td key={colKey} style={{ padding: '0.7rem 0.5rem', fontSize: '0.85rem', fontWeight: '600', color: '#334155', whiteSpace: 'nowrap' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}><ClipboardList size={14} color="#94a3b8" /> {row.work_order_number}</div>
+          </td>
+        );
+      case 'assigned_to': return <td key={colKey} style={{ padding: '0.7rem 0.5rem', fontSize: '0.85rem', color: '#475569', whiteSpace: 'nowrap' }}>{row.assigned_to}</td>;
+      case 'wo_date': return <td key={colKey} style={{ padding: '0.7rem 0.5rem', fontSize: '0.85rem', color: '#475569', whiteSpace: 'nowrap' }}>{formatDdMmm(row.wo_date)}</td>;
+      case 'due_date': return <td key={colKey} style={{ padding: '0.7rem 0.5rem', fontSize: '0.85rem', color: '#475569', whiteSpace: 'nowrap' }}>{formatDdMmm(row.due_date)}</td>;
+      case 'tat': return <td key={colKey} style={{ padding: '0.7rem 0.5rem', fontSize: '0.85rem', color: '#475569', whiteSpace: 'nowrap' }}>{row.tat}</td>;
+      case 'delivery_action':
+        const rowIdentifier = `${row.work_order_number || ''}_${row.assigned_to || ''}_${row.wo_date || ''}_${row.due_date || ''}_${row.tat || ''}`;
+        return (
+          <td key={colKey} style={{ padding: '0.5rem 0.5rem', textAlign: 'center', whiteSpace: 'nowrap' }}>
+            <input
+              type="radio"
+              id={`del-yes-${rowIdentifier}`}
+              name={`del-status-${rowIdentifier}`}
+              checked={false}
+              onChange={() => handleDeliveryAction(row, 'delivered')}
+              style={{ cursor: 'pointer', width: '16px', height: '16px', accentColor: '#10b981' }}
+              title="Mark as Delivered"
+            />
+          </td>
+        );
+      default: return null;
+    }
+  };
+
+  const handleDeliveryActionPastDue = async (row, action) => {
+    if (action === 'delivered') {
+      const now = new Date();
+      const estDate = new Date(now.toLocaleString('en-US', { timeZone: 'America/New_York' }));
+      const yyyy = estDate.getFullYear();
+      const mm = String(estDate.getMonth() + 1).padStart(2, '0');
+      const dd = String(estDate.getDate()).padStart(2, '0');
+      const todayEst = `${yyyy}-${mm}-${dd}`;
+
+      try {
+        let updateQuery = supabase
+          .from('work_orders')
+          .update({ delivery_date: todayEst })
+          .eq('language', language)
+          .is('delivery_date', null);
+
+        if (row.work_order_number) updateQuery = updateQuery.eq('work_order_number', row.work_order_number);
+        else updateQuery = updateQuery.is('work_order_number', null);
+
+        if (row.wo_date) updateQuery = updateQuery.eq('wo_date', row.wo_date);
+        else updateQuery = updateQuery.is('wo_date', null);
+
+        if (row.assigned_to) updateQuery = updateQuery.eq('assigned_to', row.assigned_to);
+        else updateQuery = updateQuery.is('assigned_to', null);
+
+        if (row.hearing_date) updateQuery = updateQuery.eq('hearing_date', row.hearing_date);
+        else updateQuery = updateQuery.is('hearing_date', null);
+
+        if (row.status) updateQuery = updateQuery.eq('status', row.status);
+        else updateQuery = updateQuery.is('status', null);
+
+        const { error: updateError } = await updateQuery;
+
+        if (updateError) {
+          alert(`Failed to update delivery date: ${updateError.message}`);
+        } else {
+          setReportPastDueData(prev => prev.filter(item => !(
+            item.work_order_number === row.work_order_number &&
+            item.wo_date === row.wo_date &&
+            item.assigned_to === row.assigned_to &&
+            item.hearing_date === row.hearing_date &&
+            item.status === row.status
+          )));
+        }
+      } catch (err) {
+        alert('An error occurred while updating the delivery date.');
+      }
+    }
+  };
+
+  const colLabelsPastDue = {
+    work_order_number: 'WO #',
+    wo_date: 'WO Date',
+    assigned_to: 'Assigned To',
+    request_type: 'Type',
+    tat: 'TAT',
+    due_date: 'Due Date',
+    status: 'Status',
+    delivery_action: 'Delivered'
+  };
+
+  const renderCellPastDue = (colKey, row) => {
+    switch (colKey) {
+      case 'work_order_number':
+        return (
+          <td key={colKey} style={{ padding: '0.7rem 0.5rem', fontSize: '0.85rem', fontWeight: '600', color: '#334155', whiteSpace: 'nowrap' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}><ClipboardList size={14} color="#94a3b8" /> {row.work_order_number}</div>
+          </td>
+        );
+      case 'wo_date': return <td key={colKey} style={{ padding: '0.7rem 0.5rem', fontSize: '0.85rem', color: '#475569', whiteSpace: 'nowrap' }}>{formatDdMmm(row.wo_date)}</td>;
+      case 'assigned_to': return <td key={colKey} style={{ padding: '0.7rem 0.5rem', fontSize: '0.85rem', color: '#475569', whiteSpace: 'nowrap' }}>{row.assigned_to}</td>;
+      case 'request_type':
+        return (
+          <td key={colKey} style={{ padding: '0.7rem 0.5rem', fontSize: '0.85rem', color: '#475569', whiteSpace: 'nowrap' }}>
+            <span className={`pill ${row.request_type?.toLowerCase() === 'bench' ? 'req-bench' : 'req-full'}`} style={{ display: 'inline-block', padding: '2px 8px', borderRadius: '8px', fontSize: '0.8rem', fontWeight: '600' }}>
+              {row.request_type || '—'}
+            </span>
+          </td>
+        );
+      case 'tat': return <td key={colKey} style={{ padding: '0.7rem 0.5rem', fontSize: '0.85rem', color: '#475569', whiteSpace: 'nowrap' }}>{row.tat}</td>;
+      case 'due_date': return <td key={colKey} style={{ padding: '0.7rem 0.5rem', fontSize: '0.85rem', color: '#475569', whiteSpace: 'nowrap' }}>{formatDdMmm(row.due_date)}</td>;
+      case 'status':
+        return (
+          <td key={colKey} style={{ padding: '0.7rem 0.5rem', fontSize: '0.85rem', color: '#475569', whiteSpace: 'nowrap' }}>
+            <span className={`dash-status-badge ${getStatusClass(row.status)}`}>{row.status || '—'}</span>
+          </td>
+        );
+      case 'delivery_action':
+        const rowIdPastDue = `${row.work_order_number || ''}_${row.wo_date || ''}_${row.assigned_to || ''}_${row.hearing_date || ''}_${row.status || ''}`;
+        return (
+          <td key={colKey} style={{ padding: '0.5rem 0.5rem', textAlign: 'center', whiteSpace: 'nowrap' }}>
+            <input
+              type="radio"
+              id={`pd-del-yes-${rowIdPastDue}`}
+              name={`pd-del-status-${rowIdPastDue}`}
+              checked={false}
+              onChange={() => handleDeliveryActionPastDue(row, 'delivered')}
+              style={{ cursor: 'pointer', width: '16px', height: '16px', accentColor: '#10b981' }}
+              title="Mark as Delivered"
+            />
+          </td>
+        );
+      default: return null;
+    }
+  };
+
+  const handleDeliveryActionD2 = async (row, action) => {
+    if (action === 'delivered') {
+      const now = new Date();
+      const estDate = new Date(now.toLocaleString('en-US', { timeZone: 'America/New_York' }));
+      const yyyy = estDate.getFullYear();
+      const mm = String(estDate.getMonth() + 1).padStart(2, '0');
+      const dd = String(estDate.getDate()).padStart(2, '0');
+      const todayEst = `${yyyy}-${mm}-${dd}`;
+
+      try {
+        let updateQuery = supabase
+          .from('work_orders')
+          .update({ delivery_date: todayEst })
+          .eq('language', language);
+
+        if (row.work_order_number) updateQuery = updateQuery.eq('work_order_number', row.work_order_number);
+        else updateQuery = updateQuery.is('work_order_number', null);
+
+        if (row.assigned_to) updateQuery = updateQuery.eq('assigned_to', row.assigned_to);
+        else updateQuery = updateQuery.is('assigned_to', null);
+
+        if (row.wo_date) updateQuery = updateQuery.eq('wo_date', row.wo_date);
+        else updateQuery = updateQuery.is('wo_date', null);
+
+        if (row.due_date) updateQuery = updateQuery.eq('due_date', row.due_date);
+        else updateQuery = updateQuery.is('due_date', null);
+
+        if (row.status) updateQuery = updateQuery.eq('status', row.status);
+        else updateQuery = updateQuery.is('status', null);
+
+        const { error: updateError } = await updateQuery;
+
+        if (updateError) {
+          alert(`Failed to update delivery date: ${updateError.message}`);
+        } else {
+          setReport2Data(prev => prev.map(item => {
+            const match = item.work_order_number === row.work_order_number &&
+              item.assigned_to === row.assigned_to &&
+              item.wo_date === row.wo_date &&
+              item.due_date === row.due_date &&
+              item.status === row.status;
+            return match ? { ...item, delivery_date: todayEst } : item;
+          }));
+        }
+      } catch (err) {
+        alert('An error occurred while updating the delivery date.');
+      }
+    }
+  };
+
+  const colLabelsD2 = { work_order_number: 'WO #', assigned_to: 'Assigned To', wo_date: 'WO Date', delivery_date: 'Delivery Date', status: 'Status', delivery_action: 'Delivered' };
+  const renderCellD2 = (colKey, row) => {
+    switch (colKey) {
+      case 'work_order_number':
+        return (
+          <td key={colKey} style={{ padding: '0.7rem 0.5rem', fontSize: '0.85rem', fontWeight: '600', color: '#334155', whiteSpace: 'nowrap' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}><ClipboardList size={14} color="#94a3b8" /> {row.work_order_number}</div>
+          </td>
+        );
+      case 'assigned_to': return <td key={colKey} style={{ padding: '0.7rem 0.5rem', fontSize: '0.85rem', color: '#475569', whiteSpace: 'nowrap' }}>{row.assigned_to}</td>;
+      case 'wo_date': return <td key={colKey} style={{ padding: '0.7rem 0.5rem', fontSize: '0.85rem', color: '#475569', whiteSpace: 'nowrap' }}>{formatDdMmm(row.wo_date)}</td>;
+      case 'delivery_date': return <td key={colKey} style={{ padding: '0.7rem 0.5rem', fontSize: '0.85rem', color: '#475569', whiteSpace: 'nowrap' }}>{formatDdMmm(row.delivery_date)}</td>;
+      case 'status':
+        return (
+          <td key={colKey} style={{ padding: '0.7rem 0.5rem', fontSize: '0.85rem', color: '#475569', whiteSpace: 'nowrap' }}>
+            <span className={`dash-status-badge ${getStatusClass(row.status)}`}>{row.status || '—'}</span>
+          </td>
+        );
+      case 'delivery_action':
+        const hasDeliveryDate = !!row.delivery_date;
+        const rowId2 = `${row.work_order_number || ''}_${row.assigned_to || ''}_${row.wo_date || ''}_${row.due_date || ''}_${row.status || ''}`;
+        return (
+          <td key={colKey} style={{ padding: '0.5rem 0.5rem', textAlign: 'center', whiteSpace: 'nowrap' }}>
+            <input
+              type="radio"
+              id={`d2-del-yes-${rowId2}`}
+              name={`d2-del-status-${rowId2}`}
+              checked={hasDeliveryDate}
+              disabled={hasDeliveryDate}
+              onChange={() => handleDeliveryActionD2(row, 'delivered')}
+              style={{ cursor: hasDeliveryDate ? 'default' : 'pointer', width: '16px', height: '16px', accentColor: '#10b981', opacity: hasDeliveryDate ? 0.6 : 1 }}
+              title={hasDeliveryDate ? 'Delivered' : 'Mark as Delivered'}
+            />
+          </td>
+        );
+      default: return null;
+    }
+  };
+
+  const colLabelsD3 = { work_order_number: 'WO #', assigned_to: 'Assigned To', wo_date: 'WO Date', due_date: 'Due', status: 'Status' };
+  const renderCellD3 = (colKey, row) => {
+    switch (colKey) {
+      case 'work_order_number':
+        return (
+          <td key={colKey} style={{ padding: '0.85rem 1rem', fontSize: '0.85rem', fontWeight: '600', color: '#334155' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><ClipboardList size={14} color="#94a3b8" /> {row.work_order_number}</div>
+          </td>
+        );
+      case 'assigned_to': return <td key={colKey} style={{ padding: '0.85rem 1rem', fontSize: '0.85rem', color: '#475569' }}>{row.assigned_to}</td>;
+      case 'wo_date': return <td key={colKey} style={{ padding: '0.85rem 1rem', fontSize: '0.85rem', color: '#475569' }}>{formatDdMmm(row.wo_date)}</td>;
+      case 'due_date': return <td key={colKey} style={{ padding: '0.85rem 1rem', fontSize: '0.85rem', color: '#475569' }}>{formatDdMmm(row.due_date)}</td>;
+      case 'status':
+        return (
+          <td key={colKey} style={{ padding: '0.85rem 1rem', fontSize: '0.85rem', color: '#475569' }}>
+            <span className={`dash-status-badge ${getStatusClass(row.status)}`}>{row.status || '—'}</span>
+          </td>
+        );
+      default: return null;
+    }
+  };
+
+  const colLabelsD4 = { work_order_number: 'WO #', assigned_to: 'Assigned To', request_type: 'Type', tat: 'TAT', totalSeconds: 'Total Audio Length' };
+  const renderCellD4 = (colKey, row) => {
+    switch (colKey) {
+      case 'work_order_number':
+        return (
+          <td key={colKey} style={{ padding: '0.85rem 1rem', fontSize: '0.85rem', fontWeight: '600', color: '#334155' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><ClipboardList size={14} color="#94a3b8" /> {row.work_order_number}</div>
+          </td>
+        );
+      case 'assigned_to': return <td key={colKey} style={{ padding: '0.85rem 1rem', fontSize: '0.85rem', color: '#475569' }}>{row.assigned_to}</td>;
+      case 'request_type':
+        return (
+          <td key={colKey} style={{ padding: '0.85rem 1rem', fontSize: '0.85rem', color: '#475569' }}>
+            <span className={`pill ${row.request_type?.toLowerCase() === 'bench' ? 'req-bench' : 'req-full'}`} style={{ display: 'inline-block', padding: '2px 8px', borderRadius: '8px', fontSize: '0.8rem', fontWeight: '600' }}>
+              {row.request_type || '—'}
+            </span>
+          </td>
+        );
+      case 'tat': return <td key={colKey} style={{ padding: '0.85rem 1rem', fontSize: '0.85rem', color: '#475569' }}>{row.tat}</td>;
+      case 'totalSeconds': return <td key={colKey} style={{ padding: '0.85rem 1rem', fontSize: '0.85rem', color: '#475569' }}>{formatSeconds(row.totalSeconds)}</td>;
+      default: return null;
+    }
+  };
+
+  const colLabelsD5 = { assigned_to: 'Assigned To', request_type: 'Request Type', totalSeconds: 'Total Audio Length' };
+  const renderCellD5 = (colKey, row) => {
+    switch (colKey) {
+      case 'assigned_to': return <td key={colKey} style={{ padding: '0.85rem 1rem', fontSize: '0.85rem', fontWeight: '600', color: '#334155' }}>{row.assigned_to}</td>;
+      case 'request_type': return <td key={colKey} style={{ padding: '0.85rem 1rem', fontSize: '0.85rem', color: '#475569' }}>{row.request_type}</td>;
+      case 'totalSeconds': return <td key={colKey} style={{ padding: '0.85rem 1rem', fontSize: '0.85rem', color: '#475569' }}>{formatSeconds(row.totalSeconds)}</td>;
+      default: return null;
+    }
+  };
+
+  const colLabelsD6 = { wo_date: 'WO Date', assigned_to: 'Assigned To', tat: 'TAT', request_type: 'Type', totalSeconds: 'Audio Length' };
+  const renderCellD6 = (colKey, row) => {
+    switch (colKey) {
+      case 'wo_date': return <td key={colKey} style={{ padding: '0.85rem 1rem', fontSize: '0.85rem', color: '#475569' }}>{formatDdMmm(row.wo_date)}</td>;
+      case 'assigned_to': return <td key={colKey} style={{ padding: '0.85rem 1rem', fontSize: '0.85rem', color: '#475569' }}>{row.assigned_to}</td>;
+      case 'tat': return <td key={colKey} style={{ padding: '0.85rem 1rem', fontSize: '0.85rem', color: '#475569' }}>{row.tat}</td>;
+      case 'request_type':
+        return (
+          <td key={colKey} style={{ padding: '0.85rem 1rem', fontSize: '0.85rem', color: '#475569' }}>
+            <span className={`pill ${row.request_type?.toLowerCase() === 'bench' ? 'req-bench' : 'req-full'}`} style={{ display: 'inline-block', padding: '2px 8px', borderRadius: '8px', fontSize: '0.8rem', fontWeight: '600' }}>
+              {row.request_type || '—'}
+            </span>
+          </td>
+        );
+      case 'totalSeconds': return <td key={colKey} style={{ padding: '0.85rem 1rem', fontSize: '0.85rem', color: '#475569' }}>{formatSeconds(row.totalSeconds)}</td>;
+      default: return null;
+    }
+  };
 
   const filtersReady = language && selectedDate;
   const monthlyFiltersReady = monthlyLanguage && monthlyMonth && monthlyYear;
@@ -164,7 +714,7 @@ export default function Dashboard() {
       try {
         const { data, error: fetchError } = await supabase
           .from('work_orders')
-          .select('wo_date, work_order_number, due_date, tat, assigned_to, status')
+          .select('id, wo_date, work_order_number, due_date, tat, assigned_to, status')
           .eq('language', language)
           .is('delivery_date', null)
           .eq('status', 'Done')
@@ -192,6 +742,44 @@ export default function Dashboard() {
         setError('Failed to fetch report data.');
       }
       setLoading(false);
+    };
+
+    // Past Due Date Report
+    const fetchReportPastDue = async () => {
+      setLoadingPastDue(true);
+      setErrorPastDue(null);
+      try {
+        const { data, error: fetchError } = await supabase
+          .from('work_orders')
+          .select('id, wo_date, work_order_number, due_date, tat, assigned_to, status, request_type, hearing_date')
+          .eq('language', language)
+          .lt('due_date', selectedDate)
+          .is('delivery_date', null)
+          .in('status', ['Done', 'In Process', 'Pending'])
+          .order('due_date', { ascending: true });
+
+        if (fetchError) {
+          setErrorPastDue(fetchError.message);
+          setReportPastDueData([]);
+        } else {
+          // Group by requested columns: work_order_number, wo_date, assigned_to, hearing_date, status
+          const seen = new Map();
+          (data || []).forEach(row => {
+            const key = `${row.work_order_number || ''}|${row.wo_date || ''}|${row.assigned_to || ''}|${row.hearing_date || ''}|${row.status || ''}`;
+            if (!seen.has(key)) seen.set(key, row);
+          });
+          const uniqueData = Array.from(seen.values());
+          const sortedData = uniqueData.sort((a, b) => {
+            const timeDiff = new Date(a.due_date).getTime() - new Date(b.due_date).getTime();
+            if (timeDiff !== 0) return timeDiff;
+            return (a.work_order_number || '').localeCompare(b.work_order_number || '');
+          });
+          setReportPastDueData(sortedData);
+        }
+      } catch (err) {
+        setErrorPastDue('Failed to fetch past due report data.');
+      }
+      setLoadingPastDue(false);
     };
 
     // Report 2: Work Order Due Today
@@ -281,8 +869,33 @@ export default function Dashboard() {
         if (fetchError) {
           setError4(fetchError.message);
           setReport4Data([]);
+          setReport4BenchSeconds(0);
+          setReport4FullSeconds(0);
+          setReport4TotalSeconds(0);
+          setReport4TotalRecords(0);
         } else {
-          // Group by 5 columns: work_order_number, assigned_to, wo_date, due_date, status
+          let benchSecs = 0;
+          let fullSecs = 0;
+
+          (data || []).forEach((row) => {
+            const secs = parseAudioToSeconds(row.audio_length);
+            const reqType = (row.request_type || '').toLowerCase();
+            if (reqType === 'bench') {
+              benchSecs += secs;
+            } else {
+              fullSecs += secs;
+            }
+          });
+
+          const totalSecs = benchSecs + fullSecs;
+          const totalRecs = (data || []).length;
+
+          setReport4BenchSeconds(benchSecs);
+          setReport4FullSeconds(fullSecs);
+          setReport4TotalSeconds(totalSecs);
+          setReport4TotalRecords(totalRecs);
+
+          // Group by WO#, assigned_to, request_type, tat, wo_date, due_date, status
           const grouped = {};
           (data || []).forEach((row) => {
             const key = `${row.work_order_number || ''}|${row.assigned_to || ''}|${row.request_type || ''}|${row.tat || ''}|${row.wo_date || ''}|${row.due_date || ''}|${row.status || ''}`;
@@ -306,55 +919,6 @@ export default function Dashboard() {
         setError4('Failed to fetch report data.');
       }
       setLoading4(false);
-    };
-
-    // Report 5: Work Order Assigned on [date] — grouped by Assigned To and Request Type
-    const fetchReport5 = async () => {
-      setLoading5(true);
-      setError5(null);
-      try {
-        const { data, error: fetchError } = await supabase
-          .from('work_orders')
-          .select('assigned_to, request_type, audio_length')
-          .eq('language', language)
-          .eq('wo_date', selectedDate);
-
-        if (fetchError) {
-          setError5(fetchError.message);
-          setReport5Data([]);
-          setReport5GrandTotal(0);
-        } else {
-          // Group rows by assigned_to + request_type
-          const grouped = {};
-          let grandTotal = 0;
-          
-          (data || []).forEach((row) => {
-            const key = `${row.assigned_to}_${row.request_type}`;
-            if (!grouped[key]) {
-              grouped[key] = {
-                assigned_to: row.assigned_to,
-                request_type: row.request_type,
-                totalSeconds: 0,
-              };
-            }
-            const secs = parseAudioToSeconds(row.audio_length);
-            grouped[key].totalSeconds += secs;
-            grandTotal += secs;
-          });
-          
-          const sortedData = Object.values(grouped).sort((a, b) => {
-             const cmp = (a.assigned_to || '').localeCompare(b.assigned_to || '');
-             if (cmp !== 0) return cmp;
-             return (a.request_type || '').localeCompare(b.request_type || '');
-          });
-          
-          setReport5Data(sortedData);
-          setReport5GrandTotal(grandTotal);
-        }
-      } catch (err) {
-        setError5('Failed to fetch report data.');
-      }
-      setLoading5(false);
     };
 
     // Report 6: Pending (status = 'Pending', created_at < now() - 24h)
@@ -410,10 +974,10 @@ export default function Dashboard() {
     };
 
     fetchReport1();
+    fetchReportPastDue();
     fetchReport2();
     fetchReport3();
     fetchReport4();
-    fetchReport5();
     fetchReport6();
   }, [language, selectedDate, filtersReady]);
 
@@ -889,25 +1453,13 @@ export default function Dashboard() {
                       <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
                         <thead>
                           <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
-                            <th style={{ padding: '0.85rem 1rem', fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase', fontWeight: '600', letterSpacing: '0.05em' }}>Region</th>
-                            <th style={{ padding: '0.85rem 1rem', fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase', fontWeight: '600', letterSpacing: '0.05em' }}>Audio Length</th>
-                            <th style={{ padding: '0.85rem 1rem', fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase', fontWeight: '600', letterSpacing: '0.05em' }}>Word Count</th>
-                            <th style={{ padding: '0.85rem 1rem', fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase', fontWeight: '600', letterSpacing: '0.05em' }}>Characters</th>
-                            <th style={{ padding: '0.85rem 1rem', fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase', fontWeight: '600', letterSpacing: '0.05em' }}>Line Count</th>
+                            {colOrderM1.map(colKey => renderSortHeader(colLabelsM1[colKey], colKey, sortM1, setSortM1, colOrderM1, setColOrderM1))}
                           </tr>
                         </thead>
                         <tbody>
-                          {monthlyReport1Data.map((row, idx) => (
+                          {sortTableData(monthlyReport1Data, sortM1).map((row, idx) => (
                             <tr key={idx} style={{ borderBottom: idx === monthlyReport1Data.length - 1 ? 'none' : '1px solid #f1f5f9' }}>
-                              <td style={{ padding: '0.85rem 1rem', fontSize: '0.85rem', fontWeight: '600', color: '#334155' }}>
-                                <span className={`pill ${getRegionPillClass(row.region)}`} style={{ display: 'inline-block', padding: '2px 8px', borderRadius: '8px', fontSize: '0.8rem', fontWeight: '600' }}>
-                                  {row.region}
-                                </span>
-                              </td>
-                              <td style={{ padding: '0.85rem 1rem', fontSize: '0.85rem', color: '#475569' }}>{formatSeconds(row.audioSeconds)}</td>
-                              <td style={{ padding: '0.85rem 1rem', fontSize: '0.85rem', color: '#475569' }}>{row.wordCount.toLocaleString()}</td>
-                              <td style={{ padding: '0.85rem 1rem', fontSize: '0.85rem', color: '#475569' }}>{row.characterSpace.toLocaleString()}</td>
-                              <td style={{ padding: '0.85rem 1rem', fontSize: '0.85rem', color: '#475569' }}>{row.lineCount.toLocaleString()}</td>
+                              {colOrderM1.map(colKey => renderCellM1(colKey, row))}
                             </tr>
                           ))}
                         </tbody>
@@ -947,25 +1499,13 @@ export default function Dashboard() {
                       <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
                         <thead>
                           <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
-                            <th style={{ padding: '0.85rem 1rem', fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase', fontWeight: '600', letterSpacing: '0.05em' }}>Assignee</th>
-                            <th style={{ padding: '0.85rem 1rem', fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase', fontWeight: '600', letterSpacing: '0.05em' }}>Audio Length</th>
-                            <th style={{ padding: '0.85rem 1rem', fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase', fontWeight: '600', letterSpacing: '0.05em' }}>Word Count</th>
-                            <th style={{ padding: '0.85rem 1rem', fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase', fontWeight: '600', letterSpacing: '0.05em' }}>Characters</th>
-                            <th style={{ padding: '0.85rem 1rem', fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase', fontWeight: '600', letterSpacing: '0.05em' }}>Line Count</th>
+                            {colOrderM2.map(colKey => renderSortHeader(colLabelsM2[colKey], colKey, sortM2, setSortM2, colOrderM2, setColOrderM2))}
                           </tr>
                         </thead>
                         <tbody>
-                          {monthlyReport2Data.map((row, idx) => (
+                          {sortTableData(monthlyReport2Data, sortM2).map((row, idx) => (
                             <tr key={idx} style={{ borderBottom: idx === monthlyReport2Data.length - 1 ? 'none' : '1px solid #f1f5f9' }}>
-                              <td style={{ padding: '0.85rem 1rem', fontSize: '0.85rem', fontWeight: '600', color: '#334155' }}>
-                                <span className={`pill ${getEmployeePillClass(row.assigned_to)}`}>
-                                  {row.assigned_to}
-                                </span>
-                              </td>
-                              <td style={{ padding: '0.85rem 1rem', fontSize: '0.85rem', color: '#475569' }}>{formatSeconds(row.audioSeconds)}</td>
-                              <td style={{ padding: '0.85rem 1rem', fontSize: '0.85rem', color: '#475569' }}>{row.wordCount.toLocaleString()}</td>
-                              <td style={{ padding: '0.85rem 1rem', fontSize: '0.85rem', color: '#475569' }}>{row.characterSpace.toLocaleString()}</td>
-                              <td style={{ padding: '0.85rem 1rem', fontSize: '0.85rem', color: '#475569' }}>{row.lineCount.toLocaleString()}</td>
+                              {colOrderM2.map(colKey => renderCellM2(colKey, row))}
                             </tr>
                           ))}
                         </tbody>
@@ -1018,21 +1558,12 @@ export default function Dashboard() {
                                 backgroundColor: '#f97316', 
                                 borderRadius: '0 4px 4px 0', 
                                 transition: 'width 1s cubic-bezier(0.4, 0, 0.2, 1)',
-                                boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
-                              }}></div>
+                                position: 'relative'
+                              }} />
                               {/* Value Label */}
-                              {d.wordCount > 0 && (
-                                <div style={{ 
-                                  marginLeft: '12px', 
-                                  fontSize: '0.85rem', 
-                                  color: '#c2410c', 
-                                  fontWeight: 600,
-                                  fontVariantNumeric: 'tabular-nums',
-                                  animation: 'fadeIn 0.5s ease forwards 0.5s'
-                                }}>
-                                  {d.wordCount.toLocaleString()}
-                                </div>
-                              )}
+                              <span style={{ marginLeft: '12px', fontSize: '0.85rem', fontWeight: 600, color: '#334155' }}>
+                                {d.wordCount.toLocaleString()}
+                              </span>
                             </div>
                           </div>
                         );
@@ -1123,23 +1654,13 @@ export default function Dashboard() {
                       <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
                         <thead>
                           <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
-                            <th style={{ padding: '0.85rem 1rem', fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase', fontWeight: '600', letterSpacing: '0.05em' }}>Month</th>
-                            <th style={{ padding: '0.85rem 1rem', fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase', fontWeight: '600', letterSpacing: '0.05em' }}>Audio Length</th>
-                            <th style={{ padding: '0.85rem 1rem', fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase', fontWeight: '600', letterSpacing: '0.05em' }}>Word Count</th>
-                            <th style={{ padding: '0.85rem 1rem', fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase', fontWeight: '600', letterSpacing: '0.05em' }}>Characters</th>
-                            <th style={{ padding: '0.85rem 1rem', fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase', fontWeight: '600', letterSpacing: '0.05em' }}>Line Count</th>
+                            {colOrderM5.map(colKey => renderSortHeader(colLabelsM5[colKey], colKey, sortM5, setSortM5, colOrderM5, setColOrderM5))}
                           </tr>
                         </thead>
                         <tbody>
-                          {monthlyReport5Data.map((row, idx) => (
+                          {sortTableData(monthlyReport5Data, sortM5).map((row, idx) => (
                             <tr key={idx} style={{ borderBottom: idx === monthlyReport5Data.length - 1 ? 'none' : '1px solid #f1f5f9', backgroundColor: row.isCurrentMonth ? '#fdf4ff' : 'transparent' }}>
-                              <td style={{ padding: '0.85rem 1rem', fontSize: '0.85rem', fontWeight: '600', color: row.isCurrentMonth ? '#8b5cf6' : '#334155' }}>
-                                {row.displayMonth} {row.isCurrentMonth && <span style={{ fontSize: '0.7rem', padding: '2px 6px', background: '#8b5cf6', color: '#fff', borderRadius: '4px', marginLeft: '6px' }}>Current</span>}
-                              </td>
-                              <td style={{ padding: '0.85rem 1rem', fontSize: '0.85rem', color: '#475569' }}>{formatSeconds(row.audioSeconds)}</td>
-                              <td style={{ padding: '0.85rem 1rem', fontSize: '0.85rem', color: '#475569' }}>{row.wordCount.toLocaleString()}</td>
-                              <td style={{ padding: '0.85rem 1rem', fontSize: '0.85rem', color: '#475569' }}>{row.characterSpace.toLocaleString()}</td>
-                              <td style={{ padding: '0.85rem 1rem', fontSize: '0.85rem', color: '#475569' }}>{row.lineCount.toLocaleString()}</td>
+                              {colOrderM5.map(colKey => renderCellM5(colKey, row))}
                             </tr>
                           ))}
                         </tbody>
@@ -1274,23 +1795,88 @@ export default function Dashboard() {
                   <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
                     <thead>
                       <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
-                        <th style={{ padding: '0.85rem 1rem', fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase', fontWeight: '600', letterSpacing: '0.05em' }}>WO #</th>
-                        <th style={{ padding: '0.85rem 1rem', fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase', fontWeight: '600', letterSpacing: '0.05em' }}>Assigned To</th>
-                        <th style={{ padding: '0.85rem 1rem', fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase', fontWeight: '600', letterSpacing: '0.05em' }}>WO Date</th>
-                        <th style={{ padding: '0.85rem 1rem', fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase', fontWeight: '600', letterSpacing: '0.05em' }}>Due</th>
-                        <th style={{ padding: '0.85rem 1rem', fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase', fontWeight: '600', letterSpacing: '0.05em' }}>TAT</th>
+                        {colOrderD1.map(colKey => renderSortHeader(colLabelsD1[colKey], colKey, sortD1, setSortD1, colOrderD1, setColOrderD1))}
                       </tr>
                     </thead>
                     <tbody>
-                      {report1Data.map((row, idx) => (
+                      {sortTableData(report1Data, sortD1).map((row, idx) => (
                         <tr key={idx} style={{ borderBottom: idx === report1Data.length - 1 ? 'none' : '1px solid #f1f5f9' }}>
-                          <td style={{ padding: '0.85rem 1rem', fontSize: '0.85rem', fontWeight: '600', color: '#334155' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><ClipboardList size={14} color="#94a3b8" /> {row.work_order_number}</div>
-                          </td>
-                          <td style={{ padding: '0.85rem 1rem', fontSize: '0.85rem', color: '#475569' }}>{row.assigned_to}</td>
-                          <td style={{ padding: '0.85rem 1rem', fontSize: '0.85rem', color: '#475569' }}>{formatDdMmm(row.wo_date)}</td>
-                          <td style={{ padding: '0.85rem 1rem', fontSize: '0.85rem', color: '#475569' }}>{formatDdMmm(row.due_date)}</td>
-                          <td style={{ padding: '0.85rem 1rem', fontSize: '0.85rem', color: '#475569' }}>{row.tat}</td>
+                          {colOrderD1.map(colKey => renderCellD1(colKey, row))}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* ===== Report: Past Due Date ===== */}
+          <div className="work-order-card" style={{ background: '#fff', borderRadius: '16px', boxShadow: '0 4px 20px rgba(0, 0, 0, 0.04)', border: '1px solid #f1f5f9', borderTop: '6px solid #ef4444', overflow: 'hidden' }}>
+            <div style={{ padding: '1.25rem', borderBottom: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+              <h3 style={{ margin: 0 }}>
+                <a 
+                  href="#" 
+                  onClick={(e) => { e.preventDefault(); navigate(`/records?report=past_due&date=${selectedDate}&lang=${language}`); }} 
+                  style={{ 
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    padding: '0.5rem 1.1rem',
+                    borderRadius: 'var(--r-sm)',
+                    fontSize: '13px',
+                    fontWeight: '700',
+                    background: 'var(--subtle)',
+                    color: 'var(--text)',
+                    textDecoration: 'none',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease',
+                    border: '.5px solid var(--border)'
+                  }} 
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = 'var(--hover)';
+                    e.currentTarget.style.transform = 'translateY(-1px)';
+                    e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.05)';
+                  }} 
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = 'var(--subtle)';
+                    e.currentTarget.style.transform = 'none';
+                    e.currentTarget.style.boxShadow = 'none';
+                  }}
+                >
+                  Past Due Date
+                </a>
+              </h3>
+              <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', padding: '0.4rem 0.85rem', background: '#fee2e2', color: '#b91c1c', borderRadius: '999px', fontSize: '0.85rem', fontWeight: '600' }}>
+                <Clock size={14} />
+                {loadingPastDue ? '…' : reportPastDueData.length} Records
+              </span>
+            </div>
+            <div style={{ padding: '1.25rem', background: '#f8fafc' }}>
+              {loadingPastDue ? (
+                <div className="dashboard-empty-state" style={{ background: '#fff', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                  <p>Loading report data…</p>
+                </div>
+              ) : errorPastDue ? (
+                <div className="dashboard-empty-state" style={{ background: '#fff', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                  <p style={{ color: '#dc2626' }}>{errorPastDue}</p>
+                </div>
+              ) : reportPastDueData.length === 0 ? (
+                <div className="dashboard-empty-state" style={{ background: '#fff', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                  <Clock size={28} color="#94a3b8" />
+                  <p>No past due records found.</p>
+                </div>
+              ) : (
+                <div style={{ overflowX: 'auto', background: '#fff', borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 1px 2px rgba(0,0,0,0.02)' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                    <thead>
+                      <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
+                        {colOrderPastDue.map(colKey => renderSortHeader(colLabelsPastDue[colKey], colKey, sortPastDue, setSortPastDue, colOrderPastDue, setColOrderPastDue))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {sortTableData(reportPastDueData, sortPastDue).map((row, idx) => (
+                        <tr key={idx} style={{ borderBottom: idx === reportPastDueData.length - 1 ? 'none' : '1px solid #f1f5f9' }}>
+                          {colOrderPastDue.map(colKey => renderCellPastDue(colKey, row))}
                         </tr>
                       ))}
                     </tbody>
@@ -1359,25 +1945,13 @@ export default function Dashboard() {
                   <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
                     <thead>
                       <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
-                        <th style={{ padding: '0.85rem 1rem', fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase', fontWeight: '600', letterSpacing: '0.05em' }}>WO #</th>
-                        <th style={{ padding: '0.85rem 1rem', fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase', fontWeight: '600', letterSpacing: '0.05em' }}>Assigned To</th>
-                        <th style={{ padding: '0.85rem 1rem', fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase', fontWeight: '600', letterSpacing: '0.05em' }}>WO Date</th>
-                        <th style={{ padding: '0.85rem 1rem', fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase', fontWeight: '600', letterSpacing: '0.05em' }}>Delivery Date</th>
-                        <th style={{ padding: '0.85rem 1rem', fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase', fontWeight: '600', letterSpacing: '0.05em' }}>Status</th>
+                        {colOrderD2.map(colKey => renderSortHeader(colLabelsD2[colKey], colKey, sortD2, setSortD2, colOrderD2, setColOrderD2))}
                       </tr>
                     </thead>
                     <tbody>
-                      {report2Data.map((row, idx) => (
+                      {sortTableData(report2Data, sortD2).map((row, idx) => (
                         <tr key={idx} style={{ borderBottom: idx === report2Data.length - 1 ? 'none' : '1px solid #f1f5f9' }}>
-                          <td style={{ padding: '0.85rem 1rem', fontSize: '0.85rem', fontWeight: '600', color: '#334155' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><ClipboardList size={14} color="#94a3b8" /> {row.work_order_number}</div>
-                          </td>
-                          <td style={{ padding: '0.85rem 1rem', fontSize: '0.85rem', color: '#475569' }}>{row.assigned_to}</td>
-                          <td style={{ padding: '0.85rem 1rem', fontSize: '0.85rem', color: '#475569' }}>{formatDdMmm(row.wo_date)}</td>
-                          <td style={{ padding: '0.85rem 1rem', fontSize: '0.85rem', color: '#475569' }}>{formatDdMmm(row.delivery_date)}</td>
-                          <td style={{ padding: '0.85rem 1rem', fontSize: '0.85rem', color: '#475569' }}>
-                            <span className={`dash-status-badge ${getStatusClass(row.status)}`}>{row.status || '—'}</span>
-                          </td>
+                          {colOrderD2.map(colKey => renderCellD2(colKey, row))}
                         </tr>
                       ))}
                     </tbody>
@@ -1446,25 +2020,13 @@ export default function Dashboard() {
                   <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
                     <thead>
                       <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
-                        <th style={{ padding: '0.85rem 1rem', fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase', fontWeight: '600', letterSpacing: '0.05em' }}>WO #</th>
-                        <th style={{ padding: '0.85rem 1rem', fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase', fontWeight: '600', letterSpacing: '0.05em' }}>Assigned To</th>
-                        <th style={{ padding: '0.85rem 1rem', fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase', fontWeight: '600', letterSpacing: '0.05em' }}>WO Date</th>
-                        <th style={{ padding: '0.85rem 1rem', fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase', fontWeight: '600', letterSpacing: '0.05em' }}>Due</th>
-                        <th style={{ padding: '0.85rem 1rem', fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase', fontWeight: '600', letterSpacing: '0.05em' }}>Status</th>
+                        {colOrderD3.map(colKey => renderSortHeader(colLabelsD3[colKey], colKey, sortD3, setSortD3, colOrderD3, setColOrderD3))}
                       </tr>
                     </thead>
                     <tbody>
-                      {report3Data.map((row, idx) => (
+                      {sortTableData(report3Data, sortD3).map((row, idx) => (
                         <tr key={idx} style={{ borderBottom: idx === report3Data.length - 1 ? 'none' : '1px solid #f1f5f9' }}>
-                          <td style={{ padding: '0.85rem 1rem', fontSize: '0.85rem', fontWeight: '600', color: '#334155' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><ClipboardList size={14} color="#94a3b8" /> {row.work_order_number}</div>
-                          </td>
-                          <td style={{ padding: '0.85rem 1rem', fontSize: '0.85rem', color: '#475569' }}>{row.assigned_to}</td>
-                          <td style={{ padding: '0.85rem 1rem', fontSize: '0.85rem', color: '#475569' }}>{formatDdMmm(row.wo_date)}</td>
-                          <td style={{ padding: '0.85rem 1rem', fontSize: '0.85rem', color: '#475569' }}>{formatDdMmm(row.due_date)}</td>
-                          <td style={{ padding: '0.85rem 1rem', fontSize: '0.85rem', color: '#475569' }}>
-                            <span className={`dash-status-badge ${getStatusClass(row.status)}`}>{row.status || '—'}</span>
-                          </td>
+                          {colOrderD3.map(colKey => renderCellD3(colKey, row))}
                         </tr>
                       ))}
                     </tbody>
@@ -1476,7 +2038,7 @@ export default function Dashboard() {
 
           {/* ===== Report 4: Work Order Assigned on [date] ===== */}
           <div className="work-order-card" style={{ background: '#fff', borderRadius: '16px', boxShadow: '0 4px 20px rgba(0, 0, 0, 0.04)', border: '1px solid #f1f5f9', borderTop: '6px solid #8b5cf6', overflow: 'hidden' }}>
-            <div style={{ padding: '1.25rem', borderBottom: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+            <div style={{ padding: '1.25rem', borderBottom: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem' }}>
               <h3 style={{ margin: 0 }}>
                 <a 
                   href="#" 
@@ -1509,10 +2071,23 @@ export default function Dashboard() {
                   Assigned {formatDdMmm(selectedDate)}
                 </a>
               </h3>
-              <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', padding: '0.4rem 0.85rem', background: '#ede9fe', color: '#6d28d9', borderRadius: '999px', fontSize: '0.85rem', fontWeight: '600' }}>
-                <Clock size={14} />
-                {loading4 ? '…' : report4Data.length} Records
-              </span>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', padding: '0.4rem 0.85rem', background: '#fef3c7', color: '#b45309', borderRadius: '999px', fontSize: '0.85rem', fontWeight: '600' }}>
+                  Bench {formatSeconds(report4BenchSeconds)}
+                </span>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', padding: '0.4rem 0.85rem', background: '#dbeafe', color: '#1d4ed8', borderRadius: '999px', fontSize: '0.85rem', fontWeight: '600' }}>
+                  Full {formatSeconds(report4FullSeconds)}
+                </span>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', padding: '0.4rem 0.85rem', background: '#f3e8ff', color: '#6b21a8', borderRadius: '999px', fontSize: '0.85rem', fontWeight: '600' }}>
+                  Total {formatSeconds(report4TotalSeconds)}
+                </span>
+
+                <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', padding: '0.4rem 0.85rem', background: '#ede9fe', color: '#6d28d9', borderRadius: '999px', fontSize: '0.85rem', fontWeight: '600' }}>
+                  <Clock size={14} />
+                  {loading4 ? '…' : report4TotalRecords} Records
+                </span>
+              </div>
             </div>
             <div style={{ padding: '1.25rem', background: '#f8fafc' }}>
               {loading4 ? (
@@ -1523,7 +2098,7 @@ export default function Dashboard() {
                 <div className="dashboard-empty-state" style={{ background: '#fff', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
                   <p style={{ color: '#dc2626' }}>{error4}</p>
                 </div>
-              ) : report4Data.length === 0 ? (
+              ) : report4TotalRecords === 0 ? (
                 <div className="dashboard-empty-state" style={{ background: '#fff', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
                   <Clock size={28} color="#94a3b8" />
                   <p>No work orders assigned on this date.</p>
@@ -1533,106 +2108,13 @@ export default function Dashboard() {
                   <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
                     <thead>
                       <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
-                        <th style={{ padding: '0.85rem 1rem', fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase', fontWeight: '600', letterSpacing: '0.05em' }}>WO #</th>
-                        <th style={{ padding: '0.85rem 1rem', fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase', fontWeight: '600', letterSpacing: '0.05em' }}>Assigned To</th>
-                        <th style={{ padding: '0.85rem 1rem', fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase', fontWeight: '600', letterSpacing: '0.05em' }}>Type</th>
-                        <th style={{ padding: '0.85rem 1rem', fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase', fontWeight: '600', letterSpacing: '0.05em' }}>TAT</th>
-                        <th style={{ padding: '0.85rem 1rem', fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase', fontWeight: '600', letterSpacing: '0.05em' }}>Total Audio Length</th>
+                        {colOrderD4.map(colKey => renderSortHeader(colLabelsD4[colKey], colKey, sortD4, setSortD4, colOrderD4, setColOrderD4))}
                       </tr>
                     </thead>
                     <tbody>
-                      {report4Data.map((row, idx) => (
+                      {sortTableData(report4Data, sortD4).map((row, idx) => (
                         <tr key={idx} style={{ borderBottom: idx === report4Data.length - 1 ? 'none' : '1px solid #f1f5f9' }}>
-                          <td style={{ padding: '0.85rem 1rem', fontSize: '0.85rem', fontWeight: '600', color: '#334155' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><ClipboardList size={14} color="#94a3b8" /> {row.work_order_number}</div>
-                          </td>
-                          <td style={{ padding: '0.85rem 1rem', fontSize: '0.85rem', color: '#475569' }}>{row.assigned_to}</td>
-                          <td style={{ padding: '0.85rem 1rem', fontSize: '0.85rem', color: '#475569' }}>
-                            <span className={`pill ${row.request_type?.toLowerCase() === 'bench' ? 'req-bench' : 'req-full'}`} style={{ display: 'inline-block', padding: '2px 8px', borderRadius: '8px', fontSize: '0.8rem', fontWeight: '600' }}>
-                              {row.request_type || '—'}
-                            </span>
-                          </td>
-                          <td style={{ padding: '0.85rem 1rem', fontSize: '0.85rem', color: '#475569' }}>{row.tat}</td>
-                          <td style={{ padding: '0.85rem 1rem', fontSize: '0.85rem', color: '#475569' }}>{formatSeconds(row.totalSeconds)}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* ===== Report 5: Work Order Assigned on [date] (by Assignee & Type) ===== */}
-          <div className="work-order-card" style={{ background: '#fff', borderRadius: '16px', boxShadow: '0 4px 20px rgba(0, 0, 0, 0.04)', border: '1px solid #f1f5f9', borderTop: '6px solid #ec4899', overflow: 'hidden' }}>
-            <div style={{ padding: '1.25rem', borderBottom: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
-              <h3 style={{ margin: 0 }}>
-                <a 
-                  href="#" 
-                  onClick={(e) => { e.preventDefault(); navigate(`/records?report=5&date=${selectedDate}&lang=${language}`); }} 
-                  style={{ 
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    padding: '0.5rem 1.1rem',
-                    borderRadius: 'var(--r-sm)',
-                    fontSize: '13px',
-                    fontWeight: '700',
-                    background: 'var(--subtle)',
-                    color: 'var(--text)',
-                    textDecoration: 'none',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s ease',
-                    border: '.5px solid var(--border)'
-                  }} 
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.background = 'var(--hover)';
-                    e.currentTarget.style.transform = 'translateY(-1px)';
-                    e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.05)';
-                  }} 
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.background = 'var(--subtle)';
-                    e.currentTarget.style.transform = 'none';
-                    e.currentTarget.style.boxShadow = 'none';
-                  }}
-                >
-                  Assigned Audio Length {formatDdMmm(selectedDate)}
-                </a>
-              </h3>
-              <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', padding: '0.4rem 0.85rem', background: '#fce7f3', color: '#be185d', borderRadius: '999px', fontSize: '0.85rem', fontWeight: '600' }}>
-                <Sparkles size={14} />
-                Grand Total: {formatSeconds(report5GrandTotal)}
-              </span>
-            </div>
-            <div style={{ padding: '1.25rem', background: '#f8fafc' }}>
-              {loading5 ? (
-                <div className="dashboard-empty-state" style={{ background: '#fff', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
-                  <p>Loading report data…</p>
-                </div>
-              ) : error5 ? (
-                <div className="dashboard-empty-state" style={{ background: '#fff', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
-                  <p style={{ color: '#dc2626' }}>{error5}</p>
-                </div>
-              ) : report5Data.length === 0 ? (
-                <div className="dashboard-empty-state" style={{ background: '#fff', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
-                  <Sparkles size={28} color="#94a3b8" />
-                  <p>No records to calculate audio length.</p>
-                </div>
-              ) : (
-                <div style={{ overflowX: 'auto', background: '#fff', borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 1px 2px rgba(0,0,0,0.02)' }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-                    <thead>
-                      <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
-                        <th style={{ padding: '0.85rem 1rem', fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase', fontWeight: '600', letterSpacing: '0.05em' }}>Assigned To</th>
-                        <th style={{ padding: '0.85rem 1rem', fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase', fontWeight: '600', letterSpacing: '0.05em' }}>Request Type</th>
-                        <th style={{ padding: '0.85rem 1rem', fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase', fontWeight: '600', letterSpacing: '0.05em' }}>Total Audio Length</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {report5Data.map((row, idx) => (
-                        <tr key={idx} style={{ borderBottom: idx === report5Data.length - 1 ? 'none' : '1px solid #f1f5f9' }}>
-                          <td style={{ padding: '0.85rem 1rem', fontSize: '0.85rem', fontWeight: '600', color: '#334155' }}>{row.assigned_to}</td>
-                          <td style={{ padding: '0.85rem 1rem', fontSize: '0.85rem', color: '#475569' }}>{row.request_type}</td>
-                          <td style={{ padding: '0.85rem 1rem', fontSize: '0.85rem', color: '#475569' }}>{formatSeconds(row.totalSeconds)}</td>
+                          {colOrderD4.map(colKey => renderCellD4(colKey, row))}
                         </tr>
                       ))}
                     </tbody>
@@ -1701,25 +2183,13 @@ export default function Dashboard() {
                   <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
                     <thead>
                       <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
-                        <th style={{ padding: '0.85rem 1rem', fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase', fontWeight: '600', letterSpacing: '0.05em' }}>WO Date</th>
-                        <th style={{ padding: '0.85rem 1rem', fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase', fontWeight: '600', letterSpacing: '0.05em' }}>Assigned To</th>
-                        <th style={{ padding: '0.85rem 1rem', fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase', fontWeight: '600', letterSpacing: '0.05em' }}>TAT</th>
-                        <th style={{ padding: '0.85rem 1rem', fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase', fontWeight: '600', letterSpacing: '0.05em' }}>Type</th>
-                        <th style={{ padding: '0.85rem 1rem', fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase', fontWeight: '600', letterSpacing: '0.05em' }}>Audio Length</th>
+                        {colOrderD6.map(colKey => renderSortHeader(colLabelsD6[colKey], colKey, sortD6, setSortD6, colOrderD6, setColOrderD6))}
                       </tr>
                     </thead>
                     <tbody>
-                      {report6Data.map((row, idx) => (
+                      {sortTableData(report6Data, sortD6).map((row, idx) => (
                         <tr key={idx} style={{ borderBottom: idx === report6Data.length - 1 ? 'none' : '1px solid #f1f5f9' }}>
-                          <td style={{ padding: '0.85rem 1rem', fontSize: '0.85rem', color: '#475569' }}>{formatDdMmm(row.wo_date)}</td>
-                          <td style={{ padding: '0.85rem 1rem', fontSize: '0.85rem', color: '#475569' }}>{row.assigned_to}</td>
-                          <td style={{ padding: '0.85rem 1rem', fontSize: '0.85rem', color: '#475569' }}>{row.tat}</td>
-                          <td style={{ padding: '0.85rem 1rem', fontSize: '0.85rem', color: '#475569' }}>
-                            <span className={`pill ${row.request_type?.toLowerCase() === 'bench' ? 'req-bench' : 'req-full'}`} style={{ display: 'inline-block', padding: '2px 8px', borderRadius: '8px', fontSize: '0.8rem', fontWeight: '600' }}>
-                              {row.request_type || '—'}
-                            </span>
-                          </td>
-                          <td style={{ padding: '0.85rem 1rem', fontSize: '0.85rem', color: '#475569' }}>{formatSeconds(row.totalSeconds)}</td>
+                          {colOrderD6.map(colKey => renderCellD6(colKey, row))}
                         </tr>
                       ))}
                     </tbody>

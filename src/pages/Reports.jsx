@@ -150,6 +150,19 @@ const parseReportUrlParams = (search) => {
         to_due_date: '',
         status: 'Done'
       };
+    } else if (reportParam === 'past_due' && dateParam) {
+      const selectedObj = new Date(dateParam);
+      const yesterdayObj = new Date(selectedObj);
+      yesterdayObj.setDate(yesterdayObj.getDate() - 1);
+      const y = yesterdayObj.getFullYear();
+      const m = String(yesterdayObj.getMonth() + 1).padStart(2, '0');
+      const d = String(yesterdayObj.getDate()).padStart(2, '0');
+      const yesterdayStr = `${y}-${m}-${d}`;
+      return {
+        ...baseFilters,
+        from_due_date: '',
+        to_due_date: yesterdayStr
+      };
     } else if (reportParam === '2' && dateParam) {
       return {
         ...baseFilters,
