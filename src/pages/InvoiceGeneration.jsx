@@ -257,15 +257,34 @@ export default function InvoiceGeneration({ userRoles = [] }) {
 
     const formatWoDate = (dStr) => {
       if (!dStr) return '';
+      const str = String(dStr).trim();
+      const parts = str.split('T')[0].split('-');
+      if (parts.length === 3) {
+        const month = parts[1].padStart(2, '0');
+        const day = parts[2].padStart(2, '0');
+        return `${month}${day}`;
+      }
       const d = new Date(dStr);
-      return `${(d.getMonth() + 1).toString().padStart(2, '0')}${d.getDate().toString().padStart(2, '0')}`;
+      if (isNaN(d)) return '';
+      return `${(d.getUTCMonth() + 1).toString().padStart(2, '0')}${d.getUTCDate().toString().padStart(2, '0')}`;
     };
 
     const formatHearingDate = (dStr) => {
       if (!dStr) return '';
-      const d = new Date(dStr);
+      const str = String(dStr).trim();
       const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-      return `${d.getDate().toString().padStart(2, '0')}-${months[d.getMonth()]}-${d.getFullYear()}`;
+      const parts = str.split('T')[0].split('-');
+      if (parts.length === 3) {
+        const year = parseInt(parts[0], 10);
+        const monthIdx = parseInt(parts[1], 10) - 1;
+        const day = parseInt(parts[2], 10);
+        if (!isNaN(year) && monthIdx >= 0 && monthIdx < 12 && !isNaN(day)) {
+          return `${day.toString().padStart(2, '0')}-${months[monthIdx]}-${year}`;
+        }
+      }
+      const d = new Date(dStr);
+      if (isNaN(d)) return '';
+      return `${d.getUTCDate().toString().padStart(2, '0')}-${months[d.getUTCMonth()]}-${d.getUTCFullYear()}`;
     };
 
     Object.keys(grouped).forEach(division => {

@@ -878,26 +878,38 @@ export default function Reports({ userRoles = [], user }) {
   // Helper to format DD-MMM
   const formatDdMmm = (dateStr) => {
     if (!dateStr) return '—';
+    const str = String(dateStr).trim();
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const parts = str.split('T')[0].split('-');
+    if (parts.length === 3) {
+      const monthIdx = parseInt(parts[1], 10) - 1;
+      const day = parseInt(parts[2], 10);
+      if (monthIdx >= 0 && monthIdx < 12 && !isNaN(day)) {
+        return `${day.toString().padStart(2, '0')}-${months[monthIdx]}`;
+      }
+    }
     const d = new Date(dateStr);
     if (isNaN(d)) return '—';
-    const isISODate = typeof dateStr === 'string' && dateStr.length === 10 && dateStr.includes('-');
-    const day = isISODate ? d.getUTCDate() : d.getDate();
-    const monthIndex = isISODate ? d.getUTCMonth() : d.getMonth();
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    return `${day}-${months[monthIndex]}`;
+    return `${d.getUTCDate().toString().padStart(2, '0')}-${months[d.getUTCMonth()]}`;
   };
 
   // Helper to format DD-MMM-YYYY
   const formatDdMmmYyyy = (dateStr) => {
     if (!dateStr) return '—';
+    const str = String(dateStr).trim();
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const parts = str.split('T')[0].split('-');
+    if (parts.length === 3) {
+      const year = parseInt(parts[0], 10);
+      const monthIdx = parseInt(parts[1], 10) - 1;
+      const day = parseInt(parts[2], 10);
+      if (!isNaN(year) && monthIdx >= 0 && monthIdx < 12 && !isNaN(day)) {
+        return `${day.toString().padStart(2, '0')}-${months[monthIdx]}-${year}`;
+      }
+    }
     const d = new Date(dateStr);
     if (isNaN(d)) return '—';
-    const isISODate = typeof dateStr === 'string' && dateStr.length === 10 && dateStr.includes('-');
-    const day = isISODate ? d.getUTCDate() : d.getDate();
-    const monthIndex = isISODate ? d.getUTCMonth() : d.getMonth();
-    const year = isISODate ? d.getUTCFullYear() : d.getFullYear();
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    return `${day}-${months[monthIndex]}-${year}`;
+    return `${d.getUTCDate().toString().padStart(2, '0')}-${months[d.getUTCMonth()]}-${d.getUTCFullYear()}`;
   };
 
   // Pagination computed values
