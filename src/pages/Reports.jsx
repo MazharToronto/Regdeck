@@ -143,13 +143,10 @@ const parseReportUrlParams = (search) => {
         to_due_date: yesterdayStr,
         status: 'active'
       };
-    } else if (reportParam === '1' && dateParam) {
-      const d = new Date(dateParam);
-      d.setDate(d.getDate() + 1);
-      const dayAfter = d.toISOString().split('T')[0];
+    } else if (reportParam === '1') {
       return {
         ...baseFilters,
-        from_due_date: dayAfter,
+        from_due_date: '',
         to_due_date: '',
         status: 'Done'
       };
@@ -440,12 +437,11 @@ export default function Reports({ userRoles = [], user }) {
 
     // Apply filters if provided
     if (f.report && ['1', '2', '3', '4', '5', '6'].includes(f.report)) {
-      if (f.report === '1' && f.reportDate) {
+      if (f.report === '1') {
         query = query
           .eq('language', f.language)
           .eq('status', 'Done')
-          .is('delivery_date', null)
-          .gt('due_date', f.reportDate);
+          .is('delivery_date', null);
       } else if (f.report === '2' && f.reportDate) {
         query = query
           .eq('language', f.language)

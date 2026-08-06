@@ -168,7 +168,6 @@ export default function Dashboard() {
           .eq('language', language)
           .is('delivery_date', null)
           .eq('status', 'Done')
-          .gt('due_date', selectedDate)
           .order('wo_date', { ascending: true });
 
         if (fetchError) {
@@ -1248,7 +1247,7 @@ export default function Dashboard() {
                     e.currentTarget.style.boxShadow = 'none';
                   }}
                 >
-                  Done - Not Delivered {formatDdMmm(selectedDate)}
+                  Done - Not Delivered
                 </a>
               </h3>
               <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', padding: '0.4rem 0.85rem', background: '#d1fae5', color: '#047857', borderRadius: '999px', fontSize: '0.85rem', fontWeight: '600' }}>
